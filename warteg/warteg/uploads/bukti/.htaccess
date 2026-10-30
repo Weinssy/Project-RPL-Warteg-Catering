@@ -1,0 +1,9 @@
+# Cegah eksekusi file PHP di folder ini
+<FilesMatch "\.(php|phtml|php3|php4|php5|phps)$">
+    Require all denied
+</FilesMatch>
+
+# Hanya izinkan akses gambar
+<FilesMatch "\.(jpg|jpeg|png|webp|gif)$">
+    Require all granted
+</FilesMatch>
