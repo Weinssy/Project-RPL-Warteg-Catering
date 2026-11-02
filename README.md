@@ -63,4 +63,5 @@ Project-RPL-Warteg-Catering/
 
 ## 👥 Tim Pengembang
 * Rifa Zam Zami
-* Tim RPL Warteg Catering
+* Muhammad Arman Kurniawan
+* Alif Arya
