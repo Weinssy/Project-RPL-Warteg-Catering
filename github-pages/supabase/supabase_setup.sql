@@ -330,3 +330,4 @@ ON CONFLICT DO NOTHING;
 INSERT INTO public.menu_harian (menu_id, tanggal, tersedia, stok)
 SELECT id, CURRENT_DATE + INTERVAL '1 day', TRUE, 120 FROM public.menu
 ON CONFLICT DO NOTHING;
+

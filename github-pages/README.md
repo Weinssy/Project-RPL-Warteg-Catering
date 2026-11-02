@@ -88,3 +88,4 @@ Semua gambar bawaan demo (foto menu, foto admin, gambar QRIS statis, dan contoh 
 * `uploads/bukti/`
 * `uploads/menu/`
 * `uploads/qris/`
+

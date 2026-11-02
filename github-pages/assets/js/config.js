@@ -11,15 +11,15 @@
 
 window.WARTEG_CONFIG = {
     // Kredensial Supabase Anda (Aman dipasang di frontend karena menggunakan Anon Key)
-    SUPABASE_URL: "",      // Contoh: "https://your-project.supabase.co"
-    SUPABASE_ANON_KEY: "", // Contoh: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+    SUPABASE_URL: "https://cqkzitjxqylznxdykmqt.supabase.co",      // Contoh: "https://your-project.supabase.co"
+    SUPABASE_ANON_KEY: "sb_publishable_YJ4vgdO8paMOMmxDgnuQWA_rQ6uVi51", // Contoh: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 
     // Pengaturan Operasional Warteg
     NAMA_WARTEG: "Warung Mas Alif",
     KAPASITAS_HARIAN: 120,      // Maksimum total box per tanggal pengambilan
     MINIMAL_BOX: 10,           // Batas minimum box katering per pemesanan
     STOK_MAKS: 120,            // Batas maksimal jatah stok per menu per hari
-    
+
     // Waktu & Ketentuan Pengambilan (Self-Pickup)
     JAM_BUKA: "09:00",
     JAM_TUTUP: "19:00",
@@ -29,3 +29,4 @@ window.WARTEG_CONFIG = {
     ALAMAT_WARTEG: "Jl. Warteg Kharisma Sejahtera No. 12, Jakarta",
     TELEPON_WARTEG: "081234567890"
 };
+

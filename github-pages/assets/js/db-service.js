@@ -892,3 +892,4 @@
 
     window.WARTEG_DB = DB;
 })();
+
