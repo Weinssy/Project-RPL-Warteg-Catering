@@ -62,6 +62,5 @@ Project-RPL-Warteg-Catering/
 ---
 
 ## 👥 Tim Pengembang
-* Weinssy (@Weinssy)
 * Rifa Zam Zami
 * Tim RPL Warteg Catering
