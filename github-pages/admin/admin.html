@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Manajemen Admin - Warung Mas Alif</title>
+    <link rel="stylesheet" href="../assets/css/admin.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../assets/js/config.js"></script>
+    <script src="../assets/js/db-service.js"></script>
+    <script src="../assets/js/admin-app.js"></script>
+</head>
+<body>
+<div class="main-content">
+    <div id="notifWrapAdmin" style="margin-bottom:14px;"></div>
+
+    <section class="grid-dua">
+        <div class="content-card">
+            <div class="card-header">
+                <h2>Tambah Admin Baru</h2>
+                <span class="teks-redup">Khusus Owner</span>
+            </div>
+            <div class="card-body">
+                <form id="formTambahAdmin" autocomplete="off">
+                    <label class="form-label" for="admNama">Nama lengkap <span class="wajib">*</span></label>
+                    <input class="form-control" id="admNama" required maxlength="100" placeholder="Nama staf warteg">
+
+                    <label class="form-label" for="admUsername">Username <span class="wajib">*</span></label>
+                    <input class="form-control" id="admUsername" required maxlength="50" placeholder="username_staf">
+
+                    <label class="form-label" for="admEmail">Email (opsional)</label>
+                    <input class="form-control" id="admEmail" type="email" placeholder="staf@warteg.test">
+
+                    <label class="form-label" for="admTelepon">Nomor Telepon / WA (opsional)</label>
+                    <input class="form-control" id="admTelepon" placeholder="08xxxxxxxxxx">
+
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
+                        <div>
+                            <label class="form-label" for="admPassword">Password <span class="wajib">*</span></label>
+                            <input class="form-control" id="admPassword" type="password" required minlength="6">
+                        </div>
+                        <div>
+                            <label class="form-label" for="admKonfirmasi">Konfirmasi Password <span class="wajib">*</span></label>
+                            <input class="form-control" id="admKonfirmasi" type="password" required minlength="6">
+                        </div>
+                    </div>
+
+                    <label class="form-label" for="admRole" style="margin-top:10px;">Peran (Role) <span class="wajib">*</span></label>
+                    <select class="form-select" id="admRole" required>
+                        <option value="admin">Admin (Kelola menu & pesanan)</option>
+                        <option value="owner">Owner (Akses penuh + QRIS & Admin)</option>
+                    </select>
+
+                    <button class="btn btn-primary btn-blok" type="submit" id="btnSubmitAdmin" style="margin-top:16px;">Tambah Admin</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="content-card">
+            <div class="card-header">
+                <h2>Daftar Akun Admin</h2>
+                <span class="teks-redup">Total akun terdaftar</span>
+            </div>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr><th>Nama</th><th>Username</th><th>Peran</th><th>Kontak</th></tr>
+                    </thead>
+                    <tbody id="tbodyAdmin">
+                        <tr><td colspan="4" class="kosong">Memuat akun admin...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    window.WARTEG_ADMIN_LAYOUT.render('admin', 'Manajemen Admin');
+
+    function notif(msg, tipe) {
+        var w = document.getElementById('notifWrapAdmin');
+        w.innerHTML = '<div class="alert alert-' + (tipe || 'sukses') + '">' + msg + '</div>';
+        setTimeout(function () { w.innerHTML = ''; }, 4000);
+    }
+
+    function muatAdminList() {
+        var raw = localStorage.getItem('warteg_db_state_v1');
+        var state = raw ? JSON.parse(raw) : {};
+        var list = state.admin || [{ id: 1, nama: 'Admin Warteg', username: 'admin', role: 'owner', email: 'admin@warteg.test' }];
+
+        var tbody = document.getElementById('tbodyAdmin');
+        tbody.innerHTML = '';
+        list.forEach(function (adm) {
+            var tr = document.createElement('tr');
+            tr.innerHTML = '<td><strong>' + adm.nama + '</strong></td>'
+                + '<td>' + adm.username + '</td>'
+                + '<td><span class="badge" style="background:#f1f5f9;color:#334155;border:1px solid #cbd5e1;">' + (adm.role || 'admin').toUpperCase() + '</span></td>'
+                + '<td style="font-size:12px;">' + (adm.telepon || adm.email || '-') + '</td>';
+            tbody.appendChild(tr);
+        });
+    }
+
+    document.getElementById('formTambahAdmin').onsubmit = function (e) {
+        e.preventDefault();
+        var nama = document.getElementById('admNama').value.trim();
+        var username = document.getElementById('admUsername').value.trim();
+        var email = document.getElementById('admEmail').value.trim();
+        var telepon = document.getElementById('admTelepon').value.trim();
+        var pass = document.getElementById('admPassword').value;
+        var konf = document.getElementById('admKonfirmasi').value;
+        var role = document.getElementById('admRole').value;
+
+        if (pass !== konf) {
+            alert('Konfirmasi password tidak cocok.');
+            return;
+        }
+
+        var raw = localStorage.getItem('warteg_db_state_v1');
+        var state = raw ? JSON.parse(raw) : {};
+        state.admin = state.admin || [];
+
+        if (state.admin.find(function (x) { return x.username === username; })) {
+            alert('Username sudah dipakai. Pilih username lain.');
+            return;
+        }
+
+        state.admin.push({
+            id: Date.now(),
+            nama: nama,
+            username: username,
+            password_hash: pass,
+            email: email,
+            telepon: telepon,
+            role: role,
+            bahasa: 'id',
+            dibuat_pada: new Date().toISOString()
+        });
+
+        localStorage.setItem('warteg_db_state_v1', JSON.stringify(state));
+        notif('Admin "' + username + '" berhasil ditambahkan!', 'sukses');
+
+        document.getElementById('formTambahAdmin').reset();
+        muatAdminList();
+    };
+
+    muatAdminList();
+});
+</script>
+</body>
+</html>

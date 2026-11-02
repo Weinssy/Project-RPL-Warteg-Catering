@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Cek Status Pesanan - Warung Mas Alif</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/customer.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="assets/js/config.js"></script>
+    <script src="assets/js/db-service.js"></script>
+</head>
+<body class="cust">
+<header class="cust-header">
+    <div class="wadah">
+        <nav class="cust-nav" aria-label="Navigasi utama">
+            <a href="index.html" class="cust-logo">
+                <img src="uploads/1.jpeg" alt="Logo Warung Mas Alif" class="logo-ikon" onerror="this.style.display='none'">
+                <span>Warung Mas Alif<small>Nasi Box &amp; Katering</small></span>
+            </a>
+            <div class="cust-links" id="custLinks">
+                <a href="index.html#katalog">Katalog Nasi Box</a>
+                <a href="index.html#cara">Cara Pemesanan</a>
+                <a href="cek_status.html" style="font-weight:700">Cek Status Pesanan</a>
+            </div>
+            <div class="cust-nav-kanan">
+                <a href="index.html#katalog" class="btn btn-primer btn-kecil">Pesan Sekarang</a>
+            </div>
+        </nav>
+    </div>
+</header>
+<main>
+
+<section class="seksi">
+    <div class="wadah" style="max-width:640px">
+        <div class="seksi-kepala">
+            <h2>Cek Status Pesanan</h2>
+            <p>Masukkan kode pesanan dan nomor WhatsApp yang Anda gunakan saat memesan.</p>
+        </div>
+
+        <div class="panel-putih" style="margin-bottom:20px">
+            <form id="formCekStatus" autocomplete="off">
+                <div class="form-baris">
+                    <label for="kode">Kode pesanan</label>
+                    <input type="text" class="input" id="kode" name="kode" required placeholder="Contoh: WRT-20261102-001">
+                </div>
+                <div class="form-baris">
+                    <label for="no_wa">Nomor WhatsApp</label>
+                    <input type="tel" class="input" id="no_wa" name="no_wa" required placeholder="08xxxxxxxxxx">
+                </div>
+                <div class="alert alert-galat" id="galatCek" style="display:none;margin-bottom:12px;"></div>
+                <button type="submit" class="btn btn-primer btn-blok" id="btnCek">Cek Status</button>
+            </form>
+        </div>
+
+        <div id="hasilWrap" style="display:none;"></div>
+    </div>
+</section>
+
+</main>
+<footer class="cust-footer">
+    <div class="wadah">
+        <div class="copy">&copy; 2026 Warung Mas Alif. Semua harga dalam Rupiah (IDR).</div>
+    </div>
+</footer>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var form = document.getElementById('formCekStatus');
+    var galat = document.getElementById('galatCek');
+    var hasilWrap = document.getElementById('hasilWrap');
+    var btn = document.getElementById('btnCek');
+
+    form.onsubmit = async function (e) {
+        e.preventDefault();
+        galat.style.display = 'none';
+        hasilWrap.style.display = 'none';
+        hasilWrap.innerHTML = '';
+
+        var kode = (document.getElementById('kode').value || '').trim();
+        var wa = (document.getElementById('no_wa').value || '').trim();
+        if (!kode || !wa) {
+            galat.textContent = 'Isi kode pesanan dan nomor WhatsApp.';
+            galat.style.display = 'block';
+            return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = 'Mencari...';
+
+        var data = await window.WARTEG_DB.cariPesanan(kode, wa);
+        btn.disabled = false;
+        btn.textContent = 'Cek Status';
+
+        if (!data || !data.pesanan) {
+            galat.textContent = 'Pesanan tidak ditemukan. Periksa kembali kode pesanan dan nomor WhatsApp Anda.';
+            galat.style.display = 'block';
+            return;
+        }
+
+        var p = data.pesanan;
+        var sb = p.status_bayar || 'belum_bayar';
+        var urlNota = 'nota.html?kode=' + encodeURIComponent(p.kode) + '&t=' + encodeURIComponent(p.token_nota || '');
+        var urlBayar = 'pembayaran.html?kode=' + encodeURIComponent(p.kode) + '&t=' + encodeURIComponent(p.token_nota || '');
+
+        var html = '<div class="nota-kartu">'
+            + '<div class="nota-atas"><h1>Status Pesanan</h1><div class="kode">' + p.kode + '</div></div>'
+            + '<div class="nota-isi">'
+            + '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">'
+            + '<span class="badge ' + window.WARTEG_DB.kelasStatusBayar(sb) + '">Pembayaran: ' + window.WARTEG_DB.statusBayarLabel(sb) + '</span>'
+            + window.WARTEG_DB.badgeStatus(p.status)
+            + '</div>'
+            + '<div class="nota-info" style="margin-bottom:16px">'
+            + '<div class="item"><div class="label">Nama</div><div>' + p.nama_pelanggan + '</div></div>'
+            + '<div class="item"><div class="label">Pengambilan</div><div>' + window.WARTEG_DB.tanggalId(p.tanggal_ambil) + ', ' + window.WARTEG_DB.jamPendek(p.jam_ambil) + ' WIB</div></div>'
+            + '<div class="item"><div class="label">Total box</div><div>' + p.total_box + ' box</div></div>'
+            + '<div class="item"><div class="label">Total</div><div>' + window.WARTEG_DB.rupiah(p.total_harga) + '</div></div>'
+            + '</div>'
+            + '<div style="display:flex;gap:10px;flex-wrap:wrap">'
+            + '<a href="' + urlNota + '" class="btn btn-primer btn-kecil">Lihat Nota Lengkap</a>';
+
+        if (['belum_bayar', 'menunggu', 'ditolak'].indexOf(sb) >= 0) {
+            html += '<a href="' + urlBayar + '" class="btn btn-garis btn-kecil">Lanjutkan Pembayaran</a>';
+        }
+
+        html += '</div></div></div>';
+        hasilWrap.innerHTML = html;
+        hasilWrap.style.display = 'block';
+    };
+});
+</script>
+</body>
+</html>

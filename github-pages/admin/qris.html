@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Pengaturan QRIS - Warung Mas Alif</title>
+    <link rel="stylesheet" href="../assets/css/admin.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../assets/js/config.js"></script>
+    <script src="../assets/js/db-service.js"></script>
+    <script src="../assets/js/admin-app.js"></script>
+</head>
+<body>
+<div class="main-content">
+    <div id="notifWrap" style="margin-bottom:14px;"></div>
+
+    <section class="grid-dua">
+        <div class="content-card">
+            <div class="card-header">
+                <h2>Gambar QRIS Statis</h2>
+                <span class="teks-redup">Nominal diisi manual oleh customer</span>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info" style="font-size:13px;margin-bottom:16px;">
+                    <div>
+                        <strong>QRIS Statis</strong> — gambar ini ditampilkan ke semua customer untuk pembayaran. Customer memasukkan nominal transfer manual.
+                    </div>
+                </div>
+
+                <div style="text-align:center;margin-bottom:16px;" id="qrisImgWrap">
+                    <img id="imgQrisPreview" src="../uploads/qris/qris_90ce220b97a92f248db3.jpg" alt="QRIS Statis" style="max-width:260px;width:100%;height:auto;border-radius:10px;border:1px solid #e5e7eb;" onerror="this.onerror=null;this.src='../uploads/1.jpeg';">
+                    <p class="bantuan" style="margin-top:8px;">Gambar QRIS aktif</p>
+                </div>
+
+                <form id="formGantiQris" style="margin-top:16px;">
+                    <label class="form-label" for="inpGantiQris">Ganti gambar QRIS</label>
+                    <input class="form-control" type="file" id="inpGantiQris" accept="image/*" required>
+                    <p class="bantuan">Pilih file gambar JPG, PNG, atau WebP.</p>
+                    <button class="btn btn-primary btn-blok" type="submit" id="btnUploadQris">Perbarui Gambar QRIS</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="content-card">
+            <div class="card-header">
+                <h2>Informasi QRIS</h2>
+                <span class="teks-redup">Data merchant &amp; instruksi</span>
+            </div>
+            <div class="card-body">
+                <form id="formInfoQris">
+                    <label class="form-label" for="qrisNama">Nama merchant</label>
+                    <input class="form-control" id="qrisNama" maxlength="100" required>
+
+                    <label class="form-label" for="qrisNmid">NMID (opsional)</label>
+                    <input class="form-control" id="qrisNmid" maxlength="50" placeholder="IDxxxxxxxxxxxx">
+
+                    <label class="form-label" for="qrisInstruksi">Instruksi pembayaran</label>
+                    <textarea class="form-control" id="qrisInstruksi" rows="4" maxlength="500"></textarea>
+
+                    <label class="form-label" for="qrisBatasJam">Batas waktu pembayaran (jam)</label>
+                    <input class="form-control" type="number" id="qrisBatasJam" min="1" max="720">
+
+                    <button class="btn btn-primary btn-blok" type="submit" id="btnSimpanInfo" style="margin-top:16px;">Simpan Informasi</button>
+                </form>
+            </div>
+        </div>
+    </section>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', async function () {
+    window.WARTEG_ADMIN_LAYOUT.render('qris', 'Pengaturan QRIS');
+
+    var cfg = await window.WARTEG_DB.getKonfigurasiToko();
+    var imgQris = document.getElementById('imgQrisPreview');
+
+    if (cfg.qris_gambar) {
+        imgQris.src = cfg.qris_gambar.startsWith('data:') ? cfg.qris_gambar : ('../uploads/qris/' + cfg.qris_gambar);
+    }
+    document.getElementById('qrisNama').value = cfg.qris_nama_merchant || 'Warung Mas Alif';
+    document.getElementById('qrisNmid').value = cfg.qris_nmid || 'ID1025439892668';
+    document.getElementById('qrisInstruksi').value = cfg.qris_instruksi || '';
+    document.getElementById('qrisBatasJam').value = cfg.batas_bayar_jam || 24;
+
+    function notif(msg, tipe) {
+        var wrap = document.getElementById('notifWrap');
+        wrap.innerHTML = '<div class="alert alert-' + (tipe || 'sukses') + '">' + msg + '</div>';
+        setTimeout(function () { wrap.innerHTML = ''; }, 4000);
+    }
+
+    // Submit Ganti Gambar QRIS
+    document.getElementById('formGantiQris').onsubmit = function (e) {
+        e.preventDefault();
+        var fileInp = document.getElementById('inpGantiQris');
+        var f = fileInp.files && fileInp.files[0];
+        if (!f) return;
+
+        var reader = new FileReader();
+        reader.onload = async function (evt) {
+            var dataUrl = evt.target.result;
+            await window.WARTEG_DB.simpanKonfigurasiToko('qris_gambar', dataUrl);
+            imgQris.src = dataUrl;
+            fileInp.value = '';
+            notif('Gambar QRIS berhasil diperbarui!', 'sukses');
+        };
+        reader.readAsDataURL(f);
+    };
+
+    // Submit Info QRIS
+    document.getElementById('formInfoQris').onsubmit = async function (e) {
+        e.preventDefault();
+        var nama = document.getElementById('qrisNama').value;
+        var nmid = document.getElementById('qrisNmid').value;
+        var inst = document.getElementById('qrisInstruksi').value;
+        var jam = document.getElementById('qrisBatasJam').value;
+
+        await window.WARTEG_DB.simpanKonfigurasiToko('qris_nama_merchant', nama);
+        await window.WARTEG_DB.simpanKonfigurasiToko('qris_nmid', nmid);
+        await window.WARTEG_DB.simpanKonfigurasiToko('qris_instruksi', inst);
+        await window.WARTEG_DB.simpanKonfigurasiToko('batas_bayar_jam', jam);
+
+        notif('Informasi QRIS berhasil disimpan!', 'sukses');
+    };
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Invoice - Warung Mas Alif</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/customer.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="assets/js/config.js"></script>
+    <script src="assets/js/db-service.js"></script>
+</head>
+<body class="cust">
+<header class="cust-header">
+    <div class="wadah">
+        <nav class="cust-nav" aria-label="Navigasi utama">
+            <a href="index.html" class="cust-logo">
+                <img src="uploads/1.jpeg" alt="Logo Warung Mas Alif" class="logo-ikon" onerror="this.style.display='none'">
+                <span>Warung Mas Alif<small>Nasi Box &amp; Katering</small></span>
+            </a>
+            <div class="cust-links" id="custLinks">
+                <a href="index.html#katalog">Katalog Nasi Box</a>
+                <a href="cek_status.html">Cek Status Pesanan</a>
+            </div>
+            <div class="cust-nav-kanan">
+                <a href="index.html" class="btn btn-primer btn-kecil">Beranda</a>
+            </div>
+        </nav>
+    </div>
+</header>
+<main>
+
+<section class="seksi">
+    <div class="wadah" style="max-width:720px" id="invoiceWadah">
+        <div class="panel-putih" style="text-align:center;padding:40px 20px;">
+            <p>Memuat invoice...</p>
+        </div>
+    </div>
+</section>
+
+</main>
+<footer class="cust-footer">
+    <div class="wadah">
+        <div class="copy">&copy; 2026 Warung Mas Alif. Semua harga dalam Rupiah (IDR).</div>
+    </div>
+</footer>
+
+<script>
+document.addEventListener('DOMContentLoaded', async function () {
+    var params = new URLSearchParams(window.location.search);
+    var kode = params.get('kode') || '';
+    var token = params.get('t') || '';
+    var wadah = document.getElementById('invoiceWadah');
+
+    if (!kode) {
+        wadah.innerHTML = '<div class="panel-putih"><div class="alert alert-galat">Kode pesanan tidak diberikan.</div><a href="index.html" class="btn btn-garis">Kembali ke Beranda</a></div>';
+        return;
+    }
+
+    var data = await window.WARTEG_DB.getPesanan(kode, token);
+    if (!data || !data.pesanan) {
+        wadah.innerHTML = '<div class="panel-putih"><div class="alert alert-galat">Pesanan tidak ditemukan atau tautan invoice tidak valid.</div><a href="index.html" class="btn btn-garis">Kembali ke Beranda</a></div>';
+        return;
+    }
+
+    var p = data.pesanan;
+    var detail = data.detail || [];
+    var sb = p.status_bayar || 'belum_bayar';
+    var lunas = (sb === 'berhasil');
+    var urlNota = 'nota.html?kode=' + encodeURIComponent(p.kode) + '&t=' + encodeURIComponent(p.token_nota || token);
+
+    var subtotal = detail.reduce(function (sum, d) { return sum + (d.subtotal || 0); }, 0);
+    var total = p.total_harga || subtotal;
+
+    var html = '<div class="nota-kartu" style="max-width:100%">'
+        + '<div class="nota-atas" style="background:' + (lunas ? '#15803d' : 'var(--c-oranye-tua)') + ';">'
+        + '<h1>INVOICE</h1>'
+        + '<p style="opacity:.9;font-size:14px">Warung Mas Alif</p>'
+        + '<div class="kode">' + p.kode + '</div>'
+        + '<div style="margin-top:10px;">'
+        + '<span style="display:inline-block;padding:4px 12px;border-radius:999px;font-size:12px;font-weight:700;background:' + (lunas ? 'rgba(255,255,255,.95);color:#15803d' : 'rgba(255,255,255,.95);color:#b45309') + ';">'
+        + (lunas ? 'LUNAS' : window.WARTEG_DB.statusBayarLabel(sb).toUpperCase())
+        + '</span>'
+        + '</div></div>'
+        + '<div class="nota-isi">'
+        + '<div class="nota-info" style="margin-bottom:20px">'
+        + '<div class="item"><div class="label">No. Invoice</div><div><strong>INV/' + p.kode + '</strong></div></div>'
+        + '<div class="item"><div class="label">Tanggal Transaksi</div><div>' + window.WARTEG_DB.tanggalId(p.dibuat_pada ? p.dibuat_pada.slice(0, 10) : p.tanggal_ambil) + '</div></div>'
+        + '<div class="item"><div class="label">Nama Pelanggan</div><div>' + p.nama_pelanggan + '</div></div>'
+        + '<div class="item"><div class="label">WhatsApp</div><div>' + p.no_wa + '</div></div>'
+        + '<div class="item"><div class="label">Metode Pembayaran</div><div>QRIS' + (lunas ? ' (Terverifikasi)' : ' (Menunggu Verifikasi)') + '</div></div>'
+        + (p.diverifikasi_pada ? '<div class="item"><div class="label">Diverifikasi Pada</div><div>' + new Date(p.diverifikasi_pada).toLocaleString('id-ID') + ' WIB</div></div>' : '')
+        + '</div>'
+        + '<h3 style="font-size:14px;text-transform:uppercase;letter-spacing:.04em;color:var(--c-redup);margin-bottom:10px;">Rincian Barang</h3>'
+        + '<table class="nota-rincian-tabel" style="width:100%">'
+        + '<thead><tr><th style="text-align:left">Menu</th><th style="text-align:right">Qty</th><th style="text-align:right">Harga Satuan</th><th style="text-align:right">Subtotal</th></tr></thead>'
+        + '<tbody>';
+
+    detail.forEach(function (d) {
+        html += '<tr>'
+            + '<td>' + d.nama + '</td>'
+            + '<td style="text-align:right">' + d.jumlah + '</td>'
+            + '<td style="text-align:right">' + window.WARTEG_DB.rupiah(d.harga_satuan) + '</td>'
+            + '<td style="text-align:right">' + window.WARTEG_DB.rupiah(d.subtotal) + '</td>'
+            + '</tr>';
+    });
+
+    html += '</tbody></table>'
+        + '<div class="nota-total" style="margin-top:14px">'
+        + '<div style="display:flex;justify-content:space-between;padding:6px 0;"><span>Subtotal</span><span>' + window.WARTEG_DB.rupiah(subtotal) + '</span></div>'
+        + '<div style="display:flex;justify-content:space-between;padding:6px 0;"><span>Ongkir</span><span>Rp0 (Ambil Sendiri)</span></div>'
+        + '<div style="display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid var(--c-garis);font-weight:700;font-size:18px;"><span>TOTAL</span><span>' + window.WARTEG_DB.rupiah(total) + '</span></div>'
+        + '</div>';
+
+    if (lunas) {
+        html += '<div class="alert alert-sukses" style="margin-top:16px;justify-content:center;">✓ Invoice ini sudah LUNAS dan terverifikasi.</div>';
+    } else {
+        html += '<div class="alert alert-peringatan" style="margin-top:16px;justify-content:center;">Invoice ini BELUM LUNAS. Status pembayaran: <strong>' + window.WARTEG_DB.statusBayarLabel(sb) + '</strong>.</div>';
+    }
+
+    html += '<div style="margin-top:18px;font-size:13px;color:var(--c-redup);">'
+        + '<p><strong>Detail Pengambilan:</strong> ' + window.WARTEG_DB.tanggalId(p.tanggal_ambil) + ', ' + window.WARTEG_DB.jamPendek(p.jam_ambil) + ' WIB @ Warung Mas Alif</p>'
+        + (p.catatan ? '<p><strong>Catatan:</strong> ' + p.catatan + '</p>' : '')
+        + '</div></div>'
+        + '<div class="nota-aksi">'
+        + '<button type="button" class="btn btn-garis btn-kecil" onclick="window.print()">Cetak / Simpan PDF</button>'
+        + '<a href="' + urlNota + '" class="btn btn-garis btn-kecil">Lihat Nota</a>'
+        + '<a href="index.html" class="btn btn-primer btn-kecil">Beranda</a>'
+        + '</div></div>';
+
+    wadah.innerHTML = html;
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Pembayaran QRIS - Warung Mas Alif</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/customer.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="assets/js/config.js"></script>
+    <script src="assets/js/db-service.js"></script>
+</head>
+<body class="cust">
+<header class="cust-header">
+    <div class="wadah">
+        <nav class="cust-nav" aria-label="Navigasi utama">
+            <a href="index.html" class="cust-logo">
+                <img src="uploads/1.jpeg" alt="Logo Warung Mas Alif" class="logo-ikon" onerror="this.style.display='none'">
+                <span>Warung Mas Alif<small>Nasi Box &amp; Katering</small></span>
+            </a>
+            <div class="cust-links" id="custLinks">
+                <a href="index.html#katalog">Katalog Nasi Box</a>
+                <a href="cek_status.html">Cek Status Pesanan</a>
+            </div>
+            <div class="cust-nav-kanan">
+                <a href="index.html" class="btn btn-primer btn-kecil">Beranda</a>
+            </div>
+        </nav>
+    </div>
+</header>
+<main>
+
+<section class="seksi">
+    <div class="wadah" style="max-width:640px" id="kontenPembayaran">
+        <div class="panel-putih" style="text-align:center;padding:40px 20px;">
+            <p>Memuat informasi pembayaran...</p>
+        </div>
+    </div>
+</section>
+
+</main>
+<footer class="cust-footer">
+    <div class="wadah">
+        <div class="copy">&copy; 2026 Warung Mas Alif. Semua harga dalam Rupiah (IDR).</div>
+    </div>
+</footer>
+
+<script>
+document.addEventListener('DOMContentLoaded', async function () {
+    var params = new URLSearchParams(window.location.search);
+    var kode = params.get('kode') || '';
+    var token = params.get('t') || '';
+    var wadah = document.getElementById('kontenPembayaran');
+
+    if (!kode) {
+        wadah.innerHTML = '<div class="panel-putih"><div class="alert alert-galat">Kode pesanan tidak diberikan.</div><a href="index.html" class="btn btn-garis">Kembali ke Beranda</a></div>';
+        return;
+    }
+
+    async function muatHalaman() {
+        var data = await window.WARTEG_DB.getPesanan(kode, token);
+        if (!data || !data.pesanan) {
+            wadah.innerHTML = '<div class="panel-putih"><div class="alert alert-galat">Pesanan tidak ditemukan atau tautan tidak valid.</div><a href="index.html" class="btn btn-garis">Kembali ke Beranda</a></div>';
+            return;
+        }
+
+        var p = data.pesanan;
+        var sb = p.status_bayar || 'belum_bayar';
+        var nominal = p.nominal_bayar || p.total_harga;
+        var urlNota = 'nota.html?kode=' + encodeURIComponent(p.kode) + '&t=' + encodeURIComponent(p.token_nota || token);
+        var urlInvoice = 'invoice.html?kode=' + encodeURIComponent(p.kode) + '&t=' + encodeURIComponent(p.token_nota || token);
+
+        var cfg = await window.WARTEG_DB.getKonfigurasiToko();
+        var qrisGambar = cfg.qris_gambar || 'qris_90ce220b97a92f248db3.jpg';
+        var qrisNama = cfg.qris_nama_merchant || 'Warung Mas Alif';
+        var qrisNmid = cfg.qris_nmid || 'ID1025439892668';
+        var qrisInstruksi = cfg.qris_instruksi || 'Scan QRIS di atas dan masukkan nominal pembayaran secara manual.';
+
+        var html = '<div class="nota-kartu">'
+            + '<div class="nota-atas">'
+            + '<h1>Pembayaran QRIS</h1>'
+            + '<p style="opacity:.9;font-size:14px">Selesaikan pembayaran untuk memproses pesanan Anda.</p>'
+            + '<div class="kode">' + p.kode + '</div>'
+            + '</div>'
+            + '<div class="nota-isi">'
+            + '<div id="pesanNotif"></div>'
+            + '<div style="text-align:center;margin-bottom:18px">'
+            + '<span class="badge ' + window.WARTEG_DB.kelasStatusBayar(sb) + '" id="badgeStatusBayar">' + window.WARTEG_DB.statusBayarLabel(sb) + '</span>'
+            + '</div>';
+
+        if (sb === 'berhasil') {
+            html += '<div class="alert alert-sukses" style="justify-content:center;text-align:center;">'
+                + '✓ <strong>Pembayaran LUNAS</strong>. Pembayaran Anda sudah diverifikasi admin.'
+                + '</div>'
+                + '<div style="text-align:center;margin-top:16px">'
+                + '<a href="' + urlInvoice + '" class="btn btn-primer">Lihat Invoice LUNAS</a>'
+                + '<a href="' + urlNota + '" class="btn btn-garis" style="margin-left:8px">Lihat Nota</a>'
+                + '</div>';
+        } else if (sb === 'menunggu_verifikasi') {
+            html += '<div class="alert alert-peringatan" style="justify-content:center;text-align:center;flex-direction:column;gap:6px;">'
+                + '<strong>Bukti pembayaran sedang diperiksa admin</strong>'
+                + '<span style="font-size:13px">Pembayaran belum dianggap lunas sampai admin memverifikasi bukti yang Anda unggah.</span>'
+                + '</div>'
+                + (p.bukti_bayar_pada ? '<p class="bantuan" style="text-align:center">Bukti diunggah: ' + new Date(p.bukti_bayar_pada).toLocaleString('id-ID') + ' WIB</p>' : '');
+        } else {
+            // Belum bayar / Menunggu / Ditolak
+            if (sb === 'ditolak') {
+                html += '<div class="alert alert-galat" style="flex-direction:column;gap:6px;">'
+                    + '<strong>Bukti pembayaran ditolak</strong>'
+                    + (p.alasan_tolak ? '<span style="font-size:13px"><em>Alasan:</em> ' + p.alasan_tolak + '</span>' : '')
+                    + '<span style="font-size:13px">Silakan unggah ulang bukti pembayaran yang benar.</span>'
+                    + '</div>';
+            } else {
+                html += '<div class="alert alert-info" style="font-size:13px">'
+                    + '<div>Kode pesanan Anda: <strong>' + p.kode + '</strong>. Harap simpan kode ini dan gunakan sebagai berita transfer saat membayar.</div>'
+                    + '</div>';
+            }
+
+            // QRIS Box
+            html += '<div class="qr-kotak">'
+                + '<div class="bayar-nominal">Total Tagihan: <strong>' + window.WARTEG_DB.rupiah(nominal) + '</strong></div>'
+                + '<p class="bantuan" style="margin-bottom:12px">Scan QRIS berikut dengan aplikasi bank / e-wallet Anda:</p>'
+                + '<div class="qr-gambar">'
+                + '<img src="uploads/qris/' + qrisGambar + '" alt="QRIS Statis ' + qrisNama + '" style="max-width:280px;width:100%;height:auto;border-radius:8px;" onerror="this.onerror=null;this.src=\'uploads/1.jpeg\';">'
+                + '<p style="text-align:center;font-size:12px;color:var(--c-redup);margin-top:8px;">'
+                + qrisNama + (qrisNmid ? '<br>NMID: ' + qrisNmid : '')
+                + '</p>'
+                + '</div></div>';
+
+            html += '<div class="alert alert-peringatan" style="margin-top:16px;flex-direction:column;gap:8px;">'
+                + '<strong>⚠ Penting — QRIS ini bersifat STATIS</strong>'
+                + '<div style="font-size:13px;line-height:1.6">' + qrisInstruksi + '</div>'
+                + '<div style="font-size:13px;line-height:1.6;"><strong>Nominal yang harus dibayar:</strong> <span style="font-size:16px;color:var(--c-oranye-tua);font-weight:700">' + window.WARTEG_DB.rupiah(nominal) + '</span></div>'
+                + '</div>';
+
+            // Form Upload Bukti
+            html += '<div style="margin-top:22px;border-top:1px solid var(--c-garis);padding-top:16px;">'
+                + '<h3 style="font-size:15px;margin-bottom:8px;">Unggah Bukti Pembayaran</h3>'
+                + '<p class="bantuan" style="margin-bottom:12px;">Setelah transfer via QRIS, unggah screenshot/foto bukti pembayaran (JPG, PNG, atau WebP). Admin akan memverifikasi pesanan Anda.</p>'
+                + '<form id="formBukti">'
+                + '<div class="form-baris">'
+                + '<label for="inpBukti">Pilih file bukti pembayaran <span class="wajib">*</span></label>'
+                + '<input type="file" class="input" id="inpBukti" accept="image/*" required>'
+                + '</div>'
+                + '<button type="submit" class="btn btn-primer btn-blok" id="btnKirimBukti">Kirim Bukti Pembayaran</button>'
+                + '<p class="bantuan" style="text-align:center;margin-top:8px;font-size:11px;">Mengirim bukti TIDAK otomatis menandai pesanan lunas. Admin akan memverifikasi terlebih dahulu.</p>'
+                + '</form></div>';
+        }
+
+        // Ringkasan Pesanan
+        html += '<div style="margin-top:22px;border-top:1px solid var(--c-garis);padding-top:16px">'
+            + '<h3 style="font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--c-redup);margin-bottom:10px">Ringkasan Pesanan</h3>'
+            + '<div class="nota-info">'
+            + '<div class="item"><div class="label">Kode</div><div>' + p.kode + '</div></div>'
+            + '<div class="item"><div class="label">Pengambilan</div><div>' + window.WARTEG_DB.tanggalId(p.tanggal_ambil) + ', ' + window.WARTEG_DB.jamPendek(p.jam_ambil) + ' WIB</div></div>'
+            + '<div class="item"><div class="label">Total box</div><div>' + p.total_box + ' box</div></div>'
+            + '</div></div>'
+            + '<div class="nota-aksi">'
+            + '<a href="' + urlNota + '" class="btn btn-garis btn-kecil">Lihat Nota</a>'
+            + '<a href="index.html" class="btn btn-garis btn-kecil">Beranda</a>'
+            + '</div></div></div>';
+
+        wadah.innerHTML = html;
+
+        // Pasang Handler Form Bukti
+        var formBukti = document.getElementById('formBukti');
+        if (formBukti) {
+            formBukti.onsubmit = function (e) {
+                e.preventDefault();
+                var fileInput = document.getElementById('inpBukti');
+                var file = fileInput.files && fileInput.files[0];
+                if (!file) { alert('Pilih file bukti pembayaran.'); return; }
+
+                var reader = new FileReader();
+                var btnKirim = document.getElementById('btnKirimBukti');
+                btnKirim.disabled = true;
+                btnKirim.textContent = 'Mengunggah Bukti...';
+
+                reader.onload = async function (evt) {
+                    var dataUrl = evt.target.result;
+                    var res = await window.WARTEG_DB.uploadBuktiBayar(p.kode, p.token_nota || token, dataUrl);
+                    btnKirim.disabled = false;
+                    btnKirim.textContent = 'Kirim Bukti Pembayaran';
+
+                    if (!res || !res.ok) {
+                        alert((res && res.pesan) || 'Gagal mengunggah bukti.');
+                        return;
+                    }
+                    alert(res.pesan);
+                    muatHalaman();
+                };
+                reader.readAsDataURL(file);
+            };
+        }
+    }
+
+    await muatHalaman();
+
+    // Auto-Polling periksa pembaruan status setiap 5 detik
+    setInterval(async function () {
+        var data = await window.WARTEG_DB.getPesanan(kode, token);
+        if (data && data.pesanan) {
+            var badge = document.getElementById('badgeStatusBayar');
+            if (badge) {
+                var sb = data.pesanan.status_bayar;
+                badge.textContent = window.WARTEG_DB.statusBayarLabel(sb);
+                badge.className = 'badge ' + window.WARTEG_DB.kelasStatusBayar(sb);
+            }
+        }
+    }, 5000);
+});
+</script>
+</body>
+</html>

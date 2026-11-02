@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Verifikasi Pembayaran - Warung Mas Alif</title>
+    <link rel="stylesheet" href="../assets/css/admin.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../assets/js/config.js"></script>
+    <script src="../assets/js/db-service.js"></script>
+    <script src="../assets/js/admin-app.js"></script>
+    <style>
+        .kartu-verif { border: 1px solid var(--c-garis); border-radius: 12px; padding: 16px; margin-bottom: 16px; background: #fff; }
+        .verif-aksi { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+        .bukti-thumb { max-width: 100%; max-height: 320px; border-radius: 8px; border: 1px solid #e5e7eb; cursor: zoom-in; object-fit: contain; }
+        .verif-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        @media (max-width: 720px) { .verif-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+<div class="main-content">
+    <div class="content-card">
+        <div class="card-header">
+            <h2>Pesanan Menunggu Verifikasi (<span id="hitungMenunggu">0</span>)</h2>
+            <span class="teks-redup">Periksa bukti transfer QRIS lalu setujui atau tolak</span>
+        </div>
+        <div class="card-body" id="wadahMenunggu">
+            <p class="kosong">Memuat pesanan...</p>
+        </div>
+    </div>
+
+    <div class="content-card" style="margin-top:20px;">
+        <div class="card-header">
+            <h2>Pembayaran Ditolak</h2>
+            <span class="teks-redup">Daftar bukti yang ditolak</span>
+        </div>
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr><th>Kode</th><th>Pelanggan</th><th>Total</th><th>Alasan Penolakan</th><th>Aksi</th></tr>
+                </thead>
+                <tbody id="tbodyDitolak">
+                    <tr><td colspan="5" class="kosong">Tidak ada pembayaran ditolak.</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Tolak Pembayaran -->
+<div class="modal" id="modalTolak" hidden style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9999;display:none;align-items:center;justify-content:center;padding:20px;">
+    <div class="modal-kotak" role="dialog" aria-modal="true" style="background:#fff;border-radius:12px;max-width:480px;width:100%;padding:20px;box-shadow:0 10px 25px rgba(0,0,0,0.2);">
+        <div class="modal-kepala" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;border-bottom:1px solid #e5e7eb;padding-bottom:10px;">
+            <h2 style="font-size:18px;margin:0;">Tolak Bukti Pembayaran</h2>
+            <button type="button" class="btn-tutup" id="modalTolakTutup" style="background:none;border:none;font-size:24px;cursor:pointer;">&times;</button>
+        </div>
+        <div class="modal-isi">
+            <p class="teks-redup" style="margin-bottom:10px;">Pelanggan <strong id="tolakKode"></strong> akan menerima alasan ini dan dapat mengunggah bukti baru.</p>
+            <label class="form-label" for="alasanTolak">Alasan penolakan <span class="wajib">*</span></label>
+            <textarea class="form-control" id="alasanTolak" rows="3" maxlength="500" placeholder="Mis. nominal transfer tidak sesuai / bukti tidak jelas"></textarea>
+            <div style="display:flex;gap:8px;margin-top:14px;justify-content:flex-end;">
+                <button type="button" class="btn btn-secondary" id="batalTolak">Batal</button>
+                <button type="button" class="btn btn-primary" id="konfirmasiTolak">Tolak Pembayaran</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', async function () {
+    window.WARTEG_ADMIN_LAYOUT.render('verifikasi', 'Verifikasi Pembayaran');
+    window.WARTEG_ADMIN_LAYOUT.initLightbox();
+
+    var pidTolak = null;
+
+    async function muatVerifikasi() {
+        var res = await window.WARTEG_DB.getDaftarPemesan({ per: 100 });
+        var semua = res.items || [];
+        var menunggu = semua.filter(function (p) { return p.status_bayar === 'menunggu_verifikasi'; });
+        var ditolak = semua.filter(function (p) { return p.status_bayar === 'ditolak'; });
+
+        document.getElementById('hitungMenunggu').textContent = menunggu.length;
+        var wadah = document.getElementById('wadahMenunggu');
+        wadah.innerHTML = '';
+
+        if (!menunggu.length) {
+            wadah.innerHTML = '<p class="kosong">Tidak ada pembayaran yang menunggu verifikasi saat ini.</p>';
+        } else {
+            menunggu.forEach(function (p) {
+                var card = document.createElement('div');
+                card.className = 'kartu-verif';
+
+                var buktiImgSrc = p.bukti_bayar ? (p.bukti_bayar.startsWith('data:') ? p.bukti_bayar : ('../uploads/bukti/' + p.bukti_bayar)) : '../uploads/bukti/44bb88b14db7c5b93805afa4a0d56da7.jpg';
+
+                var itemRows = (p.items || []).map(function (it) {
+                    return '<tr><td>' + it.nama + '</td><td style="text-align:center">' + it.jumlah + '</td><td style="text-align:right">' + it.subtotal + '</td></tr>';
+                }).join('');
+
+                card.innerHTML = '<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px;">'
+                    + '<div><strong style="font-size:16px;">' + p.kode + '</strong><span class="badge bayar-oranye" style="margin-left:8px;">Menunggu Verifikasi</span></div>'
+                    + '<div style="font-size:20px;font-weight:700;color:var(--c-oranye-tua);">' + window.WARTEG_DB.rupiah(p.total_harga) + '</div>'
+                    + '</div>'
+                    + '<div class="verif-grid">'
+                    + '<div>'
+                    + '<p class="teks-redup" style="font-size:13px;margin-bottom:4px;">Pelanggan</p>'
+                    + '<p style="margin-bottom:10px;"><strong>' + p.nama_pelanggan + '</strong><br><span class="teks-redup">' + p.no_wa + '</span></p>'
+                    + '<p class="teks-redup" style="font-size:13px;margin-bottom:4px;">Pengambilan</p>'
+                    + '<p style="margin-bottom:10px;">' + window.WARTEG_DB.tanggalId(p.tanggal_ambil) + ', ' + window.WARTEG_DB.jamPendek(p.jam_ambil) + ' WIB</p>'
+                    + '<table style="width:100%;margin-top:10px;font-size:13px;">'
+                    + '<thead><tr><th style="text-align:left">Menu</th><th>Qty</th><th style="text-align:right">Subtotal</th></tr></thead>'
+                    + '<tbody>' + itemRows + '</tbody>'
+                    + '</table></div>'
+                    + '<div>'
+                    + '<p class="teks-redup" style="font-size:13px;margin-bottom:6px;">Bukti Pembayaran (Klik untuk Perbesar)</p>'
+                    + '<img src="' + buktiImgSrc + '" alt="Bukti bayar ' + p.kode + '" class="bukti-thumb" data-lightbox="' + buktiImgSrc + '">'
+                    + '</div></div>'
+                    + '<div class="verif-aksi">'
+                    + '<button type="button" class="btn btn-primary js-setuju" data-id="' + p.id + '" data-kode="' + p.kode + '">✓ Setujui (LUNAS)</button>'
+                    + '<button type="button" class="btn btn-secondary js-tolak" data-id="' + p.id + '" data-kode="' + p.kode + '">✗ Tolak</button>'
+                    + '<a href="../invoice.html?kode=' + encodeURIComponent(p.kode) + '&t=' + encodeURIComponent(p.token_nota || '') + '" class="btn btn-secondary" target="_blank">Lihat Invoice</a>'
+                    + '</div>';
+
+                wadah.appendChild(card);
+            });
+        }
+
+        // Table Ditolak
+        var tbody = document.getElementById('tbodyDitolak');
+        tbody.innerHTML = '';
+        if (!ditolak.length) {
+            tbody.innerHTML = '<tr><td colspan="5" class="kosong">Tidak ada pembayaran ditolak.</td></tr>';
+        } else {
+            ditolak.forEach(function (p) {
+                var tr = document.createElement('tr');
+                tr.innerHTML = '<td><strong>' + p.kode + '</strong></td>'
+                    + '<td>' + p.nama_pelanggan + '</td>'
+                    + '<td>' + window.WARTEG_DB.rupiah(p.total_harga) + '</td>'
+                    + '<td><em style="color:#b91c1c;">' + (p.alasan_tolak || 'Bukti tidak sesuai') + '</em></td>'
+                    + '<td><button type="button" class="btn btn-primary btn-kecil js-setuju" data-id="' + p.id + '" data-kode="' + p.kode + '">Setujui sekarang</button></td>';
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Pasang Event Setuju
+        document.querySelectorAll('.js-setuju').forEach(function (b) {
+            b.onclick = async function () {
+                var id = this.getAttribute('data-id');
+                var kode = this.getAttribute('data-kode');
+                if (confirm('Setujui pembayaran ' + kode + ' sebagai LUNAS?')) {
+                    await window.WARTEG_DB.verifikasiPembayaran(id, 'setuju', '');
+                    muatVerifikasi();
+                }
+            };
+        });
+
+        // Pasang Event Tolak
+        document.querySelectorAll('.js-tolak').forEach(function (b) {
+            b.onclick = function () {
+                pidTolak = this.getAttribute('data-id');
+                var kode = this.getAttribute('data-kode');
+                document.getElementById('tolakKode').textContent = kode;
+                document.getElementById('alasanTolak').value = '';
+                var modal = document.getElementById('modalTolak');
+                modal.style.display = 'flex';
+                modal.hidden = false;
+                document.getElementById('alasanTolak').focus();
+            };
+        });
+    }
+
+    // Modal Tolak Handler
+    document.getElementById('modalTolakTutup').onclick = function () {
+        document.getElementById('modalTolak').style.display = 'none';
+    };
+    document.getElementById('batalTolak').onclick = function () {
+        document.getElementById('modalTolak').style.display = 'none';
+    };
+    document.getElementById('konfirmasiTolak').onclick = async function () {
+        var alasan = document.getElementById('alasanTolak').value.trim();
+        if (alasan.length < 4) { alert('Alasan penolakan wajib diisi (min. 4 karakter).'); return; }
+        await window.WARTEG_DB.verifikasiPembayaran(pidTolak, 'tolak', alasan);
+        document.getElementById('modalTolak').style.display = 'none';
+        muatVerifikasi();
+    };
+
+    muatVerifikasi();
+});
+</script>
+</body>
+</html>

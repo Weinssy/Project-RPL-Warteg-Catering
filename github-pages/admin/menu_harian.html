@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Menu Harian - Warung Mas Alif</title>
+    <link rel="stylesheet" href="../assets/css/admin.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../assets/js/config.js"></script>
+    <script src="../assets/js/db-service.js"></script>
+    <script src="../assets/js/admin-app.js"></script>
+</head>
+<body>
+<div class="main-content">
+    <div class="content-card">
+        <div class="card-header filter-tanggal">
+            <div>
+                <h2 id="judulTanggal">Hari Ini</h2>
+                <p class="teks-redup">Menu yang diaktifkan bisa dipilih untuk pesanan baru pada tanggal ini.</p>
+            </div>
+            <form class="form-tanggal" onsubmit="return false;">
+                <button type="button" class="btn btn-secondary btn-kecil" id="tglPrev">Sebelumnya</button>
+                <input class="form-control" type="date" id="inpTglMenu">
+                <button type="button" class="btn btn-secondary btn-kecil" id="tglNext">Berikutnya</button>
+            </form>
+        </div>
+        <div class="card-body">
+            <div class="grid-menu" id="gridMenu">
+                <p class="kosong">Memuat daftar menu...</p>
+            </div>
+            <p class="teks-redup" id="teksInfoKuota" style="margin-top:16px;">Kuota terpakai: 0 dari 120 box</p>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Edit Menu -->
+<div class="modal" id="modalEditMenu" hidden style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9999;display:none;align-items:center;justify-content:center;padding:20px;">
+    <div class="modal-kotak" role="dialog" aria-modal="true" style="background:#fff;border-radius:12px;max-width:540px;width:100%;padding:20px;box-shadow:0 10px 25px rgba(0,0,0,0.2);">
+        <div class="modal-kepala" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;border-bottom:1px solid #e5e7eb;padding-bottom:10px;">
+            <h2 style="font-size:18px;margin:0;">Edit Menu</h2>
+            <button type="button" class="btn-tutup" id="modalEditTutup" style="background:none;border:none;font-size:24px;cursor:pointer;">&times;</button>
+        </div>
+        <div class="modal-isi">
+            <form id="formEditMenu" class="form-menu" autocomplete="off">
+                <input type="hidden" id="editMenuId">
+                <label class="form-label" for="editNama">Nama menu</label>
+                <input class="form-control" id="editNama" required>
+
+                <div class="baris-dua" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
+                    <div>
+                        <label class="form-label" for="editKategori">Kategori</label>
+                        <select class="form-select" id="editKategori" required>
+                            <option value="nasi">Nasi</option>
+                            <option value="lauk">Lauk</option>
+                            <option value="sayur">Sayur</option>
+                            <option value="paket a">Paket A</option>
+                            <option value="paket b">Paket B</option>
+                            <option value="paket c">Paket C</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label" for="editHarga">Harga (Rp)</label>
+                        <input class="form-control" type="number" id="editHarga" min="500" max="1000000" step="500" required>
+                    </div>
+                </div>
+
+                <label class="form-label" for="editStok" style="margin-top:10px;">Stok untuk tanggal ini (box)</label>
+                <input class="form-control" type="number" id="editStok" min="0" max="120" placeholder="Kosongkan untuk tanpa batas">
+
+                <div class="aksi-modal" style="display:flex;justify-content:space-between;margin-top:18px;border-top:1px solid #e5e7eb;padding-top:14px;">
+                    <button type="button" class="btn btn-hapus-menu" id="btnHapusMenu" style="color:#b91c1c;border-color:#fca5a5;">Hapus menu</button>
+                    <span class="aksi-modal-kanan" style="display:flex;gap:8px;">
+                        <button type="button" class="btn btn-secondary" id="btnBatalEdit">Batal</button>
+                        <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
+                    </span>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', async function () {
+    window.WARTEG_ADMIN_LAYOUT.render('menu', 'Menu Harian');
+
+    var inpTgl = document.getElementById('inpTglMenu');
+    var curTgl = new Date().toISOString().slice(0, 10);
+    inpTgl.value = curTgl;
+
+    async function muatMenuHarian() {
+        document.getElementById('judulTanggal').textContent = window.WARTEG_DB.tanggalId(curTgl);
+        var kap = await window.WARTEG_DB.getKapasitasTanggal(curTgl);
+        document.getElementById('teksInfoKuota').textContent = 'Kuota ' + window.WARTEG_DB.tanggalId(curTgl, false) + ': ' + kap.box + ' dari ' + kap.kapasitas + ' box terpakai, sisa ' + kap.sisa + ' box.';
+
+        var menus = await window.WARTEG_DB.getMenuTanggal(curTgl);
+        var grid = document.getElementById('gridMenu');
+        grid.innerHTML = '';
+
+        if (!menus || !menus.length) {
+            grid.innerHTML = '<p class="kosong">Belum ada data menu. Silakan klik <a href="tambah_menu.html">Tambah Menu</a>.</p>';
+            return;
+        }
+
+        menus.forEach(function (m) {
+            var on = !!m.tersedia;
+            var sisa = m.stok === null ? null : Math.max(0, m.stok - (m.jumlah || 0));
+            var card = document.createElement('div');
+            card.className = 'kartu-menu' + (on ? ' aktif' : '');
+            card.dataset.menuId = m.id;
+
+            var imgThumb = m.foto ? ('<img src="../uploads/menu/' + m.foto + '" alt="' + m.nama + '" onerror="this.parentNode.innerHTML=\'🍱\'">') : '<span aria-hidden="true">🍱</span>';
+
+            card.innerHTML = '<div class="foto-menu">' + imgThumb + '</div>'
+                + '<div class="info-menu">'
+                + '<h3>' + m.nama + '</h3>'
+                + '<p class="teks-redup">' + m.kategori + ' · ' + window.WARTEG_DB.rupiah(m.harga) + ' / box</p>'
+                + '<p class="status-menu">' + (on ? 'Tersedia untuk dipesan' : 'Tidak tersedia') + '</p>'
+                + '<p class="status-stok">' + (m.stok === null ? 'Stok: tanpa batas' : ('Stok: sisa ' + sisa + ' dari ' + m.stok + ' box')) + '</p>'
+                + '<p class="teks-redup">' + (m.jumlah || 0) + ' box sudah dipesan</p>'
+                + '</div>'
+                + '<div class="aksi-kartu">'
+                + '<label class="toggle" title="Aktif / Nonaktif">'
+                + '<input type="checkbox" class="js-toggle" ' + (on ? 'checked' : '') + ' data-id="' + m.id + '">'
+                + '<span class="toggle-slider"></span>'
+                + '</label>'
+                + '<button type="button" class="btn-action btn-detail js-edit" data-item=\'' + JSON.stringify(m).replace(/'/g, "&apos;") + '\'>Edit</button>'
+                + '</div>';
+
+            grid.appendChild(card);
+        });
+
+        // Event Toggle
+        document.querySelectorAll('.js-toggle').forEach(function (chk) {
+            chk.onchange = async function () {
+                var mid = this.getAttribute('data-id');
+                var aktif = this.checked;
+                await window.WARTEG_DB.toggleMenuHarian(mid, curTgl, aktif);
+                muatMenuHarian();
+            };
+        });
+
+        // Event Edit Modal
+        document.querySelectorAll('.js-edit').forEach(function (btn) {
+            btn.onclick = function () {
+                var m = JSON.parse(this.getAttribute('data-item'));
+                document.getElementById('editMenuId').value = m.id;
+                document.getElementById('editNama').value = m.nama;
+                document.getElementById('editKategori').value = m.kategori;
+                document.getElementById('editHarga').value = m.harga;
+                document.getElementById('editStok').value = m.stok === null ? '' : m.stok;
+
+                var modal = document.getElementById('modalEditMenu');
+                modal.style.display = 'flex';
+                modal.hidden = false;
+            };
+        });
+    }
+
+    // Modal Edit Actions
+    document.getElementById('modalEditTutup').onclick = function () {
+        document.getElementById('modalEditMenu').style.display = 'none';
+    };
+    document.getElementById('btnBatalEdit').onclick = function () {
+        document.getElementById('modalEditMenu').style.display = 'none';
+    };
+    document.getElementById('formEditMenu').onsubmit = async function (e) {
+        e.preventDefault();
+        var mid = document.getElementById('editMenuId').value;
+        var nama = document.getElementById('editNama').value;
+        var kat = document.getElementById('editKategori').value;
+        var harga = document.getElementById('editHarga').value;
+        var stok = document.getElementById('editStok').value;
+
+        await window.WARTEG_DB.simpanMenu({
+            id: mid,
+            nama: nama,
+            kategori: kat,
+            harga: harga,
+            stok: stok,
+            tanggal: curTgl
+        });
+
+        document.getElementById('modalEditMenu').style.display = 'none';
+        muatMenuHarian();
+    };
+
+    document.getElementById('btnHapusMenu').onclick = async function () {
+        var mid = document.getElementById('editMenuId').value;
+        if (confirm('Hapus menu ini dari master? Pesanan lama tidak akan berubah.')) {
+            await window.WARTEG_DB.hapusMenu(mid);
+            document.getElementById('modalEditMenu').style.display = 'none';
+            muatMenuHarian();
+        }
+    };
+
+    // Navigasi Tanggal
+    inpTgl.onchange = function () { curTgl = this.value; muatMenuHarian(); };
+    document.getElementById('tglPrev').onclick = function () {
+        var d = new Date(curTgl);
+        d.setDate(d.getDate() - 1);
+        curTgl = d.toISOString().slice(0, 10);
+        inpTgl.value = curTgl;
+        muatMenuHarian();
+    };
+    document.getElementById('tglNext').onclick = function () {
+        var d = new Date(curTgl);
+        d.setDate(d.getDate() + 1);
+        curTgl = d.toISOString().slice(0, 10);
+        inpTgl.value = curTgl;
+        muatMenuHarian();
+    };
+
+    muatMenuHarian();
+});
+</script>
+</body>
+</html>

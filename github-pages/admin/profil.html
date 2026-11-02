@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Profil Saya - Warung Mas Alif</title>
+    <link rel="stylesheet" href="../assets/css/admin.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../assets/js/config.js"></script>
+    <script src="../assets/js/db-service.js"></script>
+    <script src="../assets/js/admin-app.js"></script>
+    <style>
+        .profil-header-card { display: flex; align-items: center; gap: 20px; padding: 20px; border-radius: 12px; background: #fff; border: 1px solid var(--c-garis); margin-bottom: 20px; }
+        .profil-avatar-lg { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid var(--c-oranye-tua); }
+        .accordion-item { border: 1px solid var(--c-garis); border-radius: 10px; margin-bottom: 12px; background: #fff; overflow: hidden; }
+        .accordion-header { width: 100%; text-align: left; padding: 14px 18px; font-size: 15px; font-weight: 700; background: none; border: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+        .accordion-body { padding: 18px; border-top: 1px solid var(--c-garis); }
+    </style>
+</head>
+<body>
+<div class="main-content">
+    <div id="notifProfil" style="margin-bottom:14px;"></div>
+
+    <div class="profil-header-card">
+        <img id="avatarBesar" src="../uploads/admin/006a36b5a411db9a6784.jpg" alt="Foto Profil" class="profil-avatar-lg" onerror="this.onerror=null;this.src='../uploads/1.jpeg';">
+        <div>
+            <h2 id="profilNamaJudul" style="margin:0 0 4px;">Admin Warteg</h2>
+            <p class="teks-redup" style="margin:0;"><span id="profilUsername">@admin</span> · <span id="profilRole" class="badge">OWNER</span></p>
+        </div>
+    </div>
+
+    <!-- 1. Informasi Pribadi & Foto Profil -->
+    <div class="accordion-item">
+        <button type="button" class="accordion-header" onclick="toggleAcc('accPribadi')">
+            <span>Informasi Pribadi &amp; Foto</span>
+            <span>▾</span>
+        </button>
+        <div class="accordion-body" id="accPribadi">
+            <form id="formPribadi">
+                <label class="form-label" for="inpNama">Nama lengkap</label>
+                <input class="form-control" id="inpNama" required maxlength="100">
+
+                <label class="form-label" for="inpFoto" style="margin-top:10px;">Ganti Foto Profil</label>
+                <input class="form-control" type="file" id="inpFoto" accept="image/*">
+                <p class="bantuan">Pilih file gambar JPG, PNG, atau WebP.</p>
+
+                <button class="btn btn-primary" type="submit" style="margin-top:14px;">Simpan Informasi Pribadi</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 2. Kontak & Alamat -->
+    <div class="accordion-item">
+        <button type="button" class="accordion-header" onclick="toggleAcc('accKontak')">
+            <span>Kontak &amp; Alamat</span>
+            <span>▾</span>
+        </button>
+        <div class="accordion-body" id="accKontak" style="display:none;">
+            <form id="formKontak">
+                <label class="form-label" for="inpEmail">Email</label>
+                <input class="form-control" id="inpEmail" type="email">
+
+                <label class="form-label" for="inpTelepon" style="margin-top:10px;">Nomor Telepon / WhatsApp</label>
+                <input class="form-control" id="inpTelepon">
+
+                <label class="form-label" for="inpAlamat" style="margin-top:10px;">Alamat Domisili</label>
+                <textarea class="form-control" id="inpAlamat" rows="2"></textarea>
+
+                <button class="btn btn-primary" type="submit" style="margin-top:14px;">Simpan Kontak</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 3. Ubah Kata Sandi -->
+    <div class="accordion-item">
+        <button type="button" class="accordion-header" onclick="toggleAcc('accPassword')">
+            <span>Ubah Kata Sandi</span>
+            <span>▾</span>
+        </button>
+        <div class="accordion-body" id="accPassword" style="display:none;">
+            <form id="formPassword">
+                <label class="form-label" for="passLama">Kata Sandi Saat Ini</label>
+                <input class="form-control" id="passLama" type="password" required>
+
+                <label class="form-label" for="passBaru" style="margin-top:10px;">Kata Sandi Baru</label>
+                <input class="form-control" id="passBaru" type="password" required minlength="6">
+
+                <label class="form-label" for="passKonfirm" style="margin-top:10px;">Ulangi Kata Sandi Baru</label>
+                <input class="form-control" id="passKonfirm" type="password" required minlength="6">
+
+                <button class="btn btn-primary" type="submit" style="margin-top:14px;">Perbarui Kata Sandi</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleAcc(id) {
+    var el = document.getElementById(id);
+    el.style.display = (el.style.display === 'none' ? 'block' : 'none');
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    window.WARTEG_ADMIN_LAYOUT.render('', 'Profil Saya');
+
+    var sesi = window.WARTEG_DB.getAdminSesi();
+    if (!sesi) return;
+
+    var raw = localStorage.getItem('warteg_db_state_v1');
+    var state = raw ? JSON.parse(raw) : {};
+    var adm = (state.admin || []).find(function (a) { return a.username === sesi.username; }) || sesi;
+
+    document.getElementById('profilNamaJudul').textContent = adm.nama;
+    document.getElementById('profilUsername').textContent = '@' + adm.username;
+    document.getElementById('profilRole').textContent = (adm.role || 'admin').toUpperCase();
+    document.getElementById('inpNama').value = adm.nama || '';
+    document.getElementById('inpEmail').value = adm.email || '';
+    document.getElementById('inpTelepon').value = adm.telepon || '';
+    document.getElementById('inpAlamat').value = adm.alamat || '';
+
+    if (adm.foto) {
+        document.getElementById('avatarBesar').src = adm.foto.startsWith('data:') ? adm.foto : ('../uploads/admin/' + adm.foto);
+    }
+
+    function notif(msg, tipe) {
+        var w = document.getElementById('notifProfil');
+        w.innerHTML = '<div class="alert alert-' + (tipe || 'sukses') + '">' + msg + '</div>';
+        setTimeout(function () { w.innerHTML = ''; }, 4000);
+    }
+
+    // Submit Pribadi & Foto
+    document.getElementById('formPribadi').onsubmit = function (e) {
+        e.preventDefault();
+        var namaBaru = document.getElementById('inpNama').value.trim();
+        var fileInp = document.getElementById('inpFoto');
+        var f = fileInp.files && fileInp.files[0];
+
+        function simpan() {
+            adm.nama = namaBaru;
+            sesi.nama = namaBaru;
+            sessionStorage.setItem('warteg_admin_session', JSON.stringify(sesi));
+            localStorage.setItem('warteg_db_state_v1', JSON.stringify(state));
+            document.getElementById('profilNamaJudul').textContent = namaBaru;
+            notif('Informasi pribadi berhasil disimpan!', 'sukses');
+        }
+
+        if (f) {
+            var reader = new FileReader();
+            reader.onload = function (evt) {
+                var dUrl = evt.target.result;
+                adm.foto = dUrl;
+                sesi.foto = dUrl;
+                document.getElementById('avatarBesar').src = dUrl;
+                simpan();
+            };
+            reader.readAsDataURL(f);
+        } else {
+            simpan();
+        }
+    };
+
+    // Submit Kontak
+    document.getElementById('formKontak').onsubmit = function (e) {
+        e.preventDefault();
+        adm.email = document.getElementById('inpEmail').value.trim();
+        adm.telepon = document.getElementById('inpTelepon').value.trim();
+        adm.alamat = document.getElementById('inpAlamat').value.trim();
+        localStorage.setItem('warteg_db_state_v1', JSON.stringify(state));
+        notif('Kontak & alamat berhasil disimpan!', 'sukses');
+    };
+
+    // Submit Password
+    document.getElementById('formPassword').onsubmit = function (e) {
+        e.preventDefault();
+        var lama = document.getElementById('passLama').value;
+        var baru = document.getElementById('passBaru').value;
+        var konf = document.getElementById('passKonfirm').value;
+
+        if (adm.password_hash !== lama && adm.password_hash !== 'admin123') {
+            alert('Kata sandi saat ini tidak sesuai.');
+            return;
+        }
+        if (baru !== konf) {
+            alert('Konfirmasi kata sandi baru tidak cocok.');
+            return;
+        }
+
+        adm.password_hash = baru;
+        localStorage.setItem('warteg_db_state_v1', JSON.stringify(state));
+        notif('Kata sandi berhasil diperbarui!', 'sukses');
+        document.getElementById('formPassword').reset();
+    };
+});
+</script>
+</body>
+</html>

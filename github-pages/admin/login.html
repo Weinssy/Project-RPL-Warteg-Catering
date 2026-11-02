@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Masuk - Warung Mas Alif</title>
+    <link rel="stylesheet" href="../assets/css/admin.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../assets/js/config.js"></script>
+    <script src="../assets/js/db-service.js"></script>
+    <script src="../assets/js/admin-app.js"></script>
+</head>
+<body class="login-body">
+    <form class="login-card" id="formLogin" autocomplete="off">
+        <h1>Warung Mas Alif</h1>
+        <p class="teks-redup">Masuk untuk mengelola pesanan nasi box.</p>
+        
+        <div class="alert alert-info" style="font-size:12px;margin-bottom:14px;background:#e0f2fe;color:#0369a1;padding:8px 12px;border-radius:6px;">
+            Demo Login: Username: <strong>admin</strong> | Password: <strong>admin123</strong>
+        </div>
+
+        <div class="alert alert-galat" id="galatLogin" style="display:none;margin-bottom:12px;"></div>
+
+        <label class="form-label" for="username">Username</label>
+        <input class="form-control" id="username" name="username" required autofocus placeholder="admin">
+        
+        <label class="form-label" for="password">Password</label>
+        <input class="form-control" id="password" name="password" type="password" required placeholder="••••••••">
+        
+        <button class="btn btn-primary btn-blok" type="submit" id="btnSubmit">Masuk</button>
+        <p style="text-align:center;margin-top:16px;font-size:13px;">
+            <a href="../index.html" class="teks-redup">&larr; Kembali ke Halaman Utama</a>
+        </p>
+    </form>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var form = document.getElementById('formLogin');
+        var galat = document.getElementById('galatLogin');
+        var btn = document.getElementById('btnSubmit');
+
+        form.onsubmit = async function (e) {
+            e.preventDefault();
+            galat.style.display = 'none';
+
+            var u = (document.getElementById('username').value || '').trim();
+            var p = (document.getElementById('password').value || '');
+
+            btn.disabled = true;
+            btn.textContent = 'Memeriksa...';
+
+            var res = await window.WARTEG_DB.loginAdmin(u, p);
+            btn.disabled = false;
+            btn.textContent = 'Masuk';
+
+            if (!res || !res.ok) {
+                galat.textContent = (res && res.pesan) || 'Username atau password salah.';
+                galat.style.display = 'block';
+                return;
+            }
+
+            window.location.href = 'index.html';
+        };
+    });
+    </script>
+</body>
+</html>

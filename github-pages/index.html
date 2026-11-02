@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Pesan nasi box & katering Warung Mas Alif secara online. Minimum 10 box, ambil sendiri di lokasi.">
+    <title>Pesan Nasi Box &amp; Katering - Warung Mas Alif</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/customer.css">
+    <!-- Supabase JS Client via CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Konfigurasi & Service Data -->
+    <script src="assets/js/config.js"></script>
+    <script src="assets/js/db-service.js"></script>
+</head>
+<body class="cust">
+<header class="cust-header">
+    <div class="wadah">
+        <nav class="cust-nav" aria-label="Navigasi utama">
+            <a href="index.html" class="cust-logo">
+                <img src="uploads/1.jpeg" alt="Logo Warung Mas Alif" class="logo-ikon" onerror="this.style.display='none'">
+                <span>Warung Mas Alif<small>Nasi Box &amp; Katering</small></span>
+            </a>
+            <div class="cust-links" id="custLinks">
+                <a href="#katalog">Katalog Nasi Box</a>
+                <a href="#cara">Cara Pemesanan</a>
+                <a href="cek_status.html">Cek Status Pesanan</a>
+                <a href="admin/login.html" style="color:var(--c-oranye-tua);font-weight:700">Login Admin</a>
+            </div>
+            <div class="cust-nav-kanan">
+                <a href="#katalog" class="tombol-keranjang" id="tombolKeranjang" aria-label="Lihat keranjang">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                    <span class="btn-teks-desk">Keranjang</span>
+                    <span class="hitung" id="hitungKeranjang">0</span>
+                </a>
+                <a href="#katalog" class="btn btn-primer btn-kecil">Pesan Sekarang</a>
+                <button type="button" class="cust-toggle" id="custToggle" aria-label="Buka menu" aria-expanded="false" aria-controls="custLinks">
+                    <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                </button>
+            </div>
+        </nav>
+    </div>
+</header>
+<main>
+
+<!-- ================= HERO ================= -->
+<section class="hero">
+    <div class="wadah">
+        <div class="hero-grid">
+            <div>
+                <span class="hero-label">Katering &amp; Nasi Box Harian</span>
+                <h1>Nasi Box Lezat untuk <span>Acara &amp; Kantor</span> Anda</h1>
+                <p class="lead">Rakit nasi box sesuai selera, pilih tanggal pengambilan, dan bayar mudah dengan QRIS. Pesanan diambil sendiri di Warung Mas Alif.</p>
+                <div class="hero-cta">
+                    <a href="#katalog" class="btn btn-primer">Mulai Pesan</a>
+                    <a href="#cara" class="btn btn-garis">Cara Pemesanan</a>
+                </div>
+                <div class="hero-fakta">
+                    <div><span class="tanda">✓</span> Minimum 10 box</div>
+                    <div><span class="tanda">✓</span> Ambil sendiri di lokasi</div>
+                    <div><span class="tanda">✓</span> Pesan minimal H-1</div>
+                </div>
+            </div>
+            <div class="hero-gambar">
+                <img src="uploads/1.jpeg" alt="Nasi box dan menu katering Warung Mas Alif" loading="eager" onerror="this.onerror=null;this.src='uploads/menu/567776efe02122c01fcd.jpg';">
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ================= CARA PESAN ================= -->
+<section class="seksi" id="cara" style="padding-bottom:20px">
+    <div class="wadah">
+        <div class="seksi-kepala">
+            <h2>Cara Pemesanan</h2>
+            <p>Empat langkah mudah memesan nasi box, tanpa perlu membuat akun.</p>
+        </div>
+        <div class="langkah-grid">
+            <div class="langkah"><div class="nomor">1</div><h3>Pilih Menu</h3><p>Rakit nasi box dari kategori nasi, lauk, dan sayur atau pilih paket.</p></div>
+            <div class="langkah"><div class="nomor">2</div><h3>Tentukan Jumlah</h3><p>Atur jumlah box (minimal 10 box), tanggal, dan jam pengambilan.</p></div>
+            <div class="langkah"><div class="nomor">3</div><h3>Isi Data &amp; Bayar</h3><p>Lengkapi nama &amp; WhatsApp, lalu bayar via QRIS.</p></div>
+            <div class="langkah"><div class="nomor">4</div><h3>Ambil Pesanan</h3><p>Simpan kode pesanan, ambil di lokasi sesuai jadwal.</p></div>
+        </div>
+    </div>
+</section>
+
+<!-- ================= KAPASITAS & TANGGAL ================= -->
+<section class="seksi" id="kapasitas" style="padding-top:20px">
+    <div class="wadah">
+        <div class="seksi-kepala">
+            <h2>Cek Ketersediaan &amp; Kuota</h2>
+            <p>Kuota dihitung langsung dari data pesanan. Kapasitas maksimal 120 box per hari pengambilan.</p>
+        </div>
+        <div class="panel-kapasitas">
+            <div class="pilih-tanggal">
+                <div class="grup">
+                    <label for="cekTanggal">Tanggal pengambilan</label>
+                    <input type="date" class="input" id="cekTanggal">
+                </div>
+                <button type="button" class="btn btn-garis btn-kecil" id="btnCekTanggal">Tampilkan Kuota</button>
+            </div>
+            <div class="kapasitas-info" id="kapasitasInfo">
+                <div class="kapasitas-kotak">
+                    <div class="angka">120</div>
+                    <div class="label">Kapasitas maksimal / hari</div>
+                </div>
+                <div class="kapasitas-kotak">
+                    <div class="angka" id="kapTerpakai">0</div>
+                    <div class="label">Pesanan masuk (box)</div>
+                </div>
+                <div class="kapasitas-kotak sisa aman" id="kotakSisa">
+                    <div class="angka" id="kapSisa">120</div>
+                    <div class="label">Sisa kuota (box)</div>
+                </div>
+            </div>
+            <div class="bar-kapasitas"><span id="barKapasitas" style="width:0%"></span></div>
+            <p class="bantuan" id="teksTanggal">Memuat data ketersediaan...</p>
+        </div>
+    </div>
+</section>
+
+<!-- ================= KATALOG / MEAL BUILDER ================= -->
+<section class="seksi" id="katalog">
+    <div class="wadah">
+        <div class="seksi-kepala">
+            <h2>Rakit Nasi Box Anda</h2>
+            <p>Klik kartu menu untuk menambahkannya ke ringkasan. Menu yang habis atau belum dibuka pada tanggal terpilih tidak dapat dipilih.</p>
+        </div>
+        <div class="builder-grid">
+            <div id="katalogMenu">
+                <div class="kosong"><p>Memuat menu...</p></div>
+            </div>
+
+            <!-- Ringkasan sticky -->
+            <aside class="ringkasan" id="ringkasan" aria-label="Ringkasan pesanan">
+                <div class="ringkasan-kepala">
+                    <span>Ringkasan Keranjang</span>
+                    <button type="button" class="baris-menu hapus" id="kosongkanKeranjang" title="Kosongkan keranjang" style="font-size:12px;color:var(--c-redup);background:none;border:0;cursor:pointer" hidden>Kosongkan</button>
+                </div>
+                <div class="ringkasan-isi" id="ringkasanIsi">
+                    <div class="ringkasan-kosong">Keranjang masih kosong.<br>Pilih menu di samping.</div>
+                </div>
+                <div class="ringkasan-total">
+                    <div class="total-baris"><span>Total box</span><span id="totalBox">0</span></div>
+                    <div class="total-baris"><span>Subtotal</span><span id="subtotal">Rp0</span></div>
+                    <div class="total-baris besar"><span>Total</span><span class="nilai" id="totalHarga">Rp0</span></div>
+                </div>
+                <div class="ringkasan-aksi">
+                    <button type="button" class="btn btn-primer btn-blok" id="btnLanjut" disabled>Lanjutkan ke Data Pemesan</button>
+                    <p class="bantuan" id="pesanMin" style="text-align:center;margin-top:8px">Minimum 10 box</p>
+                </div>
+            </aside>
+        </div>
+    </div>
+</section>
+
+<!-- ================= CHECKOUT ================= -->
+<section class="seksi" id="checkout" style="background:#fff;border-top:1px solid var(--c-garis)">
+    <div class="wadah">
+        <div class="seksi-kepala">
+            <h2>Data Pemesan &amp; Pengambilan</h2>
+            <p>Isi data dengan benar. Nomor WhatsApp aktif dipakai admin untuk konfirmasi pesanan.</p>
+        </div>
+        <form id="formCheckout" novalidate autocomplete="on">
+            <div class="checkout-grid">
+                <div class="panel-putih">
+                    <div class="alert alert-info" id="infoMinBox">Minimum pemesanan 10 box per transaksi.</div>
+
+                    <div class="form-baris">
+                        <label for="fNama">Nama pemesan <span class="wajib">*</span></label>
+                        <input type="text" class="input" id="fNama" name="nama" maxlength="100" required placeholder="Nama lengkap" autocomplete="name">
+                    </div>
+                    <div class="form-baris">
+                        <label for="fWa">Nomor WhatsApp aktif <span class="wajib">*</span></label>
+                        <input type="tel" class="input" id="fWa" name="no_wa" maxlength="20" required placeholder="08xxxxxxxxxx" autocomplete="tel" inputmode="tel">
+                        <div class="bantuan">Contoh: 0812 3456 7890 atau 6281234567890.</div>
+                    </div>
+                    <div class="form-dua">
+                        <div class="form-baris">
+                            <label for="fTgl">Tanggal pengambilan <span class="wajib">*</span></label>
+                            <input type="date" class="input" id="fTgl" name="tanggal_ambil" required>
+                        </div>
+                        <div class="form-baris">
+                            <label for="fJam">Jam pengambilan <span class="wajib">*</span></label>
+                            <select class="select" id="fJam" name="jam_ambil" required></select>
+                        </div>
+                    </div>
+                    <div class="form-baris">
+                        <label for="fCatatan">Catatan pesanan (opsional)</label>
+                        <textarea class="textarea" id="fCatatan" name="catatan" maxlength="255" placeholder="Mis. tanpa sambal, tambah nasi, alergi, dll."></textarea>
+                    </div>
+                    <input type="hidden" id="fJumlahBox" name="jumlah_box" value="0">
+                    <p class="bantuan">Lokasi pengambilan: <strong>Warung Mas Alif</strong> (self-pickup, tidak ada ongkir).</p>
+                </div>
+
+                <div>
+                    <div class="panel-putih" id="ringkasanCheckout" style="margin-bottom:16px">
+                        <h3 style="font-size:16px;margin-bottom:12px">Pesanan Anda</h3>
+                        <div id="ringkasanCheckoutIsi"><p class="bantuan">Belum ada menu dipilih.</p></div>
+                        <div class="ringkasan-total" style="background:none;padding:12px 0 0">
+                            <div class="total-baris besar"><span>Total</span><span class="nilai" id="totalCheckout">Rp0</span></div>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primer btn-blok" id="btnBuatPesanan" disabled>
+                        <span id="btnBuatTeks">Lanjutkan Pembayaran</span>
+                    </button>
+                    <div class="alert alert-galat" id="galatCheckout" style="margin-top:14px;display:none"></div>
+                </div>
+            </div>
+        </form>
+    </div>
+</section>
+
+<!-- Bottom cart bar (mobile) -->
+<div class="cart-bar" id="cartBar">
+    <div class="info"><b id="cartBarBox">0 box</b><span id="cartBarTotal">Rp0</span></div>
+    <a href="#checkout" class="btn btn-primer btn-kecil">Lanjutkan</a>
+</div>
+
+</main>
+<footer class="cust-footer">
+    <div class="wadah">
+        <div class="kisi">
+            <div>
+                <h4>Warung Mas Alif</h4>
+                <p>Melayani pemesanan nasi box dan katering dengan menu harian segar. Pesanan diambil sendiri (self-pickup) di lokasi warteg.</p>
+            </div>
+            <div>
+                <h4>Informasi Pesanan</h4>
+                <ul>
+                    <li>Minimum 10 box per pesanan</li>
+                    <li>Pesan minimal H-1 sebelum pengambilan</li>
+                    <li>Jam pengambilan 09:00–19:00 WIB</li>
+                    <li>Kapasitas 120 box per hari</li>
+                </ul>
+            </div>
+            <div>
+                <h4>Lokasi Pengambilan</h4>
+                <p>Warung Mas Alif<br>Jl. Warteg Kharisma Sejahtera No. 12, Jakarta</p>
+                <p>Telp/WA: 081234567890</p>
+                <p><a href="cek_status.html">Cek Status Pesanan &rarr;</a></p>
+            </div>
+        </div>
+        <div class="copy">&copy; 2026 Warung Mas Alif. Semua harga dalam Rupiah (IDR). Versi GitHub Pages + Supabase.</div>
+    </div>
+</footer>
+<div class="cust-toast-area" id="custToast" aria-live="polite"></div>
+
+<!-- Skrip Logika Halaman Pelanggan -->
+<script src="assets/js/customer-app.js"></script>
+</body>
+</html>

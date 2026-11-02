@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Tambah Menu - Warung Mas Alif</title>
+    <link rel="stylesheet" href="../assets/css/admin.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../assets/js/config.js"></script>
+    <script src="../assets/js/db-service.js"></script>
+    <script src="../assets/js/admin-app.js"></script>
+    <style>
+        .form-menu .baris-dua { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .kartu-form { max-width: 640px; }
+        #pratinjauFoto { width: 96px; height: 96px; object-fit: cover; border-radius: 12px; margin-top: 10px; border: 1px solid var(--c-garis); }
+        @media (max-width: 560px) { .form-menu .baris-dua { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+<div class="main-content">
+    <div class="content-card kartu-form">
+        <div class="card-header">
+            <h2>Tambah Menu</h2>
+            <span class="teks-redup">Stok maksimal 120 box per tanggal</span>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-sukses" id="notifSukses" style="display:none;margin-bottom:14px;"></div>
+            <div class="alert alert-galat" id="notifGalat" style="display:none;margin-bottom:14px;"></div>
+
+            <form class="form-menu" id="formTambahMenu" autocomplete="off">
+                <label class="form-label" for="tanggalMenu">Tanggal pengambilan</label>
+                <input class="form-control" type="date" id="tanggalMenu" name="tanggal" required>
+
+                <label class="form-label" for="namaMenu">Nama menu</label>
+                <input class="form-control" id="namaMenu" name="nama" maxlength="100" placeholder="Contoh: Nasi Rendang Sapi" required>
+
+                <div class="baris-dua">
+                    <div>
+                        <label class="form-label" for="kategoriMenu">Kategori</label>
+                        <select class="form-select" id="kategoriMenu" name="kategori" required>
+                            <option value="nasi">Nasi</option>
+                            <option value="lauk">Lauk</option>
+                            <option value="sayur">Sayur</option>
+                            <option value="paket a">Paket A</option>
+                            <option value="paket b">Paket B</option>
+                            <option value="paket c">Paket C</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label" for="hargaMenu">Harga per box (Rp)</label>
+                        <input class="form-control" type="number" id="hargaMenu" name="harga" min="500" max="1000000" step="500" placeholder="18000" required>
+                    </div>
+                </div>
+
+                <label class="form-label" for="stokMenu">Stok menu (box)</label>
+                <input class="form-control" type="number" id="stokMenu" name="stok" min="0" max="120" step="1" placeholder="120" required>
+                <p class="bantuan">Bilangan bulat 0 sampai 120. Maksimal 120 box untuk setiap menu pada tanggal pengambilan.</p>
+
+                <label class="form-label" for="fotoMenu">Foto menu untuk tanggal ini</label>
+                <input class="form-control" type="file" id="fotoMenu" accept="image/*">
+                <p class="bantuan">Pilih file gambar JPG, PNG, atau WebP.</p>
+                <img id="pratinjauFoto" alt="Pratinjau foto" style="display:none;">
+
+                <button class="btn btn-primary btn-blok" type="submit" id="btnSubmitMenu" style="margin-top:16px;">Tambah ke menu</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    window.WARTEG_ADMIN_LAYOUT.render('tambah', 'Tambah Menu');
+
+    var hariIni = new Date().toISOString().slice(0, 10);
+    document.getElementById('tanggalMenu').value = hariIni;
+    document.getElementById('tanggalMenu').min = hariIni;
+
+    var fileInp = document.getElementById('fotoMenu');
+    var imgPrev = document.getElementById('pratinjauFoto');
+    var dataUrlFoto = null;
+
+    fileInp.onchange = function () {
+        var f = fileInp.files && fileInp.files[0];
+        if (!f) { imgPrev.style.display = 'none'; dataUrlFoto = null; return; }
+        var reader = new FileReader();
+        reader.onload = function (e) {
+            dataUrlFoto = e.target.result;
+            imgPrev.src = dataUrlFoto;
+            imgPrev.style.display = 'block';
+        };
+        reader.readAsDataURL(f);
+    };
+
+    var form = document.getElementById('formTambahMenu');
+    var notifOk = document.getElementById('notifSukses');
+    var notifErr = document.getElementById('notifGalat');
+
+    form.onsubmit = async function (e) {
+        e.preventDefault();
+        notifOk.style.display = 'none';
+        notifErr.style.display = 'none';
+
+        var tgl = document.getElementById('tanggalMenu').value;
+        var nama = document.getElementById('namaMenu').value.trim();
+        var kat = document.getElementById('kategoriMenu').value;
+        var harga = document.getElementById('hargaMenu').value;
+        var stok = document.getElementById('stokMenu').value;
+
+        var btn = document.getElementById('btnSubmitMenu');
+        btn.disabled = true;
+        btn.textContent = 'Menyimpan Menu...';
+
+        var res = await window.WARTEG_DB.simpanMenu({
+            nama: nama,
+            kategori: kat,
+            harga: harga,
+            stok: stok,
+            foto: dataUrlFoto,
+            tanggal: tgl
+        });
+
+        btn.disabled = false;
+        btn.textContent = 'Tambah ke menu';
+
+        if (!res || !res.ok) {
+            notifErr.textContent = 'Gagal menyimpan menu.';
+            notifErr.style.display = 'block';
+            return;
+        }
+
+        notifOk.textContent = 'Menu "' + nama + '" berhasil ditambahkan untuk ' + window.WARTEG_DB.tanggalId(tgl, false) + '.';
+        notifOk.style.display = 'block';
+
+        document.getElementById('namaMenu').value = '';
+        document.getElementById('hargaMenu').value = '';
+        document.getElementById('stokMenu').value = '';
+        fileInp.value = '';
+        imgPrev.style.display = 'none';
+        dataUrlFoto = null;
+    };
+});
+</script>
+</body>
+</html>

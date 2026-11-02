@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Rekap Harian - Warung Mas Alif</title>
+    <link rel="stylesheet" href="../assets/css/admin.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../assets/js/config.js"></script>
+    <script src="../assets/js/db-service.js"></script>
+    <script src="../assets/js/admin-app.js"></script>
+</head>
+<body>
+<div class="main-content">
+    <section class="grid-kalender" id="rekapApp">
+        <div class="content-card">
+            <div class="card-header">
+                <button type="button" class="btn btn-secondary btn-kecil" id="bulanSebelum">Sebelumnya</button>
+                <h2 id="judulBulan">November 2026</h2>
+                <button type="button" class="btn btn-secondary btn-kecil" id="bulanBerikut">Berikutnya</button>
+            </div>
+            <div class="card-body">
+                <div class="kalender-nama-hari">
+                    <span>Sen</span><span>Sel</span><span>Rab</span><span>Kam</span><span>Jum</span><span>Sab</span><span>Min</span>
+                </div>
+                <div class="kalender-grid" id="kalender"></div>
+                <p class="teks-redup legenda" style="margin-top:14px;">Setiap tanggal menampilkan jumlah pesanan, total box, dan sisa kuota berdasarkan tanggal pengambilan.</p>
+            </div>
+        </div>
+        <div class="content-card">
+            <div class="card-header"><h2 id="judulRekap">Rekap Tanggal</h2></div>
+            <div class="card-body" id="isiRekap"><p class="kosong">Pilih tanggal pada kalender untuk melihat rincian.</p></div>
+        </div>
+    </section>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', async function () {
+    window.WARTEG_ADMIN_LAYOUT.render('rekap', 'Rekap Harian');
+
+    var skrg = new Date();
+    var curThn = skrg.getFullYear();
+    var curBln = skrg.getMonth() + 1;
+    var tglTerpilih = skrg.toISOString().slice(0, 10);
+
+    var namaBulan = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+
+    async function renderKalender() {
+        document.getElementById('judulBulan').textContent = namaBulan[curBln] + ' ' + curThn;
+        var dataBulan = await window.WARTEG_DB.getRekapBulan(curThn, curBln);
+
+        var firstDay = new Date(curThn, curBln - 1, 1).getDay(); // 0 = Sun
+        var startDay = (firstDay === 0 ? 7 : firstDay) - 1; // 0 = Mon
+        var totalHari = new Date(curThn, curBln, 0).getDate();
+
+        var kal = document.getElementById('kalender');
+        kal.innerHTML = '';
+
+        for (var i = 0; i < startDay; i++) {
+            var kosong = document.createElement('div');
+            kosong.className = 'hari-sel mati';
+            kal.appendChild(kosong);
+        }
+
+        for (var d = 1; d <= totalHari; d++) {
+            var strTgl = curThn + '-' + String(curBln).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+            var info = dataBulan[strTgl] || { box: 0, pesanan: 0 };
+            var sisa = Math.max(0, 120 - info.box);
+
+            var sel = document.createElement('div');
+            sel.className = 'hari-sel' + (strTgl === tglTerpilih ? ' terpilih' : '') + (info.box >= 120 ? ' penuh' : (info.box >= 100 ? ' hampir' : ''));
+            sel.innerHTML = '<span class="tgl">' + d + '</span>'
+                + (info.box > 0 ? '<span class="box-stat">' + info.box + ' box</span><span class="pesanan-stat">' + info.pesanan + ' pesanan</span>' : '<span class="sisa-stat">sisa 120</span>');
+
+            sel.dataset.tanggal = strTgl;
+            sel.onclick = function () {
+                tglTerpilih = this.dataset.tanggal;
+                document.querySelectorAll('.hari-sel').forEach(function (x) { x.classList.remove('terpilih'); });
+                this.classList.add('terpilih');
+                muatRekapTanggal(tglTerpilih);
+            };
+            kal.appendChild(sel);
+        }
+    }
+
+    async function muatRekapTanggal(tgl) {
+        document.getElementById('judulRekap').textContent = 'Rekap: ' + window.WARTEG_DB.tanggalId(tgl);
+        var isi = document.getElementById('isiRekap');
+        isi.innerHTML = '<p class="kosong">Memuat pesanan...</p>';
+
+        var kap = await window.WARTEG_DB.getKapasitasTanggal(tgl);
+        var res = await window.WARTEG_DB.getDaftarPemesan({ tanggal: tgl, per: 100 });
+
+        var html = '<div class="grid-kartu" style="grid-template-columns:1fr 1fr;margin-bottom:16px;">'
+            + '<div class="kartu-stat"><span>Box Dipesan</span><strong>' + kap.box + ' box</strong></div>'
+            + '<div class="kartu-stat ' + (kap.level === 'penuh' ? 'kartu-merah' : (kap.level === 'hampir' ? 'kartu-kuning' : '')) + '"><span>Sisa Kuota</span><strong>' + kap.sisa + ' box</strong></div>'
+            + '</div>';
+
+        if (!res.items || !res.items.length) {
+            html += '<p class="kosong">Tidak ada pesanan masuk untuk tanggal ini.</p>';
+        } else {
+            html += '<table class="nota-rincian-tabel" style="width:100%;font-size:13px;">'
+                + '<thead><tr><th style="text-align:left">Kode</th><th>Pelanggan</th><th>Box</th><th>Jam</th><th>Status</th></tr></thead><tbody>';
+            res.items.forEach(function (p) {
+                html += '<tr>'
+                    + '<td><strong>' + p.kode + '</strong></td>'
+                    + '<td>' + p.nama_pelanggan + '<br><small class="teks-redup">' + p.no_wa + '</small></td>'
+                    + '<td style="text-align:center">' + p.total_box + '</td>'
+                    + '<td style="text-align:center">' + window.WARTEG_DB.jamPendek(p.jam_ambil) + '</td>'
+                    + '<td>' + window.WARTEG_DB.badgeStatus(p.status) + '</td>'
+                    + '</tr>';
+            });
+            html += '</tbody></table>';
+        }
+        isi.innerHTML = html;
+    }
+
+    document.getElementById('bulanSebelum').onclick = function () {
+        curBln--;
+        if (curBln < 1) { curBln = 12; curThn--; }
+        renderKalender();
+    };
+    document.getElementById('bulanBerikut').onclick = function () {
+        curBln++;
+        if (curBln > 12) { curBln = 1; curThn++; }
+        renderKalender();
+    };
+
+    renderKalender();
+    muatRekapTanggal(tglTerpilih);
+});
+</script>
+</body>
+</html>
