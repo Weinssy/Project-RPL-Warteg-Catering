@@ -273,7 +273,7 @@ END;
 $$;
 
 -- =====================================================================
--- ROW LEVEL SECURITY (RLS) POLICIES
+-- ROW LEVEL SECURITY (RLS) POLICIES & PERMISSIONS
 -- Memberikan akses aman untuk anonim (frontend pelanggan & admin)
 -- =====================================================================
 ALTER TABLE public.admin ENABLE ROW LEVEL SECURITY;
@@ -296,6 +296,16 @@ CREATE POLICY "Akses publik konfigurasi_toko" ON public.konfigurasi_toko FOR ALL
 CREATE POLICY "Akses publik verifikasi_log" ON public.verifikasi_log FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Akses publik admin" ON public.admin FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Akses publik aktivitas_admin" ON public.aktivitas_admin FOR ALL USING (true) WITH CHECK (true);
+
+-- Memberikan hak akses izin peran PostgreSQL (Wajib agar tidak error 42501 permission denied)
+GRANT USAGE ON SCHEMA public TO anon, authenticated;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;
+GRANT ALL ON ALL ROUTINES IN SCHEMA public TO anon, authenticated;
+
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon, authenticated;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO anon, authenticated;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON ROUTINES TO anon, authenticated;
 
 -- =====================================================================
 -- DATA SEED AWAL (Demo)
