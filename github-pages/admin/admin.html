@@ -85,10 +85,8 @@ document.addEventListener('DOMContentLoaded', function () {
         setTimeout(function () { w.innerHTML = ''; }, 4000);
     }
 
-    function muatAdminList() {
-        var raw = localStorage.getItem('warteg_db_state_v1');
-        var state = raw ? JSON.parse(raw) : {};
-        var list = state.admin || [{ id: 1, nama: 'Admin Warteg', username: 'admin', role: 'owner', email: 'admin@warteg.test' }];
+    async function muatAdminList() {
+        var list = await window.WARTEG_DB.getDaftarAdmin();
 
         var tbody = document.getElementById('tbodyAdmin');
         tbody.innerHTML = '';
@@ -102,7 +100,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    document.getElementById('formTambahAdmin').onsubmit = function (e) {
+    document.getElementById('formTambahAdmin').onsubmit = async function (e) {
         e.preventDefault();
         var nama = document.getElementById('admNama').value.trim();
         var username = document.getElementById('admUsername').value.trim();
@@ -117,30 +115,28 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        var raw = localStorage.getItem('warteg_db_state_v1');
-        var state = raw ? JSON.parse(raw) : {};
-        state.admin = state.admin || [];
+        var btn = document.getElementById('btnSubmitAdmin');
+        btn.disabled = true;
+        btn.textContent = 'Menambahkan...';
 
-        if (state.admin.find(function (x) { return x.username === username; })) {
-            alert('Username sudah dipakai. Pilih username lain.');
-            return;
-        }
-
-        state.admin.push({
-            id: Date.now(),
+        var res = await window.WARTEG_DB.tambahAdmin({
             nama: nama,
             username: username,
             password_hash: pass,
             email: email,
             telepon: telepon,
-            role: role,
-            bahasa: 'id',
-            dibuat_pada: new Date().toISOString()
+            role: role
         });
 
-        localStorage.setItem('warteg_db_state_v1', JSON.stringify(state));
-        notif('Admin "' + username + '" berhasil ditambahkan!', 'sukses');
+        btn.disabled = false;
+        btn.textContent = 'Tambah Admin';
 
+        if (!res || !res.ok) {
+            alert((res && res.pesan) || 'Gagal menambahkan admin.');
+            return;
+        }
+
+        notif('Admin "' + username + '" berhasil ditambahkan!', 'sukses');
         document.getElementById('formTambahAdmin').reset();
         muatAdminList();
     };

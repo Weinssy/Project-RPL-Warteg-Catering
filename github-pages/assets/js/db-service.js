@@ -887,6 +887,59 @@
                 }
             });
             return result;
+        },
+
+        // Ambil Daftar Admin
+        getDaftarAdmin: async function () {
+            if (isSupabaseReady) {
+                var { data, error } = await supabaseClient
+                    .from('admin')
+                    .select('id, username, nama, role, email, telepon, bahasa, foto, dibuat_pada')
+                    .order('id', { ascending: true });
+                if (!error && data) return data;
+            }
+            var state = loadLocalState();
+            return state.admin || [];
+        },
+
+        // Tambah Akun Admin Baru
+        tambahAdmin: async function (adminData) {
+            if (isSupabaseReady) {
+                var { data, error } = await supabaseClient
+                    .from('admin')
+                    .insert([{
+                        nama: adminData.nama,
+                        username: adminData.username,
+                        password_hash: adminData.password_hash,
+                        email: adminData.email || null,
+                        telepon: adminData.telepon || null,
+                        role: adminData.role || 'admin',
+                        bahasa: adminData.bahasa || 'id'
+                    }])
+                    .select();
+                if (error) return { ok: false, pesan: error.message };
+                return { ok: true, admin: data && data[0] };
+            }
+
+            var state = loadLocalState();
+            state.admin = state.admin || [];
+            if (state.admin.find(function (x) { return x.username === adminData.username; })) {
+                return { ok: false, pesan: 'Username sudah dipakai.' };
+            }
+            var newAdm = {
+                id: Date.now(),
+                nama: adminData.nama,
+                username: adminData.username,
+                password_hash: adminData.password_hash,
+                email: adminData.email || null,
+                telepon: adminData.telepon || null,
+                role: adminData.role || 'admin',
+                bahasa: adminData.bahasa || 'id',
+                dibuat_pada: new Date().toISOString()
+            };
+            state.admin.push(newAdm);
+            saveLocalState(state);
+            return { ok: true, admin: newAdm };
         }
     };
 
