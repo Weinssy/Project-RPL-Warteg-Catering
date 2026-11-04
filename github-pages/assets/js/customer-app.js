@@ -83,7 +83,7 @@
     } catch (e) { keranjang = {}; }
 
     function simpanKeranjang() {
-        try { localStorage.setItem(CART_KEY, JSON.stringify(keranjang)); } catch (e) {}
+        try { localStorage.setItem(CART_KEY, JSON.stringify(keranjang)); } catch (e) { }
     }
 
     function totalBox() {
@@ -265,9 +265,9 @@
                 Object.keys(keranjang).forEach(function (id) {
                     var it = keranjang[id];
                     h += '<tr style="border-bottom:1px solid #f1f5f9;padding:6px 0;">'
-                       + '<td style="padding:6px 0;"><strong>' + it.nama + '</strong><br><span style="font-size:12px;color:var(--c-redup);">' + formatRupiah(it.harga) + ' × ' + it.jumlah + '</span></td>'
-                       + '<td style="text-align:right;padding:6px 0;font-weight:600;">' + formatRupiah(it.harga * it.jumlah) + '</td>'
-                       + '</tr>';
+                        + '<td style="padding:6px 0;"><strong>' + it.nama + '</strong><br><span style="font-size:12px;color:var(--c-redup);">' + formatRupiah(it.harga) + ' × ' + it.jumlah + '</span></td>'
+                        + '<td style="text-align:right;padding:6px 0;font-weight:600;">' + formatRupiah(it.harga * it.jumlah) + '</td>'
+                        + '</tr>';
                 });
                 h += '</table>';
                 co.innerHTML = h;
