@@ -1,6 +1,6 @@
 // =====================================================================
 // APLIKASI PELANGGAN (WARTEG GITHUB PAGES + SUPABASE)
-// Mengatur UI: Keranjang, Meal Builder, Cek Kuota, & Form Checkout
+// Mengatur UI: Keranjang, Meal Builder, Cek Kuota, Filter Kategori, & Form Checkout
 // =====================================================================
 (function () {
     'use strict';
@@ -41,7 +41,40 @@
     var tglPilih = tglMin;
 
     // -----------------------------------------------------------------
-    // Keranjang Belanja
+    // Validasi Nama Pemesan (Tanpa Angka)
+    // -----------------------------------------------------------------
+    function adaHuruf(t) { return /[A-Za-z\u00C0-\u024F\u1E00-\u1EFF]/.test(t); }
+    function namaValid(s) {
+        var t = String(s == null ? '' : s).trim();
+        if (!t) return false;
+        if (/\d/.test(t)) return false;   // Tolak angka sama sekali
+        return adaHuruf(t);               // Wajib ada minimal satu huruf
+    }
+
+    function pesanGalatNama(s) {
+        var t = String(s == null ? '' : s).trim();
+        if (!t) return 'Nama pemesan wajib diisi.';
+        if (/\d/.test(t)) return 'Nama tidak boleh mengandung angka.';
+        if (!adaHuruf(t)) return 'Nama harus mengandung huruf, tidak boleh berupa angka saja.';
+        return '';
+    }
+
+    function waValid(v) {
+        var d = String(v || '').replace(/[^\d]/g, '');
+        if (d.charAt(0) === '0') d = '62' + d.slice(1);
+        return d.length >= 10 && d.length <= 16;
+    }
+
+    function tampilGalat(field, pesan) {
+        var el = $('.pesan-galat[data-untuk="' + field + '"]');
+        if (el) {
+            el.textContent = pesan || '';
+            el.style.display = pesan ? 'block' : 'none';
+        }
+    }
+
+    // -----------------------------------------------------------------
+    // Keranjang Belanja (LocalStorage)
     // -----------------------------------------------------------------
     var CART_KEY = 'warteg_cart_items';
     var keranjang = {};
@@ -66,7 +99,7 @@
     }
 
     // -----------------------------------------------------------------
-    // Render Komponen
+    // Pilihan Jam Pengambilan
     // -----------------------------------------------------------------
     function isiPilihanJam() {
         var sel = $('#fJam');
@@ -192,64 +225,80 @@
 
     function renderKeranjang() {
         var box = totalBox(), sub = subtotal();
+        var minBox = CFG.MINIMAL_BOX || 10;
+        var cukup = box >= minBox;
+
+        // 1. Ringkasan di Halaman Katalog (index.html)
         var isi = $('#ringkasanIsi');
         var btnKosongkan = $('#kosongkanKeranjang');
         if (btnKosongkan) btnKosongkan.hidden = (box === 0);
 
-        if (box === 0) {
-            if (isi) isi.innerHTML = '<div class="ringkasan-kosong">Keranjang masih kosong.<br>Pilih menu di samping.</div>';
-        } else {
-            var html = '';
-            Object.keys(keranjang).forEach(function (id) {
-                var it = keranjang[id];
-                html += '<div class="baris-menu" data-id="' + id + '">'
-                    + '<div class="kiri"><div class="nm">' + it.nama + '</div>'
-                    + '<div class="hr">' + formatRupiah(it.harga) + ' × ' + it.jumlah + ' = ' + formatRupiah(it.harga * it.jumlah) + '</div>'
-                    + '<div class="stepper" style="margin-top:6px">'
-                    + '<button type="button" data-kurang="' + id + '">−</button>'
-                    + '<input type="number" value="' + it.jumlah + '" min="1" data-ubah="' + id + '">'
-                    + '<button type="button" data-tambah="' + id + '">+</button>'
-                    + '</div></div>'
-                    + '<button type="button" class="hapus" data-hapus="' + id + '">×</button>'
-                    + '</div>';
-            });
-            if (isi) isi.innerHTML = html;
-        }
-
-        if ($('#totalBox')) $('#totalBox').textContent = box;
-        if ($('#subtotal')) $('#subtotal').textContent = formatRupiah(sub);
-        if ($('#totalHarga')) $('#totalHarga').textContent = formatRupiah(sub);
-        if ($('#hitungKeranjang')) $('#hitungKeranjang').textContent = box;
-        if ($('#cartBarBox')) $('#cartBarBox').textContent = box + ' box';
-        if ($('#cartBarTotal')) $('#cartBarTotal').textContent = formatRupiah(sub);
-        if ($('#cartBar')) $('#cartBar').classList.toggle('aktif', box > 0);
-
-        // Ringkasan di Form Checkout
-        var co = $('#ringkasanCheckoutIsi');
-        if (co) {
-            if (box === 0) co.innerHTML = '<p class="bantuan">Belum ada menu dipilih.</p>';
-            else {
-                var h = '<table class="nota-rincian-tabel" style="font-size:13px;width:100%">';
+        if (isi) {
+            if (box === 0) {
+                isi.innerHTML = '<div class="ringkasan-kosong">Keranjang masih kosong.<br>Pilih menu di samping.</div>';
+            } else {
+                var html = '';
                 Object.keys(keranjang).forEach(function (id) {
                     var it = keranjang[id];
-                    h += '<tr><td>' + it.nama + ' × ' + it.jumlah + '</td><td style="text-align:right">' + formatRupiah(it.harga * it.jumlah) + '</td></tr>';
+                    html += '<div class="baris-menu" data-id="' + id + '">'
+                        + '<div class="kiri"><div class="nm">' + it.nama + '</div>'
+                        + '<div class="hr">' + formatRupiah(it.harga) + ' × ' + it.jumlah + ' = ' + formatRupiah(it.harga * it.jumlah) + '</div>'
+                        + '<div class="stepper" style="margin-top:6px">'
+                        + '<button type="button" data-kurang="' + id + '">−</button>'
+                        + '<input type="number" value="' + it.jumlah + '" min="1" data-ubah="' + id + '">'
+                        + '<button type="button" data-tambah="' + id + '">+</button>'
+                        + '</div></div>'
+                        + '<button type="button" class="hapus" data-hapus="' + id + '">×</button>'
+                        + '</div>';
+                });
+                isi.innerHTML = html;
+            }
+        }
+
+        // 2. Ringkasan di Halaman Checkout (checkout.html)
+        var co = $('#ringkasanCheckoutIsi');
+        if (co) {
+            if (box === 0) {
+                co.innerHTML = '<p class="bantuan">Belum ada menu dipilih. <a href="index.html#katalog" style="color:var(--c-primer);font-weight:600">Pilih menu dahulu &rarr;</a></p>';
+            } else {
+                var h = '<table class="nota-rincian-tabel" style="font-size:13px;width:100%;border-collapse:collapse;">';
+                Object.keys(keranjang).forEach(function (id) {
+                    var it = keranjang[id];
+                    h += '<tr style="border-bottom:1px solid #f1f5f9;padding:6px 0;">'
+                       + '<td style="padding:6px 0;"><strong>' + it.nama + '</strong><br><span style="font-size:12px;color:var(--c-redup);">' + formatRupiah(it.harga) + ' × ' + it.jumlah + '</span></td>'
+                       + '<td style="text-align:right;padding:6px 0;font-weight:600;">' + formatRupiah(it.harga * it.jumlah) + '</td>'
+                       + '</tr>';
                 });
                 h += '</table>';
                 co.innerHTML = h;
             }
         }
-        if ($('#totalCheckout')) $('#totalCheckout').textContent = formatRupiah(sub);
 
-        var minBox = CFG.MINIMAL_BOX || 10;
-        var cukup = box >= minBox;
+        if ($('#totalBox')) $('#totalBox').textContent = box;
+        if ($('#subtotal')) $('#subtotal').textContent = formatRupiah(sub);
+        if ($('#totalHarga')) $('#totalHarga').textContent = formatRupiah(sub);
+        if ($('#totalCheckout')) $('#totalCheckout').textContent = formatRupiah(sub);
+        if ($('#hitungKeranjang')) $('#hitungKeranjang').textContent = box;
+        if ($('#cartBarBox')) $('#cartBarBox').textContent = box + ' box';
+        if ($('#cartBarTotal')) $('#cartBarTotal').textContent = formatRupiah(sub);
+        if ($('#cartBar')) $('#cartBar').classList.toggle('aktif', box > 0);
+
         if ($('#btnLanjut')) $('#btnLanjut').disabled = !cukup;
-        if ($('#btnBuatPesanan')) $('#btnBuatPesanan').disabled = !cukup;
         if ($('#pesanMin')) {
             $('#pesanMin').textContent = cukup ? (box + ' box siap dipesan') : ('Minimum ' + minBox + ' box, kurang ' + (minBox - box));
         }
+
+        // Tombol lanjut ke checkout di bagian bawah index.html
+        var ctaCheckout = $('#btnKeCheckout');
+        if (ctaCheckout) {
+            ctaCheckout.style.pointerEvents = cukup ? 'auto' : 'none';
+            ctaCheckout.style.opacity = cukup ? '1' : '.6';
+            ctaCheckout.setAttribute('aria-disabled', cukup ? 'false' : 'true');
+        }
+
         if ($('#fJumlahBox')) $('#fJumlahBox').value = box;
 
-        // Update tanda dipilih di kartu
+        // Update tanda dipilih di kartu menu
         $$('.kartu-cust[data-menu-id]').forEach(function (k) {
             var mid = k.getAttribute('data-menu-id');
             var ada = !!keranjang[mid];
@@ -257,6 +306,21 @@
             var btn = k.querySelector('.pilih-menu');
             if (btn) btn.textContent = ada ? 'Batalkan Pilihan' : 'Pilih';
         });
+
+        // Tombol Submit Form Checkout
+        periksaSiapKirim();
+    }
+
+    function periksaSiapKirim() {
+        var btn = $('#btnBuatPesanan');
+        if (!btn) return;
+        var box = totalBox();
+        var minBox = CFG.MINIMAL_BOX || 10;
+        var nama = ($('#fNama') || {}).value || '';
+        var namaOk = nama.trim().length >= 1 && namaValid(nama.trim());
+        var wa = ($('#fWa') || {}).value || '';
+        var cukup = box >= minBox && namaOk && waValid(wa);
+        btn.disabled = !cukup;
     }
 
     function pasangEventKartu() {
@@ -287,7 +351,7 @@
     // Event Handler Utama
     // -----------------------------------------------------------------
     document.addEventListener('DOMContentLoaded', function () {
-        // Toggle Navigasi Mobile
+        // 1. Toggle Navigasi Mobile
         var btnToggle = $('#custToggle'), navLinks = $('#custLinks');
         if (btnToggle && navLinks) {
             btnToggle.onclick = function () {
@@ -296,7 +360,22 @@
             };
         }
 
-        // Setup Tanggal
+        // 2. Filter Kategori Menu (Chips)
+        var filterWrap = $('#kategoriFilter');
+        if (filterWrap) {
+            filterWrap.addEventListener('click', function (e) {
+                var btn = e.target.closest('.filter-btn');
+                if (!btn) return;
+                var filter = btn.getAttribute('data-filter');
+                $$('.filter-btn', filterWrap).forEach(function (b) { b.classList.toggle('aktif', b === btn); });
+                $$('.kategori-blok').forEach(function (blok) {
+                    if (filter === 'semua') { blok.style.display = ''; }
+                    else { blok.style.display = blok.getAttribute('data-kategori') === filter ? '' : 'none'; }
+                });
+            });
+        }
+
+        // 3. Setup Tanggal
         var inpTgl = $('#cekTanggal'), inpTglForm = $('#fTgl');
         if (inpTgl) {
             inpTgl.min = tglMin;
@@ -320,11 +399,13 @@
         }
 
         isiPilihanJam();
-        perbaruiKapasitas(tglPilih);
-        muatKatalog(tglPilih);
+        if ($('#katalogMenu')) {
+            perbaruiKapasitas(tglPilih);
+            muatKatalog(tglPilih);
+        }
         renderKeranjang();
 
-        // Delegasi Event Keranjang (Stepper & Hapus)
+        // 4. Delegasi Event Keranjang (Stepper & Hapus)
         var ringkasan = $('#ringkasan');
         if (ringkasan) {
             ringkasan.onclick = function (e) {
@@ -369,15 +450,45 @@
             };
         }
 
+        // Tombol Lanjut ke Checkout (Halaman index -> navigasi ke checkout.html)
         var btnLanjut = $('#btnLanjut');
         if (btnLanjut) {
             btnLanjut.onclick = function () {
-                var elCheckout = $('#checkout');
-                if (elCheckout) elCheckout.scrollIntoView({ behavior: 'smooth' });
+                window.location.href = 'checkout.html';
             };
         }
 
-        // Submit Form Checkout
+        // 5. Validasi Nama Live di Form Checkout
+        var fNama = $('#fNama');
+        if (fNama) {
+            fNama.addEventListener('blur', function () {
+                var v = this.value.trim();
+                if (v === '') { tampilGalat('nama', ''); return; }
+                tampilGalat('nama', pesanGalatNama(v));
+                periksaSiapKirim();
+            });
+            fNama.addEventListener('input', function () {
+                if (namaValid(this.value.trim())) tampilGalat('nama', '');
+                periksaSiapKirim();
+            });
+        }
+
+        var fWa = $('#fWa');
+        if (fWa) {
+            fWa.addEventListener('input', function () {
+                periksaSiapKirim();
+            });
+            fWa.addEventListener('blur', function () {
+                var v = this.value.trim();
+                if (v && !waValid(v)) {
+                    tampilGalat('no_wa', 'Nomor WhatsApp tidak valid (minimal 10 digit).');
+                } else {
+                    tampilGalat('no_wa', '');
+                }
+            });
+        }
+
+        // 6. Submit Form Checkout (Halaman checkout.html)
         var form = $('#formCheckout');
         if (form) {
             form.onsubmit = async function (e) {
@@ -385,30 +496,56 @@
                 var galatDiv = $('#galatCheckout');
                 if (galatDiv) { galatDiv.style.display = 'none'; galatDiv.textContent = ''; }
 
-                var nama = ($('#fNama') || {}).value || '';
-                var no_wa = ($('#fWa') || {}).value || '';
+                var nama = (fNama || {}).value || '';
+                var no_wa = (fWa || {}).value || '';
                 var tgl = (inpTglForm || {}).value || tglPilih;
                 var jam = ($('#fJam') || {}).value || '10:00';
                 var catatan = ($('#fCatatan') || {}).value || '';
+
+                var gNama = pesanGalatNama(nama);
+                if (gNama) {
+                    tampilGalat('nama', gNama);
+                    if (fNama) fNama.focus();
+                    return;
+                }
+
+                if (!waValid(no_wa)) {
+                    tampilGalat('no_wa', 'Nomor WhatsApp tidak valid.');
+                    if (fWa) fWa.focus();
+                    return;
+                }
 
                 var items = Object.keys(keranjang).map(function (k) {
                     return { menu_id: parseInt(k, 10), jumlah: keranjang[k].jumlah };
                 });
 
+                var box = totalBox();
+                var minBox = CFG.MINIMAL_BOX || 10;
+                if (box < minBox) {
+                    if (galatDiv) {
+                        galatDiv.textContent = 'Minimum pemesanan adalah ' + minBox + ' box.';
+                        galatDiv.style.display = 'block';
+                    }
+                    return;
+                }
+
                 var btnSubmit = $('#btnBuatPesanan');
-                if (btnSubmit) { btnSubmit.disabled = true; btnSubmit.textContent = 'Memproses Pesanan...'; }
+                var btnTeks = $('#btnBuatTeks');
+                if (btnSubmit) { btnSubmit.disabled = true; }
+                if (btnTeks) { btnTeks.textContent = 'Memproses Pesanan...'; }
 
                 var res = await DB.buatPesanan({
-                    nama: nama,
-                    no_wa: no_wa,
+                    nama: nama.trim(),
+                    no_wa: no_wa.trim(),
                     tanggal_ambil: tgl,
                     jam_ambil: jam,
-                    catatan: catatan,
+                    catatan: catatan.trim(),
                     items: items
                 });
 
                 if (!res || !res.ok) {
-                    if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.textContent = 'Lanjutkan Pembayaran'; }
+                    if (btnSubmit) btnSubmit.disabled = false;
+                    if (btnTeks) btnTeks.textContent = 'Lanjutkan Pembayaran';
                     if (galatDiv) {
                         galatDiv.textContent = (res && res.pesan) || 'Gagal membuat pesanan. Silakan periksa kembali.';
                         galatDiv.style.display = 'block';
@@ -424,4 +561,3 @@
         }
     });
 })();
-

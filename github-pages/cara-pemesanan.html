@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Cara Pemesanan - Warung Mas Alif</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/customer.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="assets/js/config.js"></script>
+    <script src="assets/js/db-service.js"></script>
+    <script src="assets/js/customer-app.js"></script>
+</head>
+<body class="cust">
+    <div class="cust-toast-area" id="custToast" aria-live="polite"></div>
+
+    <!-- ================= HEADER ================= -->
+    <header class="cust-header">
+        <div class="wadah cust-nav">
+            <a href="index.html" class="cust-logo">
+                <span class="ikon-warteg" aria-hidden="true">🍱</span>
+                <span>Warung Mas Alif<small>Nasi Box &amp; Katering</small></span>
+            </a>
+            <div class="cust-links" id="custLinks">
+                <a href="index.html">Beranda</a>
+                <a href="index.html#katalog">Menu</a>
+                <a href="cara-pemesanan.html" class="aktif">Cara Pemesanan</a>
+                <a href="cek_status.html">Cek Status Pesanan</a>
+            </div>
+            <div class="cust-nav-kanan">
+                <a href="index.html#katalog" class="btn btn-primer btn-kecil">Pesan Sekarang</a>
+                <button type="button" class="cust-toggle" id="custToggle" aria-label="Buka menu" aria-expanded="false" aria-controls="custLinks">
+                    <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- ================= HERO CARA PEMESANAN ================= -->
+    <section class="seksi" style="background:var(--c-primer);color:#fff;text-align:center;padding:48px 0 40px">
+        <div class="wadah">
+            <h1 style="font-size:2rem;margin-bottom:8px">Cara Pemesanan</h1>
+            <p class="lead" style="color:rgba(255,255,255,.85);max-width:600px;margin:0 auto">
+                Panduan lengkap memesan nasi box &amp; katering di Warung Mas Alif.
+                Tanpa perlu membuat akun — cukup ikuti langkah-langkah berikut.
+            </p>
+        </div>
+    </section>
+
+    <!-- ================= LANGKAH-LANGKAH ================= -->
+    <section class="seksi">
+        <div class="wadah">
+            <div class="seksi-kepala">
+                <h2>7 Langkah Mudah</h2>
+                <p>Dari memilih menu hingga mengambil pesanan, semuanya bisa dilakukan secara online.</p>
+            </div>
+            <div class="cara-pemesanan-grid">
+
+                <!-- Langkah 1 -->
+                <div class="cara-langkah">
+                    <div class="nomor-langkah" aria-hidden="true">1</div>
+                    <div class="ikon-langkah" aria-hidden="true">📋</div>
+                    <h3>Pilih Menu</h3>
+                    <p>Pilih nasi, lauk, sayur, atau paket yang tersedia dari katalog menu kami.</p>
+                </div>
+
+                <!-- Langkah 2 -->
+                <div class="cara-langkah">
+                    <div class="nomor-langkah" aria-hidden="true">2</div>
+                    <div class="ikon-langkah" aria-hidden="true">📦</div>
+                    <h3>Tentukan Jumlah Pesanan</h3>
+                    <p>Tentukan jumlah box yang diinginkan. Minimum pemesanan 10 box per transaksi.</p>
+                </div>
+
+                <!-- Langkah 3 -->
+                <div class="cara-langkah">
+                    <div class="nomor-langkah" aria-hidden="true">3</div>
+                    <div class="ikon-langkah" aria-hidden="true">📅</div>
+                    <h3>Tentukan Jadwal Pengambilan</h3>
+                    <p>Pilih tanggal dan jam pengambilan sesuai ketersediaan kuota. Pemesanan minimal H-1 sebelum pengambilan.</p>
+                </div>
+
+                <!-- Langkah 4 -->
+                <div class="cara-langkah">
+                    <div class="nomor-langkah" aria-hidden="true">4</div>
+                    <div class="ikon-langkah" aria-hidden="true">✏️</div>
+                    <h3>Isi Data Pemesan</h3>
+                    <p>Isi nama lengkap dan nomor WhatsApp aktif yang akan digunakan untuk konfirmasi pesanan.</p>
+                </div>
+
+                <!-- Langkah 5 -->
+                <div class="cara-langkah">
+                    <div class="nomor-langkah" aria-hidden="true">5</div>
+                    <div class="ikon-langkah" aria-hidden="true">💳</div>
+                    <h3>Lakukan Pembayaran</h3>
+                    <p>Lakukan pembayaran menggunakan QRIS sesuai instruksi yang ditampilkan setelah konfirmasi pesanan.</p>
+                </div>
+
+                <!-- Langkah 6 -->
+                <div class="cara-langkah">
+                    <div class="nomor-langkah" aria-hidden="true">6</div>
+                    <div class="ikon-langkah" aria-hidden="true">🧾</div>
+                    <h3>Simpan Invoice</h3>
+                    <p>Simpan invoice atau kode pesanan sebagai bukti pemesanan. Anda dapat mengecek status pesanan kapan saja.</p>
+                </div>
+
+                <!-- Langkah 7 -->
+                <div class="cara-langkah">
+                    <div class="nomor-langkah" aria-hidden="true">7</div>
+                    <div class="ikon-langkah" aria-hidden="true">🎉</div>
+                    <h3>Ambil Pesanan</h3>
+                    <p>Ambil pesanan Anda di Warung Mas Alif sesuai jadwal yang telah ditentukan. Jam operasional: 09:00–19:00 WIB.</p>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- ================= INFORMASI TAMBAHAN ================= -->
+    <section class="seksi" style="background:#fff;border-top:1px solid var(--c-garis)">
+        <div class="wadah" style="max-width:640px;text-align:center">
+            <div class="seksi-kepala">
+                <h2>Informasi Operasional</h2>
+                <p>Pastikan Anda memahami ketentuan berikut sebelum memesan.</p>
+            </div>
+            <div class="panel-putih" style="text-align:left;margin-bottom:24px">
+                <ul style="list-style:none;padding:0;margin:0;display:grid;gap:12px">
+                    <li><strong>⏰ Jam Operasional:</strong> 09:00–19:00 WIB</li>
+                    <li><strong>📍 Lokasi Pengambilan:</strong> Warung Mas Alif — Jl. Raya Warteg No. 12, Jakarta</li>
+                    <li><strong>📦 Minimum Pemesanan:</strong> 10 box per transaksi</li>
+                    <li><strong>📅 Waktu Pesan:</strong> Minimal H-1 sebelum pengambilan</li>
+                    <li><strong>🏷️ Kapasitas Harian:</strong> Maksimal 120 box per hari</li>
+                </ul>
+            </div>
+            <a href="index.html#katalog" class="btn btn-primer">Mulai Pesan Sekarang</a>
+        </div>
+    </section>
+
+    <!-- ================= FOOTER ================= -->
+    <footer class="cust-footer">
+        <div class="wadah cust-footer-grid">
+            <div>
+                <h4>Warung Mas Alif</h4>
+                <p>Melayani pemesanan nasi box dan katering dengan menu harian segar. Pesanan diambil sendiri (self-pickup) di lokasi warteg.</p>
+            </div>
+            <div>
+                <h4>Navigasi</h4>
+                <ul>
+                    <li><a href="index.html">Beranda</a></li>
+                    <li><a href="index.html#katalog">Menu</a></li>
+                    <li><a href="cara-pemesanan.html">Cara Pemesanan</a></li>
+                    <li><a href="cek_status.html">Cek Status Pesanan</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4>Informasi</h4>
+                <ul>
+                    <li>Minimum 10 box per pesanan</li>
+                    <li>Pesan minimal H-1 sebelum pengambilan</li>
+                    <li>Pembayaran non-tunai via QRIS</li>
+                    <li>Jam operasional: 09:00–19:00 WIB</li>
+                </ul>
+            </div>
+            <div>
+                <h4>Lokasi Pengambilan</h4>
+                <p>Warung Mas Alif<br>Jl. Raya Warteg No. 12, Jakarta</p>
+                <p>Telp/WA: 0812-3456-7890</p>
+            </div>
+        </div>
+        <div class="copy">&copy; 2026 Warung Mas Alif. Semua harga dalam Rupiah (IDR).</div>
+    </footer>
+</body>
+</html>

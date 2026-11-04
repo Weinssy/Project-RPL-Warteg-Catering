@@ -27,7 +27,9 @@ Project-RPL-Warteg-Catering/
 ├── index.html                  # Redirect otomatis ke ./github-pages/index.html
 ├── .github/workflows/          # CI/CD otomatis deployment GitHub Pages
 ├── github-pages/               # [BARU] Versi Cloud GitHub Pages + Supabase (Bisa Diakses Online)
-│   ├── index.html              # Halaman Utama Pelanggan (Katalog & Meal Builder)
+│   ├── index.html              # Halaman Utama Pelanggan (Hero, Kuota, Katalog & Filter Chips)
+│   ├── cara-pemesanan.html     # Panduan 7 Langkah Pemesanan Katering
+│   ├── checkout.html           # Halaman Checkout & Formulir Data Pemesan
 │   ├── cek_status.html         # Cek Status Pesanan Mandiri
 │   ├── pembayaran.html         # Pembayaran QRIS & Upload Bukti Bayar
 │   ├── nota.html               # Nota Digital Pelanggan

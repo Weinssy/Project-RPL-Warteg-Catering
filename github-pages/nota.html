@@ -7,27 +7,32 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/customer.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="assets/js/config.js"></script>
     <script src="assets/js/db-service.js"></script>
 </head>
 <body class="cust">
+<!-- ================= HEADER ================= -->
 <header class="cust-header">
-    <div class="wadah">
-        <nav class="cust-nav" aria-label="Navigasi utama">
-            <a href="index.html" class="cust-logo">
-                <img src="uploads/1.jpeg" alt="Logo Warung Mas Alif" class="logo-ikon" onerror="this.style.display='none'">
-                <span>Warung Mas Alif<small>Nasi Box &amp; Katering</small></span>
-            </a>
-            <div class="cust-links" id="custLinks">
-                <a href="index.html#katalog">Katalog Nasi Box</a>
-                <a href="cek_status.html">Cek Status Pesanan</a>
-            </div>
-            <div class="cust-nav-kanan">
-                <a href="index.html" class="btn btn-primer btn-kecil">Pesan Lagi</a>
-            </div>
-        </nav>
+    <div class="wadah cust-nav">
+        <a href="index.html" class="cust-logo">
+            <span class="ikon-warteg" aria-hidden="true">🍱</span>
+            <span>Warung Mas Alif<small>Nasi Box &amp; Katering</small></span>
+        </a>
+        <div class="cust-links" id="custLinks">
+            <a href="index.html">Beranda</a>
+            <a href="index.html#katalog">Menu</a>
+            <a href="cara-pemesanan.html">Cara Pemesanan</a>
+            <a href="cek_status.html">Cek Status Pesanan</a>
+        </div>
+        <div class="cust-nav-kanan">
+            <a href="index.html#katalog" class="btn btn-primer btn-kecil">Pesan Lagi</a>
+            <button type="button" class="cust-toggle" id="custToggle" aria-label="Buka menu" aria-expanded="false" aria-controls="custLinks">
+                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+            </button>
+        </div>
     </div>
 </header>
 <main>
@@ -41,10 +46,38 @@
 </section>
 
 </main>
+<!-- ================= FOOTER ================= -->
 <footer class="cust-footer">
-    <div class="wadah">
-        <div class="copy">&copy; 2026 Warung Mas Alif. Semua harga dalam Rupiah (IDR).</div>
+    <div class="wadah cust-footer-grid">
+        <div>
+            <h4>Warung Mas Alif</h4>
+            <p>Melayani pemesanan nasi box dan katering dengan menu harian segar. Pesanan diambil sendiri (self-pickup) di lokasi warteg.</p>
+        </div>
+        <div>
+            <h4>Navigasi</h4>
+            <ul>
+                <li><a href="index.html">Beranda</a></li>
+                <li><a href="index.html#katalog">Menu</a></li>
+                <li><a href="cara-pemesanan.html">Cara Pemesanan</a></li>
+                <li><a href="cek_status.html">Cek Status Pesanan</a></li>
+            </ul>
+        </div>
+        <div>
+            <h4>Informasi</h4>
+            <ul>
+                <li>Minimum 10 box per pesanan</li>
+                <li>Pesan minimal H-1 sebelum pengambilan</li>
+                <li>Pembayaran non-tunai via QRIS</li>
+                <li>Jam operasional: 09:00–19:00 WIB</li>
+            </ul>
+        </div>
+        <div>
+            <h4>Lokasi Pengambilan</h4>
+            <p>Warung Mas Alif<br>Jl. Raya Warteg No. 12, Jakarta</p>
+            <p>Telp/WA: 0812-3456-7890</p>
+        </div>
     </div>
+    <div class="copy">&copy; 2026 Warung Mas Alif. Semua harga dalam Rupiah (IDR).</div>
 </footer>
 
 <script>

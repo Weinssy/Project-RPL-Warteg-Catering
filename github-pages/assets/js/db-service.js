@@ -963,6 +963,59 @@
             state.admin.push(newAdm);
             saveLocalState(state);
             return { ok: true, admin: newAdm };
+        },
+
+        // Hapus Akun Admin (Khusus Role Admin, tidak bisa hapus akun sendiri atau akun owner)
+        hapusAdmin: async function (adminId, currentAdminId) {
+            var targetId = parseInt(adminId, 10);
+            if (currentAdminId && targetId === parseInt(currentAdminId, 10)) {
+                return { ok: false, pesan: 'Anda tidak dapat menghapus akun Anda sendiri.' };
+            }
+
+            if (isSupabaseReady) {
+                // Verifikasi role target terlebih dahulu
+                var { data: targetRows, error: errCek } = await supabaseClient
+                    .from('admin')
+                    .select('id, username, nama, role')
+                    .eq('id', targetId);
+
+                if (errCek || !targetRows || !targetRows.length) {
+                    return { ok: false, pesan: 'Akun admin tidak ditemukan.' };
+                }
+
+                var target = targetRows[0];
+                if (target.role === 'owner') {
+                    return { ok: false, pesan: 'Akun ber-peran Owner tidak dapat dihapus.' };
+                }
+
+                var { error } = await supabaseClient
+                    .from('admin')
+                    .delete()
+                    .eq('id', targetId)
+                    .eq('role', 'admin');
+
+                if (error) {
+                    return { ok: false, pesan: 'Gagal menghapus admin: ' + error.message };
+                }
+
+                this.catatAktivitas('hapus_admin', 'Menghapus admin "' + target.username + '" (' + target.nama + ')');
+                return { ok: true, pesan: 'Akun admin "' + target.nama + '" berhasil dihapus.' };
+            }
+
+            var state = loadLocalState();
+            state.admin = state.admin || [];
+            var target = state.admin.find(function (x) { return x.id === targetId; });
+            if (!target) {
+                return { ok: false, pesan: 'Akun admin tidak ditemukan.' };
+            }
+            if (target.role === 'owner') {
+                return { ok: false, pesan: 'Akun ber-peran Owner tidak dapat dihapus.' };
+            }
+
+            state.admin = state.admin.filter(function (x) { return x.id !== targetId; });
+            saveLocalState(state);
+            this.catatAktivitas('hapus_admin', 'Menghapus admin "' + target.username + '" (' + target.nama + ')');
+            return { ok: true, pesan: 'Akun admin "' + target.nama + '" berhasil dihapus.' };
         }
     };
 
