@@ -156,6 +156,57 @@ function username_valid(string $u): bool {
     return (bool)preg_match('/^[A-Za-z0-9._-]{3,50}$/', $u);
 }
 
+// Nama lengkap untuk akun admin:
+// - Wajib diisi, maksimal 100 karakter.
+// - TIDAK boleh mengandung angka (baik seluruhnya maupun sebagian).
+// - Hanya huruf (termasuk huruf Unicode/aksara), spasi, titik, apostrof, dan tanda hubung.
+// Mengembalikan null bila valid, atau pesan galat berbahasa Indonesia bila tidak valid.
+function validasi_nama_lengkap(?string $nama): ?string {
+    $nama = trim((string)$nama);
+    if ($nama === '') {
+        return 'Nama lengkap wajib diisi.';
+    }
+    if (mb_strlen($nama, 'UTF-8') > 100) {
+        return 'Nama lengkap maksimal 100 karakter.';
+    }
+    // Tolak bila ada karakter angka apa pun (Unicode Number).
+    if (preg_match('/\p{N}/u', $nama)) {
+        return 'Nama lengkap tidak boleh mengandung angka.';
+    }
+    // Hanya huruf Unicode (L/M), spasi, titik, apostrof (termasuk ’), dan tanda hubung.
+    if (!preg_match('/^[\p{L}\p{M}][\p{L}\p{M}\s.\'’\-]*$/u', $nama)) {
+        return 'Nama lengkap hanya boleh berisi huruf, spasi, titik, apostrof, dan tanda hubung.';
+    }
+    return null;
+}
+
+// Nama pemesan PELANGGAN (formulir checkout). Aturan inti sesuai kebutuhan halaman customer:
+// - Wajib diisi, maksimal 100 karakter.
+// - Harus mengandung minimal satu HURUF (tidak boleh hanya angka / simbol).
+// - TIDAK boleh mengandung angka sama sekali (mis. "123", "123 Ahmad", "Ahmad1" ditolak).
+// Mengembalikan null bila valid, atau pesan galat berbahasa Indonesia bila tidak valid.
+// PENTING: dipakai di backend (buat_pesanan) — validasi JavaScript hanya pelengkap UX.
+// Sengaja TIDAK memakai whitelist karakter yang terlalu ketat agar nama non-latin / nama unik
+// (mis. "Muh. Rizky", "Siti/Ayu", tanda kurung, dsb.) tetap diterima, selama ada huruf & tanpa angka.
+function validasi_nama_pemesan(?string $nama): ?string {
+    $nama = trim((string)$nama);
+    if ($nama === '') {
+        return 'Nama pemesan wajib diisi.';
+    }
+    if (mb_strlen($nama, 'UTF-8') > 100) {
+        return 'Nama pemesan maksimal 100 karakter.';
+    }
+    // Wajib ada minimal satu huruf (Unicode Letter).
+    if (!preg_match('/\p{L}/u', $nama)) {
+        return 'Nama pemesan harus mengandung huruf, tidak boleh berupa angka saja.';
+    }
+    // Tolak bila ada karakter angka apa pun (Unicode Number).
+    if (preg_match('/\p{N}/u', $nama)) {
+        return 'Nama pemesan tidak boleh mengandung angka.';
+    }
+    return null;
+}
+
 // Nomor telepon Indonesia yang masuk akal: 8-15 digit setelah pembersihan
 // (spasi, tanda hubung, kurung, dan awalan + diizinkan). Disimpan dalam bentuk digit saja.
 function telepon_valid(string $t): bool {

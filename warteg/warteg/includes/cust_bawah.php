@@ -10,7 +10,16 @@
                 <p>Melayani pemesanan nasi box dan katering dengan menu harian segar. Pesanan diambil sendiri (self-pickup) di lokasi warteg.</p>
             </div>
             <div>
-                <h4>Informasi Pesanan</h4>
+                <h4>Navigasi</h4>
+                <ul>
+                    <li><a href="<?= e(url('index.php')) ?>">Beranda</a></li>
+                    <li><a href="<?= e(url('index.php#katalog')) ?>">Menu</a></li>
+                    <li><a href="<?= e(url('cara-pemesanan.php')) ?>">Cara Pemesanan</a></li>
+                    <li><a href="<?= e(url('cek_status.php')) ?>">Cek Status Pesanan</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4>Informasi</h4>
                 <ul>
                     <li>Minimum <?= (int)MINIMAL_BOX ?> box per pesanan</li>
                     <li>Pesan minimal H-<?= (int)MINIMAL_H_MINUS ?> sebelum pengambilan</li>
@@ -22,7 +31,6 @@
                 <h4>Lokasi Pengambilan</h4>
                 <p><?= e(LOKASI_AMBIL) ?><?php if (ALAMAT_WARTEG !== ''): ?><br><?= e(ALAMAT_WARTEG) ?><?php endif; ?></p>
                 <?php if (TELEPON_WARTEG !== ''): ?><p>Telp/WA: <?= e(TELEPON_WARTEG) ?></p><?php endif; ?>
-                <p><a href="<?= e(url('cek_status.php')) ?>">Cek Status Pesanan &rarr;</a></p>
             </div>
         </div>
         <div class="copy">&copy; <?= date('Y') ?> <?= e(NAMA_WARTEG) ?>. Semua harga dalam Rupiah (IDR).</div>

@@ -75,7 +75,11 @@ function buat_pesanan(mysqli $kon, array $in, bool $ketat = false): array {
     $jam   = (string)($in['jam_ambil'] ?? '');
     $catatan = trim((string)($in['catatan'] ?? ''));
 
-    if ($nama === '' || mb_strlen($nama) > 100)          return hasil_gagal('Nama pelanggan wajib diisi (maksimal 100 karakter).');
+    // Nama pemesan: wajib berisi huruf, tidak boleh berupa/mengandung angka.
+    // Validasi BACKEND wajib (JavaScript hanya pelengkap UX). Ditolak SEBELUM data apa pun disimpan,
+    // sehingga pilihan menu pelanggan tidak tersentuh dan tidak ada baris pesanan baru dibuat.
+    $nama_galat = validasi_nama_pemesan($nama);
+    if ($nama_galat !== null)                             return hasil_gagal($nama_galat, ['field' => 'nama']);
     if ($wa === null)                                     return hasil_gagal('Nomor WhatsApp tidak valid.');
     if ($tgl === null || $tgl < date('Y-m-d'))            return hasil_gagal('Tanggal pengambilan tidak valid.');
     if (!preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $jam)) return hasil_gagal('Jam pengambilan tidak valid.');
@@ -150,25 +154,52 @@ function buat_pesanan(mysqli $kon, array $in, bool $ketat = false): array {
         $total_harga = 0;
         foreach ($menu as $m) { $harga[(int)$m['id']] = (int)$m['harga']; $total_harga += (int)$m['harga'] * $item[(int)$m['id']]; }
 
-        $urut = (int)db_val($kon, 'SELECT COUNT(*) FROM pesanan WHERE tanggal_ambil = ?', [$tgl]) + 1;
-        $kode = sprintf('WRT-%s-%03d', str_replace('-', '', $tgl), $urut);
+        // ---------- Nomor urut & kode pesanan (aman terhadap celah/penghapusan) ----------
+        // CATATAN: dulu memakai COUNT(*)+1 yang bisa BENTROK bila ada baris yang dihapus
+        // (mis. COUNT=42 tetapi kode ...-001 sudah ada). Sekarang urut diambil dari SUFFIX
+        // TERBESAR yang ada untuk tanggal tsb, lalu insert dicoba ulang bila tetap bentrok.
+        $prefix = sprintf('WRT-%s-', str_replace('-', '', $tgl));
+        $maks_suffix = (int)db_val(
+            $kon,
+            'SELECT COALESCE(MAX(CAST(SUBSTRING(kode, ?) AS UNSIGNED)), 0) FROM pesanan WHERE kode LIKE ?',
+            [strlen($prefix) + 1, $prefix . '%']
+        );
         $token = bin2hex(random_bytes(20)); // 40 hex: membuka nota tanpa login; tidak berurutan
+        $token_val = substr($token, 0, 40);
 
         // Kolom pembayaran/catatan hanya ada bila migrasi_pembayaran.sql sudah dijalankan.
         // Tanpa migrasi, insert tetap berjalan (kompatibel) tanpa kolom tersebut.
         $ada = kolom_pesanan_baru($kon);
-        $token_val = substr($token, 0, 40);
-        if ($ada) {
-            db_exec($kon, 'INSERT INTO pesanan (kode, nama_pelanggan, no_wa, tanggal_ambil, jam_ambil, total_box, total_harga,
-                        nominal_bayar, status_bayar, metode_bayar, token_nota, catatan)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                [$kode, $nama, $wa, $tgl, $jam . ':00', $total, $total_harga,
-                 $total_harga, BAYAR_BELUM, 'qris', $token_val, $catatan === '' ? null : $catatan]);
-        } else {
-            db_exec($kon, 'INSERT INTO pesanan (kode, nama_pelanggan, no_wa, tanggal_ambil, jam_ambil, total_box, total_harga)
-                           VALUES (?, ?, ?, ?, ?, ?, ?)', [$kode, $nama, $wa, $tgl, $jam . ':00', $total, $total_harga]);
+
+        $pid = 0;
+        $kode = '';
+        $percobaan = 0;
+        $urut = $maks_suffix;
+        while (true) {
+            $percobaan++;
+            $urut++;
+            $kode = sprintf('%s%03d', $prefix, $urut);
+            try {
+                if ($ada) {
+                    db_exec($kon, 'INSERT INTO pesanan (kode, nama_pelanggan, no_wa, tanggal_ambil, jam_ambil, total_box, total_harga,
+                                nominal_bayar, status_bayar, metode_bayar, token_nota, catatan)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                        [$kode, $nama, $wa, $tgl, $jam . ':00', $total, $total_harga,
+                         $total_harga, BAYAR_BELUM, 'qris', $token_val, $catatan === '' ? null : $catatan]);
+                } else {
+                    db_exec($kon, 'INSERT INTO pesanan (kode, nama_pelanggan, no_wa, tanggal_ambil, jam_ambil, total_box, total_harga)
+                                   VALUES (?, ?, ?, ?, ?, ?, ?)', [$kode, $nama, $wa, $tgl, $jam . ':00', $total, $total_harga]);
+                }
+                $pid = (int)$kon->insert_id;
+                break; // berhasil
+            } catch (mysqli_sql_exception $e) {
+                // 1062 = duplicate entry. Coba suffix berikutnya (maks. 20 percobaan).
+                if (strpos($e->getMessage(), 'uq_pesanan_kode') !== false && $percobaan < 20) {
+                    continue;
+                }
+                throw $e; // galat lain / habis percobaan -> dilempar ke handler luar
+            }
         }
-        $pid = (int)$kon->insert_id;
         foreach ($item as $mid => $jml) {
             db_exec($kon, 'INSERT INTO detail_pesanan (pesanan_id, menu_id, jumlah, harga_satuan, subtotal) VALUES (?, ?, ?, ?, ?)',
                 [$pid, $mid, $jml, $harga[$mid], $harga[$mid] * $jml]);

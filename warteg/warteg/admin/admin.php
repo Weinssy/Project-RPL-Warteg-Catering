@@ -71,8 +71,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $role     = (string)($_POST['role'] ?? 'admin');
         $form     = ['nama' => $nama, 'username' => $username, 'email' => $email, 'telepon' => $telepon, 'role' => $role];
 
-        if ($nama === '' || mb_strlen($nama) > 100)                          $galat = 'Nama lengkap wajib diisi (maksimal 100 karakter).';
-        elseif (!username_valid($username))                                  $galat = 'Username 3-50 karakter, hanya huruf, angka, titik, garis bawah, atau garis hubung.';
+                if (($galat_nama = validasi_nama_lengkap($nama)) !== null)          $galat = $galat_nama;
+        elseif (!username_valid($username))                                 $galat = 'Username 3-50 karakter, hanya huruf, angka, titik, garis bawah, atau garis hubung.';
         elseif ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) $galat = 'Format email tidak valid.';
         elseif ($email !== '' && mb_strlen($email) > 150)                    $galat = 'Email maksimal 150 karakter.';
         elseif ($telepon !== '' && !telepon_valid($telepon))                 $galat = 'Nomor telepon tidak valid (8-15 digit angka).';
@@ -144,7 +144,10 @@ require __DIR__ . '/../includes/layout_atas.php';
                 <input type="hidden" name="aksi" value="tambah_admin">
 
                 <label class="form-label" for="namaAdmin">Nama lengkap</label>
-                <input class="form-control" id="namaAdmin" name="nama" maxlength="100" value="<?= e($form['nama']) ?>" placeholder="Contoh: Siti Aminah" required>
+                <input class="form-control" id="namaAdmin" name="nama" maxlength="100" value="<?= e($form['nama']) ?>"
+                       pattern="[^\d]*" title="Nama hanya boleh huruf, spasi, titik, apostrof, dan tanda hubung (tanpa angka)"
+                       data-nama-admin="1" placeholder="Contoh: Siti Aminah" required>
+                <p class="bantuan" id="namaAdminGalat" style="color:var(--merah);display:none"></p>
 
                 <label class="form-label" for="usernameAdmin">Username</label>
                 <input class="form-control" id="usernameAdmin" name="username" maxlength="50" value="<?= e($form['username']) ?>" pattern="[A-Za-z0-9._\-]{3,50}" title="3-50 karakter: huruf, angka, titik, garis bawah, garis hubung" placeholder="contoh: sitiaminah" required>
@@ -190,7 +193,7 @@ require __DIR__ . '/../includes/layout_atas.php';
         <p class="kosong">Belum ada akun admin.</p>
     <?php else: ?>
     <div class="table-wrapper"><table>
-        <thead><tr><th>Admin</th><th>Username</th><th>Email</th><th>Peran</th><th>Status</th></tr></thead>
+        <thead><tr><th>Admin</th><th>Username</th><th>Email</th><th>Peran</th><th class="kolom-aksi">Aksi</th></tr></thead>
         <tbody>
         <?php foreach ($daftar as $a):
             $url_foto = url_foto_admin($a['foto'], versi_foto_admin($a['foto'], $a['diubah_pada'] ?? $a['dibuat_pada']));
@@ -215,12 +218,21 @@ require __DIR__ . '/../includes/layout_atas.php';
                 <td><?= e($a['username']) ?></td>
                 <td><?= !empty($a['email']) ? e($a['email']) : '<span class="nilai-kosong">' . e(t('common.belum_diisi', $bhs)) . '</span>' ?></td>
                 <td><span class="role-badge<?= $owner_a ? ' owner' : '' ?>"><?= e(label_role($a['role'] ?? 'admin', $bhs)) ?></span></td>
-                <td><?= $saya ? '<span class="tag-saya">Sesi saat ini</span>' : '<span class="teks-redup">Aktif</span>' ?></td>
+                <td class="kolom-aksi">
+                    <?php if (!$saya && !$owner_a): ?>
+                        <button type="button" class="btn btn-kecil btn-hapus-admin"
+                                data-id="<?= (int)$a['id'] ?>"
+                                data-nama="<?= e($a['nama']) ?>"
+                                data-username="<?= e($a['username']) ?>">Hapus</button>
+                    <?php else: ?>
+                        <span class="teks-redup">&mdash;</span>
+                    <?php endif; ?>
+                </td>
             </tr>
         <?php endforeach; ?>
         </tbody>
     </table></div>
-    <p class="teks-redup" style="padding:0 24px 20px">Demi keamanan, sistem belum menyediakan hapus/nonaktifkan admin dari halaman ini agar tidak ada risiko kehilangan akses Owner terakhir. Identitas dan kata sandi akun sendiri diubah melalui halaman Profil (klik nama di kanan atas).</p>
+    <p class="teks-redup" style="padding:0 24px 20px">Hanya akun ber-peran Admin yang dapat dihapus. Akun Owner dan akun Anda sendiri dilindungi dan tidak dapat dihapus dari halaman ini.</p>
     <?php endif; ?>
     </div>
 </section>
@@ -251,6 +263,64 @@ $skrip_halaman = <<<'JS'
         pw.addEventListener('input', cocok);
         kf.addEventListener('input', cocok);
     }
+
+    // Validasi nama lengkap (tanpa angka). Ini pelengkap agar pengguna dapat respons langsung;
+    // server tetap memvalidasi ulang memakai validasi_nama_lengkap() sebelum menyimpan.
+    var nama = document.getElementById('namaAdmin'), namaGalat = document.getElementById('namaAdminGalat');
+    function cekNama(nilai) {
+        var v = (nilai || '').trim();
+        if (v === '') return 'Nama lengkap wajib diisi.';
+        if (v.length > 100) return 'Nama lengkap maksimal 100 karakter.';
+        if (/[0-9]/.test(v)) return 'Nama lengkap tidak boleh mengandung angka.';
+        if (!/^[A-Za-z\u00C0-\u024F\u1E00-\u1EFF ]+$/.test(v.replace(/[.'’\-]/g, ' '))) return 'Nama lengkap hanya boleh berisi huruf, spasi, titik, apostrof, dan tanda hubung.';
+        return '';
+    }
+    if (nama && namaGalat) {
+        var tampilGalatNama = function () {
+            var g = cekNama(nama.value);
+            namaGalat.textContent = g;
+            namaGalat.style.display = g ? 'block' : 'none';
+            nama.setCustomValidity(g);
+        };
+        nama.addEventListener('input', tampilGalatNama);
+        nama.addEventListener('blur', tampilGalatNama);
+        var formNama = nama.closest('form');
+        if (formNama) formNama.addEventListener('submit', function () {
+            tampilGalatNama();
+            if (cekNama(nama.value)) { nama.focus(); }
+        });
+    }
+
+    // Hapus akun admin (khusus Owner, tombol hanya muncul untuk peran Admin dan bukan akun sendiri).
+    // Server tetap menolak permintaan dari non-Owner, akun Owner, atau akun sendiri.
+    document.addEventListener('click', function (ev) {
+        var b = ev.target.closest('.btn-hapus-admin');
+        if (!b) return;
+        var id = b.dataset.id, nm = b.dataset.nama || '', un = b.dataset.username || '';
+        var label = un ? (nm ? nm + ' (' + un + ')' : un) : ('#' + id);
+        if (!window.confirm('Hapus akun admin "' + label + '"?\n\nTindakan ini tidak dapat dibatalkan.')) return;
+        b.disabled = true;
+        var csrf = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+        var fd = new FormData();
+        fd.append('admin_id', id);
+        fd.append('csrf', csrf);
+        fetch('aksi/hapus_admin.php', { method: 'POST', body: fd, credentials: 'same-origin', headers: { 'X-CSRF-Token': csrf } })
+            .then(function (r) { return r.json().catch(function () { return { ok: false, pesan: 'Respons server tidak valid.' }; }); })
+            .then(function (h) {
+                if (!h.ok) { b.disabled = false; alert(h.pesan || 'Gagal menghapus akun admin.'); return; }
+                var tr = b.closest('tr');
+                if (tr) tr.parentNode.removeChild(tr);
+                // Notifikasi ringan berhasil.
+                var t = document.createElement('div');
+                t.className = 'toast toast-ok';
+                t.setAttribute('role', 'status');
+                t.textContent = h.pesan || 'Akun admin berhasil dihapus.';
+                var area = document.getElementById('toastArea');
+                if (area) { area.appendChild(t); setTimeout(function () { t.remove(); }, 4500); }
+                else { alert(h.pesan || 'Akun admin berhasil dihapus.'); }
+            })
+            .catch(function () { b.disabled = false; alert('Tidak dapat menghubungi server.'); });
+    });
 })();
 JS;
 require __DIR__ . '/../includes/layout_bawah.php';

@@ -60,7 +60,7 @@ cek('Total box = 10', $total === 10, "total=$total");
 
 $idem = 'e2e-' . time();
 [$c3, $j3] = req($base . '/pesan_aksi.php', [
-    'aksi' => 'pesan', 'csrf' => $csrf, 'nama' => '[UJI] Pelanggan E2E', 'no_wa' => '081298765432',
+    'aksi' => 'pesan', 'csrf' => $csrf, 'nama' => '[UJI] Pelanggan Uji', 'no_wa' => '081298765432',
     'tanggal_ambil' => $besok, 'jam_ambil' => '11:00', 'catatan' => 'pesanan uji otomatis',
     'items' => json_encode($items), 'jumlah_box' => 10, 'idempotency' => $idem,
 ], $jar);
@@ -78,7 +78,7 @@ if ($kode !== '') {
     cek('Pesanan tersimpan di tabel pesanan', $p !== null);
     if ($p) {
         cek('total_box tersimpan = 10', (int)$p['total_box'] === 10, (string)$p['total_box']);
-        cek('nama pelanggan tersimpan', $p['nama_pelanggan'] === '[UJI] Pelanggan E2E');
+        cek('nama pelanggan tersimpan', $p['nama_pelanggan'] === '[UJI] Pelanggan Uji');
         cek('no_wa ternormalisasi 62...', strpos($p['no_wa'], '62') === 0, $p['no_wa']);
         $det = db_all($kon, 'SELECT * FROM detail_pesanan WHERE pesanan_id = ?', [(int)$p['id']]);
         cek('Detail pesanan tersimpan', count($det) === count($items), 'detail=' . count($det));
@@ -92,14 +92,14 @@ if ($kode !== '') {
     }
 
     // 5. Idempotensi: submit ulang dengan idempotency sama -> tidak membuat pesanan ganda.
-    $jmlSebelum = (int)db_val($kon, 'SELECT COUNT(*) FROM pesanan WHERE nama_pelanggan = ?', ['[UJI] Pelanggan E2E']);
+    $jmlSebelum = (int)db_val($kon, 'SELECT COUNT(*) FROM pesanan WHERE nama_pelanggan = ?', ['[UJI] Pelanggan Uji']);
     [$c4, $j4] = req($base . '/pesan_aksi.php', [
-        'aksi' => 'pesan', 'csrf' => $csrf, 'nama' => '[UJI] Pelanggan E2E', 'no_wa' => '081298765432',
+        'aksi' => 'pesan', 'csrf' => $csrf, 'nama' => '[UJI] Pelanggan Uji', 'no_wa' => '081298765432',
         'tanggal_ambil' => $besok, 'jam_ambil' => '11:00', 'catatan' => '', 'items' => json_encode($items),
         'jumlah_box' => 10, 'idempotency' => $idem,
     ], $jar);
     $r4 = json_decode($j4, true);
-    $jmlSesudah = (int)db_val($kon, 'SELECT COUNT(*) FROM pesanan WHERE nama_pelanggan = ?', ['[UJI] Pelanggan E2E']);
+    $jmlSesudah = (int)db_val($kon, 'SELECT COUNT(*) FROM pesanan WHERE nama_pelanggan = ?', ['[UJI] Pelanggan Uji']);
     cek('Klik ganda tidak membuat pesanan duplikat', $jmlSebelum === $jmlSesudah, "sebelum=$jmlSebelum sesudah=$jmlSesudah");
     cek('Respons duplikat ditandai', !empty($r4['duplikat']) || ($r4['kode'] ?? '') === $kode);
 

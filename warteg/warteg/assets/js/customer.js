@@ -2,6 +2,7 @@
 // Warteg Kharisma — interaksi halaman pelanggan.
 // Semua keputusan final (harga, stok, kuota, aturan) tetap divalidasi server.
 // File ini mengatur tampilan: keranjang, meal builder, ringkasan, dan pengiriman checkout.
+// Berfungsi di index.php (katalog menu) maupun checkout.php (form checkout).
 // =====================================================================
 (function () {
     'use strict';
@@ -138,6 +139,13 @@
         if (lanjut) lanjut.disabled = !cukup;
         if ($('#pesanMin')) {
             $('#pesanMin').textContent = cukup ? (box + ' box siap dipesan') : ('Minimum ' + (W.minimal || 10) + ' box, kurang ' + ((W.minimal || 10) - box));
+        }
+        // Tombol lanjut ke checkout (halaman index) aktif bila sudah memenuhi minimum.
+        var ctaCheckout = $('#btnKeCheckout');
+        if (ctaCheckout) {
+            ctaCheckout.style.pointerEvents = cukup ? 'auto' : 'none';
+            ctaCheckout.style.opacity = cukup ? '1' : '.6';
+            ctaCheckout.setAttribute('aria-disabled', cukup ? 'false' : 'true');
         }
         if ($('#fJumlahBox')) $('#fJumlahBox').value = box;
         periksaSiapKirim();
@@ -339,14 +347,52 @@
         });
     }
 
-    // ---------- Tombol "Lanjutkan" -> scroll ke checkout ----------
+    // ---------- Tombol "Lanjutkan" -> navigasi ke halaman checkout ----------
     var lanjut = $('#btnLanjut');
     if (lanjut) lanjut.addEventListener('click', function () {
-        var co = $('#checkout');
-        if (co) { co.scrollIntoView({ behavior: 'smooth', block: 'start' }); var n = $('#fNama'); if (n) setTimeout(function () { n.focus(); }, 400); }
+        window.location.href = W.base + '/checkout.php';
     });
 
+    // ---------- Tombol "Kembali ke Menu" (halaman checkout) ----------
+    var kembali = $('#kembaliMenu');
+    if (kembali) kembali.addEventListener('click', function () {
+        window.location.href = W.base + '/index.php';
+    });
+
+    // ---------- Filter kategori menu ----------
+    var filterWrap = $('#kategoriFilter');
+    if (filterWrap) {
+        filterWrap.addEventListener('click', function (e) {
+            var btn = e.target.closest('.filter-btn');
+            if (!btn) return;
+            var filter = btn.getAttribute('data-filter');
+            $$('.filter-btn', filterWrap).forEach(function (b) { b.classList.toggle('aktif', b === btn); });
+            $$('.kategori-blok').forEach(function (blok) {
+                if (filter === 'semua') { blok.style.display = ''; }
+                else { blok.style.display = blok.getAttribute('data-kategori') === filter ? '' : 'none'; }
+            });
+        });
+    }
+
     // ---------- Validasi klien (format cepat) ----------
+    // Validasi nama disamakan dengan backend validasi_nama_pemesan():
+    // wajib diisi, ada minimal satu huruf, dan TIDAK boleh mengandung angka.
+    // (Backend tetap jadi penentu akhir; ini hanya UX agar pengguna sadar lebih awal.)
+    function adaHuruf(t) { return /[A-Za-z\u00C0-\u024F\u1E00-\u1EFF]/.test(t); }
+    function namaValid(s) {
+        var t = String(s == null ? '' : s).trim();
+        if (!t) return false;
+        if (/\d/.test(t)) return false;   // tolak angka sama sekali
+        return adaHuruf(t);               // wajib ada minimal satu huruf
+    }
+    // Pesan galat nama yang informatif.
+    function pesanGalatNama(s) {
+        var t = String(s == null ? '' : s).trim();
+        if (!t) return 'Nama pemesan wajib diisi.';
+        if (/\d/.test(t)) return 'Nama tidak boleh mengandung angka.';
+        if (!adaHuruf(t)) return 'Nama harus mengandung huruf, tidak boleh berupa angka saja.';
+        return '';
+    }
     function waValid(v) {
         var d = String(v).replace(/[^\d]/g, '');
         if (d.charAt(0) === '0') d = '62' + d.slice(1);
@@ -363,13 +409,28 @@
         var btn = $('#btnBuatPesanan'); if (!btn) return;
         var box = totalBox();
         var nama = ($('#fNama') || {}).value || '';
+        var namaOk = nama.trim().length >= 1 && namaValid(nama.trim());
         var wa = ($('#fWa') || {}).value || '';
-        var cukup = box >= (W.minimal || 10) && nama.trim().length >= 1 && waValid(wa);
+        var cukup = box >= (W.minimal || 10) && namaOk && waValid(wa);
         btn.disabled = !cukup;
     }
     ['#fNama', '#fWa'].forEach(function (s) {
         var el = $(s); if (el) el.addEventListener('input', function () { periksaSiapKirim(); });
     });
+    // Validasi nama langsung saat pengguna selesai mengetik (blur) di halaman checkout.
+    // Menampilkan pesan jelas, mis. "123 Ahmad" -> "Nama tidak boleh mengandung angka."
+    var fNamaLive = $('#fNama');
+    if (fNamaLive) {
+        fNamaLive.addEventListener('blur', function () {
+            var v = this.value.trim();
+            if (v === '') { tampilGalat('nama', ''); return; } // kosong: pesan hanya saat submit
+            tampilGalat('nama', pesanGalatNama(v));
+        });
+        fNamaLive.addEventListener('input', function () {
+            // Hapus galat begitu pengguna memperbaiki isian.
+            if (namaValid(this.value.trim())) tampilGalat('nama', '');
+        });
+    }
 
     // ---------- Submit pesanan ----------
     var form = $('#formCheckout');
@@ -388,7 +449,8 @@
         var galat = $('#galatCheckout'); if (galat) { galat.style.display = 'none'; galat.textContent = ''; }
 
         var valid = true;
-        if (!nama) { tampilGalat('nama', 'Nama wajib diisi.'); valid = false; }
+        var gNama = pesanGalatNama(nama);
+        if (gNama) { tampilGalat('nama', gNama); valid = false; }
         if (!waValid(wa)) { tampilGalat('no_wa', 'Nomor WhatsApp tidak valid.'); valid = false; }
         if (!tgl) { tampilGalat('tanggal_ambil', 'Tanggal wajib dipilih.'); valid = false; }
         if (!jam) { tampilGalat('jam_ambil', 'Jam wajib dipilih.'); valid = false; }

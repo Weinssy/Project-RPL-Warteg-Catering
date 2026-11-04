@@ -1,7 +1,9 @@
 <?php
 // =====================================================================
-// Halaman utama pelanggan: hero + kapasitas + katalog/meal builder + formulir pemesanan.
-// Guest checkout: tidak perlu login. Semua harga/kuota dihitung ulang oleh backend saat checkout.
+// Halaman utama pelanggan: hero + kapasitas + katalog/meal builder + ringkasan pesanan.
+// Guest checkout: tidak perlu login. SEMUA formulir data pemesan kini ada di checkout.php.
+// Pilihan menu disimpan di localStorage (customer.js) lalu dibaca ulang di checkout.php.
+// Semua harga/kuota tetap dihitung ulang oleh backend saat pesanan akhirnya dibuat.
 // =====================================================================
 require_once __DIR__ . '/includes/bootstrap.php';
 
@@ -52,7 +54,7 @@ require __DIR__ . '/includes/cust_atas.php';
                 <p class="lead">Rakit nasi box sesuai selera, pilih tanggal pengambilan, dan bayar mudah dengan QRIS. Pesanan diambil sendiri di <?= e(LOKASI_AMBIL) ?>.</p>
                 <div class="hero-cta">
                     <a href="#katalog" class="btn btn-primer">Mulai Pesan</a>
-                    <a href="#cara" class="btn btn-garis">Cara Pemesanan</a>
+                    <a href="<?= e(url('cara-pemesanan.php')) ?>" class="btn btn-garis">Cara Pemesanan</a>
                 </div>
                 <div class="hero-fakta">
                     <div><span class="tanda">✓</span> Minimum <?= (int)MINIMAL_BOX ?> box</div>
@@ -67,22 +69,6 @@ require __DIR__ . '/includes/cust_atas.php';
                     loading="eager" >
                
             </div>
-        </div>
-    </div>
-</section>
-
-<!-- ================= CARA PESAN ================= -->
-<section class="seksi" id="cara" style="padding-bottom:20px">
-    <div class="wadah">
-        <div class="seksi-kepala">
-            <h2>Cara Pemesanan</h2>
-            <p>Empat langkah mudah memesan nasi box, tanpa perlu membuat akun.</p>
-        </div>
-        <div class="langkah-grid">
-            <div class="langkah"><div class="nomor">1</div><h3>Pilih Menu</h3><p>Rakit nasi box dari kategori nasi, lauk, dan sayur atau pilih paket.</p></div>
-            <div class="langkah"><div class="nomor">2</div><h3>Tentukan Jumlah</h3><p>Atur jumlah box (minimal <?= (int)MINIMAL_BOX ?>), tanggal, dan jam pengambilan.</p></div>
-            <div class="langkah"><div class="nomor">3</div><h3>Isi Data &amp; Bayar</h3><p>Lengkapi nama &amp; WhatsApp, lalu bayar via QRIS.</p></div>
-            <div class="langkah"><div class="nomor">4</div><h3>Ambil Pesanan</h3><p>Simpan kode pesanan, ambil di lokasi sesuai jadwal.</p></div>
         </div>
     </div>
 </section>
@@ -128,6 +114,19 @@ require __DIR__ . '/includes/cust_atas.php';
         <div class="seksi-kepala">
             <h2>Rakit Nasi Box Anda</h2>
             <p>Klik kartu menu untuk menambahkannya ke ringkasan. Menu yang habis atau belum dibuka pada tanggal terpilih tidak dapat dipilih.</p>
+        </div>
+        <!-- Filter kategori (chips) -->
+        <div class="kategori-filter" id="kategoriFilter" role="tablist" aria-label="Filter kategori menu">
+            <button type="button" class="filter-btn aktif" data-filter="semua" role="tab" aria-selected="true">Semua</button>
+            <?php
+            // Urutan chip mengikuti urutan kategori yang tampil pada katalog.
+            $urutan_chip = ['nasi', 'lauk', 'sayur', 'paket a', 'paket b', 'paket c'];
+            foreach ($urutan_chip as $kat):
+                if (!isset($kelompok[$kat])) continue;
+                [$lab_chip] = $label_kategori[$kat] ?? [ucfirst($kat), ''];
+            ?>
+                <button type="button" class="filter-btn" data-filter="<?= e($kat) ?>" role="tab" aria-selected="false"><?= e($lab_chip) ?></button>
+            <?php endforeach; ?>
         </div>
         <div class="builder-grid">
             <div id="katalogMenu">
@@ -194,8 +193,8 @@ require __DIR__ . '/includes/cust_atas.php';
             <!-- Ringkasan sticky -->
             <aside class="ringkasan" id="ringkasan" aria-label="Ringkasan pesanan">
                 <div class="ringkasan-kepala">
-                    <span>Ringkasan Keranjang</span>
-                    <button type="button" class="baris-menu hapus" id="kosongkanKeranjang" title="Kosongkan keranjang" style="font-size:12px;color:var(--c-redup);background:none;border:0;cursor:pointer" hidden>Kosongkan</button>
+                    <span>Ringkasan Pesanan</span>
+                    <button type="button" class="baris-menu hapus" id="kosongkanKeranjang" title="Kosongkan pilihan" style="font-size:12px;color:var(--c-redup);background:none;border:0;cursor:pointer" hidden>Kosongkan</button>
                 </div>
                 <div class="ringkasan-isi" id="ringkasanIsi">
                     <div class="ringkasan-kosong">Keranjang masih kosong.<br>Pilih menu di samping.</div>
@@ -206,7 +205,7 @@ require __DIR__ . '/includes/cust_atas.php';
                     <div class="total-baris besar"><span>Total</span><span class="nilai" id="totalHarga">Rp0</span></div>
                 </div>
                 <div class="ringkasan-aksi">
-                    <button type="button" class="btn btn-primer btn-blok" id="btnLanjut" disabled>Lanjutkan ke Data Pemesan</button>
+                    <button type="button" class="btn btn-primer btn-blok" id="btnLanjut" disabled>Lanjut ke Checkout</button>
                     <p class="bantuan" id="pesanMin" style="text-align:center;margin-top:8px">Minimum <?= (int)MINIMAL_BOX ?> box</p>
                 </div>
             </aside>
@@ -214,72 +213,22 @@ require __DIR__ . '/includes/cust_atas.php';
     </div>
 </section>
 
-<!-- ================= CHECKOUT ================= -->
-<section class="seksi" id="checkout" style="background:#fff;border-top:1px solid var(--c-garis)">
-    <div class="wadah">
-        <div class="seksi-kepala">
-            <h2>Data Pemesan &amp; Pengambilan</h2>
-            <p>Isi data dengan benar. Nomor WhatsApp aktif dipakai admin untuk konfirmasi pesanan.</p>
+<!-- ================= LANJUT KE CHECKOUT ================= -->
+<section class="seksi cta-checkout" style="background:#fff;border-top:1px solid var(--c-garis);text-align:center">
+    <div class="wadah" style="max-width:640px">
+        <div class="seksi-kepala" style="margin-bottom:20px">
+            <h2>Siap Melanjutkan Pesanan?</h2>
+            <p style="margin-left:auto;margin-right:auto">Pilih menu di atas terlebih dahulu. Setelah itu Anda dapat melengkapi data pemesan dan jadwal pengambilan di halaman checkout.</p>
         </div>
-        <form id="formCheckout" novalidate autocomplete="on">
-            <div class="checkout-grid">
-                <div class="panel-putih">
-                    <div class="alert alert-info" id="infoMinBox">Minimum pemesanan <?= (int)MINIMAL_BOX ?> box per transaksi.</div>
-
-                    <div class="form-baris">
-                        <label for="fNama">Nama pemesan <span class="wajib">*</span></label>
-                        <input type="text" class="input" id="fNama" name="nama" maxlength="100" required placeholder="Nama lengkap" autocomplete="name">
-                        <div class="pesan-galat" data-untuk="nama"></div>
-                    </div>
-                    <div class="form-baris">
-                        <label for="fWa">Nomor WhatsApp aktif <span class="wajib">*</span></label>
-                        <input type="tel" class="input" id="fWa" name="no_wa" maxlength="20" required placeholder="08xxxxxxxxxx" autocomplete="tel" inputmode="tel">
-                        <div class="bantuan">Contoh: 0812 3456 7890 atau 6281234567890.</div>
-                        <div class="pesan-galat" data-untuk="no_wa"></div>
-                    </div>
-                    <div class="form-dua">
-                        <div class="form-baris">
-                            <label for="fTgl">Tanggal pengambilan <span class="wajib">*</span></label>
-                            <input type="date" class="input" id="fTgl" name="tanggal_ambil" min="<?= e($tgl_min) ?>" max="<?= e($tgl_maks) ?>" required value="<?= e($tgl_min) ?>">
-                            <div class="pesan-galat" data-untuk="tanggal_ambil"></div>
-                        </div>
-                        <div class="form-baris">
-                            <label for="fJam">Jam pengambilan <span class="wajib">*</span></label>
-                            <select class="select" id="fJam" name="jam_ambil" required></select>
-                            <div class="pesan-galat" data-untuk="jam_ambil"></div>
-                        </div>
-                    </div>
-                    <div class="form-baris">
-                        <label for="fCatatan">Catatan pesanan (opsional)</label>
-                        <textarea class="textarea" id="fCatatan" name="catatan" maxlength="255" placeholder="Mis. tanpa sambal, tambah nasi, alergi, dll."></textarea>
-                        <div class="pesan-galat" data-untuk="catatan"></div>
-                    </div>
-                    <input type="hidden" id="fJumlahBox" name="jumlah_box" value="0">
-                    <p class="bantuan">Lokasi pengambilan: <strong><?= e(LOKASI_AMBIL) ?></strong> (self-pickup, tidak ada ongkir).</p>
-                </div>
-
-                <div>
-                    <div class="panel-putih" id="ringkasanCheckout" style="margin-bottom:16px">
-                        <h3 style="font-size:16px;margin-bottom:12px">Pesanan Anda</h3>
-                        <div id="ringkasanCheckoutIsi"><p class="bantuan">Belum ada menu dipilih.</p></div>
-                        <div class="ringkasan-total" style="background:none;padding:12px 0 0">
-                            <div class="total-baris besar"><span>Total</span><span class="nilai" id="totalCheckout">Rp0</span></div>
-                        </div>
-                    </div>
-                    <button type="submit" class="btn btn-primer btn-blok" id="btnBuatPesanan" disabled>
-                        <span id="btnBuatTeks">Lanjutkan Pembayaran</span>
-                    </button>
-                    <div class="alert alert-galat" id="galatCheckout" style="margin-top:14px;display:none"></div>
-                </div>
-            </div>
-        </form>
+        <a href="<?= e(url('checkout.php')) ?>" class="btn btn-primer" id="btnKeCheckout" aria-disabled="true" style="pointer-events:none;opacity:.6">Lanjut ke Halaman Checkout</a>
+        <p class="bantuan" style="margin-top:12px">Minimum <?= (int)MINIMAL_BOX ?> box. Belum punya pesanan? <a href="<?= e(url('cek_status.php')) ?>" style="color:var(--c-primer);font-weight:600">Cek status pesanan</a>.</p>
     </div>
 </section>
 
-<!-- Bottom cart bar (mobile) -->
+<!-- Bottom order bar (mobile): ringkasan singkat + tombol lanjut ke checkout.php -->
 <div class="cart-bar" id="cartBar">
     <div class="info"><b id="cartBarBox">0 box</b><span id="cartBarTotal">Rp0</span></div>
-    <a href="#checkout" class="btn btn-primer btn-kecil">Lanjutkan</a>
+    <a href="<?= e(url('checkout.php')) ?>" class="btn btn-primer btn-kecil">Lanjut ke Checkout</a>
 </div>
 
 <?php

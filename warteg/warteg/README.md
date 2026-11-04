@@ -24,14 +24,22 @@ dan password lama tidak diubah. Jika muncul galat `Duplicate column name 'foto'`
 Folder `uploads/admin/` dibuat otomatis saat foto pertama diunggah (disertai `.htaccess` + `index.html` sebagai pengaman).
 
 ## Pemesanan Pelanggan, Pembayaran QRIS, dan Notifikasi WhatsApp
-Pelanggan memesan tanpa membuat akun (guest checkout) lewat `index.php`. Alur:
-`index.php` (katalog + meal builder + formulir) -> `pesan_aksi.php` (validasi & simpan pesanan) ->
-`pembayaran.php` (tampil QRIS + polling status) -> `webhook.php` (verifikasi pembayaran) -> `nota.php` (nota/status).
+Pelanggan memesan tanpa membuat akun (guest checkout). Alur:
+`index.php` (hero + katalog + meal builder + ringkasan keranjang) -> **`checkout.php`** (formulir data pemesan & jadwal, terpisah dari halaman depan) ->
+`pesan_aksi.php` (validasi & simpan pesanan) -> `pembayaran.php` (tampil QRIS + polling status) -> `webhook.php` (verifikasi pembayaran) -> `nota.php` (nota/status).
+
+> **Halaman depan (`index.php`) TIDAK lagi memuat formulir checkout.** Pilihan menu disimpan di
+> `localStorage` (via `assets/js/customer.js`) lalu dibaca ulang di `checkout.php`. Tombol
+> "Lanjut ke Checkout" di ringkasan mengarahkan ke `checkout.php`. Pemisahan ini memperbaiki
+> tombol checkout yang sebelumnya tidak berfungsi karena berada di blok yang sama dengan katalog.
 
 **Aturan pelanggan (divalidasi di backend, bukan JavaScript):**
 - Minimum `MINIMAL_BOX` box, kapasitas harian `KAPASITAS_HARIAN` box per tanggal.
 - Tanggal pengambilan H-`MINIMAL_H_MINUS` s.d. `MAKS_HARI_KE` hari ke depan.
 - Jam pengambilan `JAM_BUKA`–`JAM_TUTUP` WIB.
+- **Nama pemesan**: wajib diisi, harus mengandung huruf, dan **tidak boleh mengandung angka**
+  (mis. `123`, `123 Ahmad`, `Ahmad1` ditolak). Validasi ada di `validasi_nama_pemesan()`
+  (`includes/helpers.php`) dan dipanggil `buat_pesanan()`; JavaScript hanya pelengkap UX.
 - Harga, stok per menu, dan kuota SELALU dihitung ulang di server saat checkout.
 
 **Keamanan pembayaran:**
@@ -77,6 +85,8 @@ Admin membuka **Verifikasi Pembayaran** (`admin/verifikasi.php`) -> **Setujui** 
 - `php tests/uji_http_admin_verifikasi.php`: login admin -> setujui pembayaran -> invoice LUNAS; bukti_bayar terproteksi; verifikasi ganda ditolak.
 - `php tests/uji_http_upload_bukti.php`: unggah bukti multipart valid -> status menunggu_verifikasi, file tersimpan aman (nama hex), upload non-gambar ditolak.
 - `php tests/uji_http_pelanggan.php` (jalankan `php -S 127.0.0.1:8765 -t .` lebih dulu): CSRF, validasi AJAX, pembuatan pesanan via HTTP, akses nota via token, endpoint status.
+- `php tests/uji_validasi_nama.php`: validasi nama pemesan (backend) — huruf wajib, angka ditolak (`123`, `123 Ahmad`, `Ahmad1`), serta memastikan `buat_pesanan()` tidak menyimpan pesanan dengan nama tidak valid.
+- `php tests/uji_http_checkout_nama.php` (jalankan `php -S 127.0.0.1:8765 -t .` lebih dulu): `index.php` tidak lagi memuat formulir checkout, `checkout.php` memuat formulir, dan endpoint menolak nama berangka / menerima nama valid.
 - `php tests/uji_stok_menu.php`: uji stok per menu (NULL = tanpa batas, stok habis, transaksi campuran atomik).
 - `php tests/uji_isolasi_tanggal.php`: perubahan stok/foto satu tanggal tidak mengubah tanggal lain.
 - Uji HTTP (jalankan `php -S 127.0.0.1:8765 -t .` dari folder proyek lebih dulu):

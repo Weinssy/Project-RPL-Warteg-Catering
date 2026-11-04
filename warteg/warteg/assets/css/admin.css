@@ -406,6 +406,12 @@ input[type="file"].form-control { padding: 8px; }
 .sel-admin small { display: block; color: var(--redup); font-size: 12px; }
 .sel-rincian { font-size: 13px; color: #475569; max-width: 280px; }
 
+/* Kolom Aksi: tombol hapus rata tengah. */
+.kolom-aksi { width: 92px; text-align: center; white-space: nowrap; }
+.btn-hapus-admin { background: #fff; color: var(--merah); border: 1.5px solid #fca5a5; }
+.btn-hapus-admin:hover { background: var(--merah-bg); }
+.btn-hapus-admin:disabled { opacity: .55; cursor: not-allowed; }
+
 /* ---------------- Kartu verifikasi ---------------- */
 .kartu-verif { border: 1px solid var(--garis); border-radius: 12px; padding: 16px; margin-bottom: 16px; background: #fff; }
 .verif-aksi { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
