@@ -4,26 +4,28 @@
    Halaman pelanggan memakai assets/css/customer.css yang terpisah, sehingga
    styling kedua area ini sengaja diisolasi (tidak ada aturan customer di sini).
    ===================================================================== */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
 :root {
-  --oranye: #ea580c;
-  --oranye-tua: #c2410c;
-  --oranye-bg: #fff7ed;
-  --teks: #1f2937;
-  --redup: #6b7280;
-  --garis: #e5e7eb;
-  --c-garis: #e5e7eb;          /* alias dipakai inline di beberapa halaman (mis. verifikasi) */
-  --c-oranye-tua: #c2410c;     /* alias dipakai inline di halaman verifikasi */
-  --bg: #f1f5f9;
+  --oranye: #a33900;
+  --oranye-tua: #7f2b00;
+  --oranye-bg: #fff8f5;
+  --teks: #1a1c1a;
+  --redup: #5a4138;
+  --garis: #e8e4df;
+  --c-garis: #e8e4df;          /* alias dipakai inline di beberapa halaman (mis. verifikasi) */
+  --c-oranye-tua: #7f2b00;     /* alias dipakai inline di halaman verifikasi */
+  --bg: #faf9f6;
   --kartu: #ffffff;
-  --sidebar-bg: #1f2937;
-  --sidebar-teks: #cbd5e1;
-  --sidebar-aktif: #ea580c;
-  --hijau: #15803d;
-  --hijau-bg: #dcfce7;
+  --sidebar-bg: #1a1c1a;
+  --sidebar-teks: #e9e8e5;
+  --sidebar-aktif: #a33900;
+  --hijau: #00855b;
+  --hijau-bg: #f5fff6;
   --kuning: #b45309;
   --kuning-bg: #fef3c7;
-  --merah: #b91c1c;
-  --merah-bg: #fee2e2;
+  --merah: #ba1a1a;
+  --merah-bg: #ffdad6;
   --radius: 14px;
   --radius-kecil: 9px;
   --bayang: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
@@ -34,7 +36,7 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html, body { height: 100%; }
 body {
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: "Plus Jakarta Sans", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   background: var(--bg);
   color: var(--teks);
   line-height: 1.5;
@@ -159,7 +161,7 @@ tbody td.kosong { text-align: center; color: var(--redup); padding: 40px 20px; }
   font-family: inherit; line-height: 1.1; text-align: center;
 }
 .btn:active { transform: translateY(1px); }
-.btn-primary { background: var(--oranye); color: #fff; box-shadow: 0 4px 14px rgba(234,88,12,.22); }
+.btn-primary { background: var(--oranye); color: #fff; box-shadow: 0 4px 14px rgba(163,57,0,.22); }
 .btn-primary:hover { background: var(--oranye-tua); }
 .btn-primary:disabled { background: #fdba74; box-shadow: none; cursor: not-allowed; }
 .btn-secondary { background: #fff; color: var(--teks); border: 1.5px solid var(--garis); }
