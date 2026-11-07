@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Pesan nasi box & katering Warteg Pak Sanam secara online. Minimum 10 box, ambil sendiri di lokasi.">
+    <meta name="description" content="Pesan nasi box & katering Warteg Pak Sanam secara online. Minimum 10 box, ambil sendiri di lokasi Cilandak Barat Jakarta Selatan.">
     <title>Pesan Nasi Box &amp; Katering - Warteg Pak Sanam</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -18,22 +18,37 @@
 <body class="cust">
     <div class="cust-toast-area" id="custToast" aria-live="polite"></div>
 
+    <!-- ================= TOP OPERATIONAL NOTICE ================= -->
+    <div class="top-notice-bar">
+        <div class="wadah top-notice-inner">
+            <span class="top-notice-info">🍱 Warteg Pak Sanam • Jl. BDN 1 Cilandak Barat, Jakarta Selatan • Jam Buka: 09.00 - 19.00 WIB</span>
+            <span class="top-notice-wa">WA: 0857-8342-3626 • Khusus Ambil Mandiri (Self-Pickup)</span>
+        </div>
+    </div>
+
     <!-- ================= HEADER ================= -->
     <header class="cust-header">
         <div class="wadah cust-nav">
             <a href="index.html" class="cust-logo">
-                <span class="ikon-warteg" aria-hidden="true">🍱</span>
-                <span>Warteg Pak Sanam<small>Nasi Box &amp; Katering</small></span>
+                <span class="cust-logo-emblem" aria-hidden="true">🍱</span>
+                <span class="cust-logo-text">
+                    <strong class="cust-logo-title">WARTEG PAK SANAM</strong>
+                    <small class="cust-logo-sub">Spesialis Katering &amp; Nasi Box Rumahan</small>
+                </span>
             </a>
             <div class="cust-links" id="custLinks">
                 <a href="index.html" class="aktif">Beranda</a>
-                <a href="#katalog">Menu</a>
+                <a href="#katalog">Katalog Menu</a>
+                <a href="#kapasitas">Cek Kuota Dapur</a>
                 <a href="cara-pemesanan.html">Cara Pemesanan</a>
                 <a href="cek_status.html">Cek Status Pesanan</a>
-                <a href="admin/login.html" style="color:var(--c-emas);font-weight:700">Login Admin</a>
+                <a href="admin/login.html" class="link-admin">Login Admin</a>
             </div>
             <div class="cust-nav-kanan">
-                <a href="#katalog" class="btn btn-primer btn-kecil">Pesan Sekarang</a>
+                <div class="nav-quota-pill" id="navQuotaPill">
+                    <span class="dot-aman" aria-hidden="true">●</span> Sisa Kuota: <b id="navSisaKuota">120</b> Box
+                </div>
+                <a href="#katalog" class="btn btn-primer btn-kecil">Mulai Pesan Box</a>
                 <button type="button" class="cust-toggle" id="custToggle" aria-label="Buka menu" aria-expanded="false" aria-controls="custLinks">
                     <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
                 </button>
@@ -46,32 +61,53 @@
         <section class="hero">
             <div class="wadah">
                 <div class="hero-grid">
-                    <div>
-                        <span class="hero-label">Katering &amp; Nasi Box Harian</span>
-                        <h1>Nasi Box Lezat untuk <span>Acara &amp; Kantor</span> Anda</h1>
-                        <p class="lead">Rakit nasi box sesuai selera, pilih tanggal pengambilan, dan bayar mudah dengan QRIS. Pesanan diambil langsung di Warteg Pak Sanam.</p>
+                    <div class="hero-narrative">
+                        <div class="hero-tag-wrap">
+                            <span class="hero-tag">SPESIALIS KATERING &amp; NASI BOX ACARA • SELF-PICKUP CILANDAK</span>
+                        </div>
+                        <h1>Katering Nasi Box Khas Warteg, Hangat &amp; Siap Diambil Tepat Waktu.</h1>
+                        <p class="lead">Dibuat dari bahan segar setiap pagi di dapur Warteg Pak Sanam, Cilandak Barat. Solusi praktis konsumsi rapat, syukuran, atau makan siang kantor dengan cita rasa otentik rumahan tanpa ribet antre.</p>
                         
-                        <!-- Promo Banner 50 Box -->
-                        <div class="promo-banner" style="background:linear-gradient(135deg, #00855b, #005a3e);color:#fff;padding:12px 18px;border-radius:12px;margin:18px 0;display:flex;align-items:center;gap:14px;box-shadow:0 4px 14px rgba(0,133,91,0.22);">
-                            <span style="font-size:26px" aria-hidden="true">🎁</span>
-                            <div>
-                                <strong style="display:block;font-size:14px;letter-spacing:0.3px">PROMO VOUCHER KATERING &ge; 50 BOX</strong>
-                                <span style="font-size:13px;opacity:0.95">Pesan minimal 50 box langsung dapat diskon <strong>Rp 50.000</strong> (berlaku kelipatan, 100 box diskon <strong>Rp 100.000</strong>)!</span>
+                        <div class="hero-pillars-grid">
+                            <div class="hero-pillar-card">
+                                <div class="pillar-title">📦 Min. 10 Box</div>
+                                <div class="pillar-sub">Pesan H-1 s/d H+30</div>
+                            </div>
+                            <div class="hero-pillar-card promo">
+                                <div class="pillar-title">🏷️ Diskon Rp 50.000</div>
+                                <div class="pillar-sub">Tiap kelipatan 50 box</div>
+                            </div>
+                            <div class="hero-pillar-card">
+                                <div class="pillar-title">📍 Ambil di Warteg</div>
+                                <div class="pillar-sub">09.00 - 19.00 WIB (Bebas Ongkir)</div>
                             </div>
                         </div>
 
                         <div class="hero-cta">
-                            <a href="#katalog" class="btn btn-primer">Mulai Pesan</a>
-                            <a href="cara-pemesanan.html" class="btn btn-garis">Cara Pemesanan</a>
-                        </div>
-                        <div class="hero-fakta">
-                            <div><span class="tanda">✓</span> Minimum 10 box</div>
-                            <div><span class="tanda">✓</span> Ambil sendiri di lokasi</div>
-                            <div><span class="tanda">✓</span> Pesan minimal H-1</div>
+                            <a href="#katalog" class="btn btn-primer">Pilih Menu Katering ↓</a>
+                            <a href="#kapasitas" class="btn btn-garis">Ketentuan &amp; Kuota</a>
                         </div>
                     </div>
-                    <div class="hero-gambar">
-                        <img src="uploads/1.jpeg" alt="Nasi box dan menu katering Warung Mas Alif" loading="eager" onerror="this.onerror=null;this.src='uploads/menu/567776efe02122c01fcd.jpg';">
+
+                    <div class="hero-featured-card">
+                        <div class="feat-badge-top">⭐ REKOMENDASI TERFAVORIT KANTOR</div>
+                        <h3 class="feat-title">Paket Selera Nusantara A</h3>
+                        <div class="feat-price-line">
+                            <span class="feat-price">Rp 25.000 <small>/ Box</small></span>
+                            <span class="feat-min">(Minimal 10 Box)</span>
+                        </div>
+                        <hr class="feat-divider">
+                        <ul class="feat-menu-list">
+                            <li><span class="check-mark">✓</span> Nasi Putih Wangi Pulen</li>
+                            <li><span class="check-mark">✓</span> Ayam Goreng Lengkuas Rempah (Empuk)</li>
+                            <li><span class="check-mark">✓</span> Tempe Orek Basah Manis Gurih</li>
+                            <li><span class="check-mark">✓</span> Tumis Buncis Jagung Manis</li>
+                            <li><span class="check-mark">✓</span> Sambal Terasi Khas Pak Sanam &amp; Lalapan</li>
+                        </ul>
+                        <div class="feat-pack-notice">
+                            <span>🍱 Dus sekat tebal eksklusif + sendok, tisu, &amp; tusuk gigi higienis</span>
+                        </div>
+                        <a href="#katalog" class="btn btn-primer btn-blok feat-action-btn">+ Tambah Menu di Katalog ↓</a>
                     </div>
                 </div>
             </div>
@@ -81,13 +117,13 @@
         <section class="seksi" id="kapasitas" style="padding-top:20px">
             <div class="wadah">
                 <div class="seksi-kepala">
-                    <h2>Cek Ketersediaan &amp; Kuota</h2>
-                    <p>Kuota dihitung langsung dari data pesanan. Kapasitas maksimal 120 box per hari pengambilan.</p>
+                    <h2>Cek Ketersediaan &amp; Kuota Dapur</h2>
+                    <p>Dapur membatasi maksimal 120 box per hari pengambilan agar kualitas masakan dan ketepatan waktu tetap terjaga prima.</p>
                 </div>
                 <div class="panel-kapasitas">
                     <div class="pilih-tanggal">
                         <div class="grup">
-                            <label for="cekTanggal">Tanggal pengambilan</label>
+                            <label for="cekTanggal">🗓️ Tanggal Pengambilan Nasi Box</label>
                             <input type="date" class="input" id="cekTanggal">
                         </div>
                         <button type="button" class="btn btn-garis btn-kecil" id="btnCekTanggal">Tampilkan Kuota</button>
@@ -107,7 +143,10 @@
                         </div>
                     </div>
                     <div class="bar-kapasitas"><span id="barKapasitas" style="width:0%"></span></div>
-                    <p class="bantuan" id="teksTanggal">Memuat data ketersediaan...</p>
+                    <div class="kapasitas-status-row">
+                        <p class="bantuan" id="teksTanggal">Memuat data ketersediaan...</p>
+                        <span class="badge-kuota-aman" id="badgeKuotaAman">✓ KUOTA AMAN</span>
+                    </div>
                 </div>
             </div>
         </section>
@@ -116,16 +155,16 @@
         <section class="seksi" id="katalog">
             <div class="wadah">
                 <div class="seksi-kepala">
-                    <h2>Rakit Nasi Box Anda</h2>
-                    <p>Klik kartu menu untuk menambahkannya ke ringkasan. Menu yang habis atau belum dibuka pada tanggal terpilih tidak dapat dipilih.</p>
+                    <h2>Katalog Pilihan Menu &amp; Paket Katering</h2>
+                    <p>Pilih paket nasi box hemat atau racik kombinasi lauk sesuai anggaran dan selera acara Anda. Menu yang habis otomatis dinonaktifkan.</p>
                 </div>
 
                 <!-- Filter kategori (chips) -->
                 <div class="kategori-filter" id="kategoriFilter" role="tablist" aria-label="Filter kategori menu">
-                    <button type="button" class="filter-btn aktif" data-filter="semua" role="tab" aria-selected="true">Semua</button>
+                    <button type="button" class="filter-btn aktif" data-filter="semua" role="tab" aria-selected="true">Semua Menu</button>
                     <button type="button" class="filter-btn" data-filter="nasi" role="tab" aria-selected="false">Nasi</button>
                     <button type="button" class="filter-btn" data-filter="lauk" role="tab" aria-selected="false">Lauk Utama</button>
-                    <button type="button" class="filter-btn" data-filter="sayur" role="tab" aria-selected="false">Sayur / Pendamping</button>
+                    <button type="button" class="filter-btn" data-filter="sayur" role="tab" aria-selected="false">Sayur &amp; Pendamping</button>
                     <button type="button" class="filter-btn" data-filter="paket a" role="tab" aria-selected="false">Paket A</button>
                     <button type="button" class="filter-btn" data-filter="paket b" role="tab" aria-selected="false">Paket B</button>
                     <button type="button" class="filter-btn" data-filter="paket c" role="tab" aria-selected="false">Paket C</button>
@@ -139,43 +178,77 @@
                     <!-- Ringkasan sticky -->
                     <aside class="ringkasan" id="ringkasan" aria-label="Ringkasan pesanan">
                         <div class="ringkasan-kepala">
-                            <span>Ringkasan Pesanan</span>
+                            <span class="ringkasan-judul-teks">🛒 Ringkasan Pesanan</span>
+                            <span class="ringkasan-self-badge">Self-Pickup</span>
                             <button type="button" class="baris-menu hapus" id="kosongkanKeranjang" title="Kosongkan pilihan" style="font-size:12px;color:var(--c-redup);background:none;border:0;cursor:pointer" hidden>Kosongkan</button>
                         </div>
+
+                        <!-- Milestone Banner Promo Kelipatan 50 Box -->
+                        <div class="promo-milestone-tray" id="trayVoucherPromo">
+                            <div class="promo-milestone-head">
+                                <span class="promo-icon" aria-hidden="true">🎁</span>
+                                <div>
+                                    <strong class="promo-milestone-title">PROMO KELIPATAN 50 BOX</strong>
+                                    <div class="promo-milestone-sub">Pesan kelipatan 50 box langsung hemat Rp 50.000!</div>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="ringkasan-isi" id="ringkasanIsi">
                             <div class="ringkasan-kosong">Keranjang masih kosong.<br>Pilih menu di samping.</div>
                         </div>
                         <div class="ringkasan-total">
                             <div class="total-baris"><span>Total box</span><span id="totalBox">0</span></div>
                             <div class="total-baris"><span>Subtotal</span><span id="subtotal">Rp0</span></div>
-                            <div class="total-baris" id="barisDiskon" style="display:none;color:var(--c-tertier);font-weight:600"><span>Diskon Box (50+)</span><span id="nilaiDiskon">-Rp0</span></div>
-                            <div class="total-baris besar"><span>Total</span><span class="nilai" id="totalHarga">Rp0</span></div>
+                            <div class="total-baris" id="barisDiskon" style="display:none;color:var(--c-hijau);font-weight:700"><span>Diskon Box (50+)</span><span id="nilaiDiskon">-Rp0</span></div>
+                            <div class="total-baris besar"><span>Total Tagihan</span><span class="nilai" id="totalHarga">Rp0</span></div>
                         </div>
                         <div class="ringkasan-aksi">
-                            <button type="button" class="btn btn-primer btn-blok" id="btnLanjut" disabled>Lanjut ke Checkout</button>
+                            <button type="button" class="btn btn-primer btn-blok" id="btnLanjut" disabled>Lanjut ke Data Pemesan (Checkout) →</button>
                             <p class="bantuan" id="pesanMin" style="text-align:center;margin-top:8px">Minimum 10 box</p>
+                            <p class="trust-micro-copy">✓ Tanpa login akun • Bayar via QRIS saat checkout</p>
                         </div>
                     </aside>
                 </div>
             </div>
         </section>
 
-        <!-- ================= LANJUT KE CHECKOUT ================= -->
-        <section class="seksi cta-checkout" style="background:#fff;border-top:1px solid var(--c-garis);text-align:center">
-            <div class="wadah" style="max-width:640px">
-                <div class="seksi-kepala" style="margin-bottom:20px">
-                    <h2>Siap Melanjutkan Pesanan?</h2>
-                    <p style="margin-left:auto;margin-right:auto">Pilih menu di atas terlebih dahulu. Setelah itu Anda dapat melengkapi data pemesan dan jadwal pengambilan di halaman checkout.</p>
+        <!-- ================= ALUR PEMESANAN & AMBIL MANDIRI ================= -->
+        <section class="seksi alur-pemesanan-seksi">
+            <div class="wadah">
+                <div class="seksi-kepala" style="text-align:center">
+                    <h2>Alur Pemesanan Katering &amp; Ambil Mandiri</h2>
+                    <p style="margin-left:auto;margin-right:auto">4 langkah praktis tanpa ribet: dari pemilihan menu hingga pengambilan pesanan hangat di Warteg Pak Sanam.</p>
                 </div>
-                <a href="checkout.html" class="btn btn-primer" id="btnKeCheckout" aria-disabled="true" style="pointer-events:none;opacity:.6">Lanjut ke Halaman Checkout</a>
-                <p class="bantuan" style="margin-top:12px">Minimum 10 box. Belum punya pesanan? <a href="cek_status.html" style="color:var(--c-primer);font-weight:600">Cek status pesanan</a>.</p>
+                <div class="alur-grid">
+                    <div class="alur-card">
+                        <div class="alur-step-num">LANGKAH 01</div>
+                        <h3>Pilih Menu &amp; Tanggal</h3>
+                        <p>Pilih paket nasi box hemat atau racik menu sendiri. Minimal order 10 box untuk jadwal pengambilan H-1 s/d H+30.</p>
+                    </div>
+                    <div class="alur-card">
+                        <div class="alur-step-num">LANGKAH 02</div>
+                        <h3>Isi Data Pemesan</h3>
+                        <p>Cukup masukkan Nama &amp; No. WhatsApp aktif di halaman checkout tanpa perlu registrasi atau login akun.</p>
+                    </div>
+                    <div class="alur-card">
+                        <div class="alur-step-num">LANGKAH 03</div>
+                        <h3>Bayar QRIS Statis</h3>
+                        <p>Scan QRIS Warteg Pak Sanam dan upload bukti transfer. Dapur segera memverifikasi dan menyiapkan pesanan.</p>
+                    </div>
+                    <div class="alur-card">
+                        <div class="alur-step-num">LANGKAH 04</div>
+                        <h3>Ambil di Dapur Warteg</h3>
+                        <p>Ambil pesanan hangat di Jalan BDN 1 Cilandak Barat sesuai jam operasional (09.00 - 19.00 WIB) bebas ongkir.</p>
+                    </div>
+                </div>
             </div>
         </section>
 
         <!-- Bottom order bar (mobile): ringkasan singkat + tombol lanjut ke checkout.html -->
         <div class="cart-bar" id="cartBar">
             <div class="info"><b id="cartBarBox">0 box</b><span id="cartBarTotal">Rp0</span></div>
-            <a href="checkout.html" class="btn btn-primer btn-kecil">Lanjut ke Checkout</a>
+            <a href="checkout.html" class="btn btn-primer btn-kecil" id="btnKeCheckout">Checkout →</a>
         </div>
     </main>
 
@@ -183,35 +256,37 @@
     <footer class="cust-footer">
         <div class="wadah cust-footer-grid">
             <div>
-                <h4>Warteg Pak Sanam</h4>
-                <p>Melayani pemesanan nasi box dan katering dengan menu harian segar. Pesanan diambil sendiri (self-pickup) di lokasi warteg.</p>
+                <h4>🍱 WARTEG PAK SANAM</h4>
+                <p>Melayani pemesanan nasi box dan katering harian masakan rumahan Nusantara. Seluruh pesanan disiapkan segar dan diambil langsung (self-pickup) di warteg kami.</p>
             </div>
             <div>
                 <h4>Navigasi</h4>
                 <ul>
                     <li><a href="index.html">Beranda</a></li>
-                    <li><a href="index.html#katalog">Menu</a></li>
+                    <li><a href="#katalog">Katalog Menu</a></li>
+                    <li><a href="#kapasitas">Cek Kuota Dapur</a></li>
                     <li><a href="cara-pemesanan.html">Cara Pemesanan</a></li>
                     <li><a href="cek_status.html">Cek Status Pesanan</a></li>
                 </ul>
             </div>
             <div>
-                <h4>Informasi</h4>
+                <h4>Ketentuan Katering</h4>
                 <ul>
-                    <li>Minimum 10 box per pesanan</li>
-                    <li>Promo voucher &ge; 50 box hemat Rp50.000</li>
+                    <li>Minimal order 10 box per transaksi</li>
+                    <li>Promo kelipatan 50 box hemat Rp 50.000</li>
+                    <li>Maksimal dapur 120 box per hari</li>
                     <li>Pesan minimal H-1 sebelum pengambilan</li>
-                    <li>Pembayaran non-tunai via QRIS</li>
-                    <li>Jam operasional: 09:00–19:00 WIB</li>
+                    <li>Pembayaran non-tunai via QRIS Statis</li>
                 </ul>
             </div>
             <div>
-                <h4>Lokasi Pengambilan</h4>
-                <p>Warteg Pak Sanam<br>Jalan BDN 1 Cilandak Barat Jakarta Selatan</p>
-                <p>Telp/WA: 0857-8342-3626</p>
+                <h4>Lokasi &amp; Jam Operasional</h4>
+                <p>Warteg Pak Sanam<br>Jalan BDN 1 Cilandak Barat, Jakarta Selatan</p>
+                <p>Jam Operasional: 09.00 - 19.00 WIB</p>
+                <p>WhatsApp Layanan: 0857-8342-3626</p>
             </div>
         </div>
-        <div class="copy">&copy; 2026 Warteg Pak Sanam. Semua harga dalam Rupiah (IDR).</div>
+        <div class="copy">&copy; 2026 Warteg Pak Sanam. Sistem POS &amp; Pre-Order Katering Harian Berbasis Web. Semua harga dalam Rupiah (IDR).</div>
     </footer>
 
     <!-- Skrip Logika Halaman Pelanggan -->

@@ -124,6 +124,7 @@
         var kap = await DB.getKapasitasTanggal(tanggal);
         if ($('#kapTerpakai')) $('#kapTerpakai').textContent = kap.box;
         if ($('#kapSisa')) $('#kapSisa').textContent = kap.sisa;
+        if ($('#navSisaKuota')) $('#navSisaKuota').textContent = kap.sisa;
         if ($('#barKapasitas')) $('#barKapasitas').style.width = kap.persen + '%';
         if ($('#kotakSisa')) $('#kotakSisa').className = 'kapasitas-kotak sisa ' + kap.level;
         if ($('#teksTanggal')) {

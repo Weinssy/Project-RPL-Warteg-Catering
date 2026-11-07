@@ -12,28 +12,28 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
 :root {
-  --c-primer: #a33900;
+  --c-primer: #9e3700;
   --c-primer-tua: #7f2b00;
   --c-primer-hover: #832600;
   --c-primer-bg: #fff8f5;
   --c-primer-container: #cc4900;
-  --c-emas: #a33900;
+  --c-emas: #9e3700;
   --c-emas-bg: #fff8f5;
   --c-sekunder: #ac3400;
   --c-sekunder-container: #fd6b36;
-  --c-teks: #1a1c1a;
-  --c-redup: #5a4138;
-  --c-garis: #e8e4df;
-  --c-bg: #faf9f6;
+  --c-teks: #231815;
+  --c-redup: #68544b;
+  --c-garis: #eadfd3;
+  --c-bg: #faf7f2;
   --c-kartu: #ffffff;
   --c-surface-low: #f4f3f1;
   --c-surface: #efeeeb;
   --c-putih: #ffffff;
-  --c-hijau: #00855b;
+  --c-hijau: #1b6e44;
   --c-hijau-tua: #006947;
-  --c-hijau-bg: #f5fff6;
+  --c-hijau-bg: #e8f5e9;
   --c-kuning: #b45309;
-  --c-kuning-bg: #fef3c7;
+  --c-kuning-bg: #fff8ed;
   --c-merah: #ba1a1a;
   --c-merah-bg: #ffdad6;
   --c-radius: 16px;
@@ -1667,6 +1667,449 @@ body.cust {
 
 @media (max-width: 400px) {
   .grid-menu-cust {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* =====================================================================
+   IMPROVISASI DESAIN BARU ANTISLOP (FIGCRAFT SYSTEM)
+   ===================================================================== */
+
+/* ---------- Top Notice Bar ---------- */
+.top-notice-bar {
+  background: #231815;
+  color: #eadfd3;
+  font-size: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid #3d2c27;
+}
+
+.top-notice-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.top-notice-info {
+  color: #eadfd3;
+  font-weight: 500;
+}
+
+.top-notice-wa {
+  color: #fdba74;
+  font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  .top-notice-inner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    font-size: 11px;
+  }
+}
+
+/* ---------- Header & Logo ---------- */
+.cust-header {
+  background: rgba(250, 247, 242, .96);
+  border-bottom: 1px solid var(--c-garis);
+}
+
+.cust-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+}
+
+.cust-logo-emblem {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  background: var(--c-primer);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(158, 55, 0, .2);
+}
+
+.cust-logo-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.cust-logo-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--c-teks);
+  letter-spacing: .02em;
+  line-height: 1.2;
+}
+
+.cust-logo-sub {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--c-redup);
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.nav-quota-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: var(--c-hijau-bg);
+  border: 1px solid #c8e6c9;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--c-hijau);
+}
+
+.nav-quota-pill .dot-aman {
+  color: var(--c-hijau);
+  font-size: 10px;
+}
+
+.link-admin {
+  color: var(--c-primer) !important;
+  font-weight: 700 !important;
+}
+
+@media (max-width: 992px) {
+  .nav-quota-pill {
+    display: none;
+  }
+}
+
+/* ---------- Hero Narrative & Pillars ---------- */
+.hero {
+  background: linear-gradient(180deg, #fff5ee 0%, var(--c-bg) 100%);
+  padding: 48px 0;
+}
+
+.hero-grid {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 40px;
+  align-items: center;
+}
+
+.hero-tag-wrap {
+  margin-bottom: 14px;
+}
+
+.hero-tag {
+  display: inline-block;
+  background: #fff2eb;
+  color: var(--c-primer);
+  border: 1px solid #fbd8c6;
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  padding: 5px 12px;
+  border-radius: 6px;
+}
+
+.hero-narrative h1 {
+  font-size: clamp(28px, 4vw, 40px);
+  line-height: 1.2;
+  letter-spacing: -.02em;
+  margin-bottom: 16px;
+  color: var(--c-teks);
+  font-weight: 800;
+}
+
+.hero-narrative p.lead {
+  font-size: 15px;
+  color: var(--c-redup);
+  line-height: 1.6;
+  margin-bottom: 22px;
+}
+
+.hero-pillars-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.hero-pillar-card {
+  background: #ffffff;
+  border: 1px solid var(--c-garis);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.hero-pillar-card.promo {
+  background: #fff8ed;
+  border-color: #f5dcb7;
+}
+
+.hero-pillar-card .pillar-title {
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--c-teks);
+  margin-bottom: 2px;
+}
+
+.hero-pillar-card.promo .pillar-title {
+  color: #b45309;
+}
+
+.hero-pillar-card .pillar-sub {
+  font-size: 11px;
+  color: var(--c-redup);
+  line-height: 1.35;
+}
+
+.hero-pillar-card.promo .pillar-sub {
+  color: #854d0e;
+}
+
+/* ---------- Hero Right: Featured Showcase Card ---------- */
+.hero-featured-card {
+  background: #ffffff;
+  border: 1px solid var(--c-garis);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 8px 28px rgba(35, 24, 21, .06);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.feat-badge-top {
+  display: inline-block;
+  align-self: flex-start;
+  background: #fff2eb;
+  color: var(--c-primer);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 6px;
+  letter-spacing: .03em;
+}
+
+.feat-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--c-teks);
+  margin: 0;
+}
+
+.feat-price-line {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.feat-price {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--c-primer);
+}
+
+.feat-price small {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.feat-min {
+  font-size: 12px;
+  color: var(--c-redup);
+}
+
+.feat-divider {
+  border: 0;
+  height: 1px;
+  background: var(--c-garis);
+  margin: 2px 0;
+}
+
+.feat-menu-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.feat-menu-list li {
+  font-size: 13px;
+  color: var(--c-teks);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.feat-menu-list .check-mark {
+  color: var(--c-hijau);
+  font-weight: 700;
+}
+
+.feat-pack-notice {
+  background: #f5f3ef;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 11.5px;
+  color: var(--c-redup);
+  line-height: 1.4;
+}
+
+.feat-action-btn {
+  margin-top: 4px;
+}
+
+@media (max-width: 860px) {
+  .hero-grid {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+}
+
+/* ---------- Kapasitas & Status Row ---------- */
+.kapasitas-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 14px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.badge-kuota-aman {
+  display: inline-flex;
+  align-items: center;
+  background: var(--c-hijau-bg);
+  border: 1px solid #c8e6c9;
+  color: var(--c-hijau);
+  font-weight: 700;
+  font-size: 12px;
+  padding: 6px 14px;
+  border-radius: 8px;
+}
+
+/* ---------- Sticky Order Tray Enhancements ---------- */
+.ringkasan-judul-teks {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ringkasan-self-badge {
+  background: #f5f3ef;
+  color: var(--c-redup);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.promo-milestone-tray {
+  background: #fff8ed;
+  border-bottom: 1px solid #f5dcb7;
+  padding: 10px 18px;
+}
+
+.promo-milestone-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.promo-milestone-head .promo-icon {
+  font-size: 20px;
+}
+
+.promo-milestone-title {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #b45309;
+  letter-spacing: .02em;
+}
+
+.promo-milestone-sub {
+  font-size: 11px;
+  color: #854d0e;
+}
+
+.trust-micro-copy {
+  font-size: 11px;
+  color: var(--c-redup);
+  text-align: center;
+  margin-top: 6px;
+}
+
+/* ---------- Alur Pemesanan 4 Langkah ---------- */
+.alur-pemesanan-seksi {
+  background: #ffffff;
+  border-top: 1px solid var(--c-garis);
+  border-bottom: 1px solid var(--c-garis);
+}
+
+.alur-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px;
+  margin-top: 28px;
+}
+
+.alur-card {
+  background: var(--c-bg);
+  border: 1px solid var(--c-garis);
+  border-radius: 12px;
+  padding: 20px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+
+.alur-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(35, 24, 21, .06);
+}
+
+.alur-step-num {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--c-primer);
+  letter-spacing: .06em;
+}
+
+.alur-card h3 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--c-teks);
+  margin: 0;
+}
+
+.alur-card p {
+  font-size: 12.5px;
+  color: var(--c-redup);
+  line-height: 1.5;
+  margin: 0;
+}
+
+@media (max-width: 900px) {
+  .alur-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 540px) {
+  .alur-grid {
     grid-template-columns: 1fr;
   }
 }

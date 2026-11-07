@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Checkout pesanan nasi box Warteg Pak Sanam. Lengkapi nama, nomor WhatsApp, dan jadwal pengambilan mandiri.">
     <title>Checkout Pesanan - Warteg Pak Sanam</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -16,21 +17,34 @@
 <body class="cust">
     <div class="cust-toast-area" id="custToast" aria-live="polite"></div>
 
+    <!-- ================= TOP OPERATIONAL NOTICE ================= -->
+    <div class="top-notice-bar">
+        <div class="wadah top-notice-inner">
+            <span class="top-notice-info">🍱 Warteg Pak Sanam • Jl. BDN 1 Cilandak Barat, Jakarta Selatan • Jam Buka: 09.00 - 19.00 WIB</span>
+            <span class="top-notice-wa">WA: 0857-8342-3626 • Khusus Ambil Mandiri (Self-Pickup)</span>
+        </div>
+    </div>
+
     <!-- ================= HEADER ================= -->
     <header class="cust-header">
         <div class="wadah cust-nav">
             <a href="index.html" class="cust-logo">
-                <span class="ikon-warteg" aria-hidden="true">🍱</span>
-                <span>Warteg Pak Sanam<small>Nasi Box &amp; Katering</small></span>
+                <span class="cust-logo-emblem" aria-hidden="true">🍱</span>
+                <span class="cust-logo-text">
+                    <strong class="cust-logo-title">WARTEG PAK SANAM</strong>
+                    <small class="cust-logo-sub">Spesialis Katering &amp; Nasi Box Rumahan</small>
+                </span>
             </a>
             <div class="cust-links" id="custLinks">
                 <a href="index.html">Beranda</a>
-                <a href="index.html#katalog">Menu</a>
+                <a href="index.html#katalog">Katalog Menu</a>
+                <a href="index.html#kapasitas">Cek Kuota Dapur</a>
                 <a href="cara-pemesanan.html">Cara Pemesanan</a>
                 <a href="cek_status.html">Cek Status Pesanan</a>
+                <a href="admin/login.html" class="link-admin">Login Admin</a>
             </div>
             <div class="cust-nav-kanan">
-                <a href="index.html#katalog" class="btn btn-primer btn-kecil">Pesan Sekarang</a>
+                <a href="index.html#katalog" class="btn btn-primer btn-kecil">Pesan Nasi Box</a>
                 <button type="button" class="cust-toggle" id="custToggle" aria-label="Buka menu" aria-expanded="false" aria-controls="custLinks">
                     <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
                 </button>
@@ -39,122 +53,139 @@
     </header>
 
     <!-- ================= CHECKOUT ================= -->
-    <section class="seksi checkout-page">
-        <div class="wadah">
-            <div class="seksi-kepala">
-                <h2>Checkout Pesanan</h2>
-                <p>Periksa kembali pesanan Anda, lalu lengkapi data pemesan dan jadwal pengambilan.</p>
-            </div>
-            <div class="checkout-grid">
-
-                <!-- KOLOM KIRI: Ringkasan Pesanan -->
-                <div class="panel-putih">
-                    <h3 style="font-size:16px;margin-bottom:12px">Ringkasan Pesanan</h3>
-                    <div id="ringkasanCheckoutIsi">
-                        <p class="bantuan">Belum ada menu dipilih.</p>
-                    </div>
-                    <div class="ringkasan-total" style="background:none;padding:12px 0 0">
-                        <div class="total-baris"><span>Total box</span><span id="totalBox">0</span></div>
-                        <div class="total-baris"><span>Subtotal</span><span id="subtotal">Rp0</span></div>
-                        <div class="total-baris" id="barisDiskon" style="display:none;color:var(--c-tertier);font-weight:600"><span>Diskon Box (50+)</span><span id="nilaiDiskon">-Rp0</span></div>
-                        <div class="total-baris besar"><span>Total Tagihan</span><span class="nilai" id="totalHarga">Rp0</span></div>
-                    </div>
-                    <div style="margin-top:16px">
-                        <a href="index.html#katalog" class="btn btn-garis btn-kecil">&larr; Ubah Pilihan Menu</a>
-                    </div>
+    <main>
+        <section class="seksi checkout-page">
+            <div class="wadah">
+                <div class="seksi-kepala">
+                    <h2>Checkout &amp; Konfirmasi Pemesanan</h2>
+                    <p>Periksa kembali rincian box pesanan Anda, lalu lengkapi data pemesan dan pilih waktu pengambilan di warteg.</p>
                 </div>
+                <div class="checkout-grid">
 
-                <!-- KOLOM KANAN: Formulir Pemesan -->
-                <div class="panel-putih">
-                    <div class="alert alert-info" id="infoMinBox">Minimum 10 box. Pesan &ge; 50 box dapat voucher diskon Rp 50.000 (berlaku kelipatan)!</div>
-
-                    <form id="formCheckout" novalidate autocomplete="on">
-                        <div class="form-baris">
-                            <label for="fNama">Nama pemesan <span class="wajib">*</span></label>
-                            <input type="text" class="input" id="fNama" name="nama" maxlength="100" required
-                                   placeholder="Nama lengkap" autocomplete="name"
-                                   pattern="[^0-9]*"
-                                   title="Nama harus mengandung huruf dan tidak boleh berisi angka.">
-                            <div class="bantuan">Contoh: Ahmad Fauzi. Nama tidak boleh berisi angka.</div>
-                            <div class="pesan-galat" data-untuk="nama" style="display:none;color:var(--c-merah);font-size:12px;margin-top:4px;"></div>
+                    <!-- KOLOM KIRI: Ringkasan Pesanan -->
+                    <div class="panel-putih" style="border:1.5px solid var(--c-garis);">
+                        <h3 style="font-size:17px;margin-bottom:14px;display:flex;align-items:center;gap:8px;">
+                            <span>📦</span> Rincian Menu Box
+                        </h3>
+                        <div id="ringkasanCheckoutIsi">
+                            <p class="bantuan">Belum ada menu dipilih.</p>
                         </div>
-
-                        <div class="form-baris">
-                            <label for="fWa">Nomor WhatsApp aktif <span class="wajib">*</span></label>
-                            <input type="tel" class="input" id="fWa" name="no_wa" maxlength="20" required
-                                   placeholder="08xxxxxxxxxx" autocomplete="tel" inputmode="tel">
-                            <div class="bantuan">Contoh: 0812 3456 7890 atau 6281234567890.</div>
-                            <div class="pesan-galat" data-untuk="no_wa" style="display:none;color:var(--c-merah);font-size:12px;margin-top:4px;"></div>
-                        </div>
-
-                        <div class="form-dua">
-                            <div class="form-baris">
-                                <label for="fTgl">Tanggal pengambilan <span class="wajib">*</span></label>
-                                <input type="date" class="input" id="fTgl" name="tanggal_ambil" required>
-                                <div class="pesan-galat" data-untuk="tanggal_ambil" style="display:none;color:var(--c-merah);font-size:12px;margin-top:4px;"></div>
+                        <div class="ringkasan-total" style="background:none;padding:14px 0 0;border-top:1px solid var(--c-garis);">
+                            <div class="total-baris"><span>Total Pesanan</span><span id="totalBox">0 box</span></div>
+                            <div class="total-baris"><span>Subtotal Menu</span><span id="subtotal">Rp0</span></div>
+                            <div class="total-baris" id="barisDiskon" style="display:none;color:var(--c-tertier);font-weight:600">
+                                <span>Potongan Voucher (50+ Box)</span>
+                                <span id="nilaiDiskon">-Rp0</span>
                             </div>
-                            <div class="form-baris">
-                                <label for="fJam">Jam pengambilan <span class="wajib">*</span></label>
-                                <select class="select" id="fJam" name="jam_ambil" required></select>
-                                <div class="pesan-galat" data-untuk="jam_ambil" style="display:none;color:var(--c-merah);font-size:12px;margin-top:4px;"></div>
+                            <div class="total-baris besar" style="margin-top:8px;padding-top:10px;border-top:1px dashed var(--c-garis);">
+                                <span>Total Pembayaran</span>
+                                <span class="nilai" id="totalHarga">Rp0</span>
                             </div>
                         </div>
+                        <div style="margin-top:18px">
+                            <a href="index.html#katalog" class="btn btn-garis btn-kecil">← Ubah Pilihan Menu</a>
+                        </div>
+                    </div>
 
-                        <div class="form-baris">
-                            <label for="fCatatan">Catatan pesanan (opsional)</label>
-                            <textarea class="textarea" id="fCatatan" name="catatan" maxlength="255"
-                                      placeholder="Mis. tanpa sambal, tambah nasi, alergi, dll."></textarea>
-                            <div class="pesan-galat" data-untuk="catatan" style="display:none;color:var(--c-merah);font-size:12px;margin-top:4px;"></div>
+                    <!-- KOLOM KANAN: Formulir Pemesan -->
+                    <div class="panel-putih" style="border:1.5px solid var(--c-garis);">
+                        <div class="alert alert-info" id="infoMinBox" style="background:var(--c-emas-muda);border-color:var(--c-emas);color:var(--c-cokelat);">
+                            💡 Minimal order 10 box. Dapatkan diskon Rp 50.000 setiap kelipatan 50 box tanpa batas!
                         </div>
 
-                        <input type="hidden" id="fJumlahBox" name="jumlah_box" value="0">
-                        <p class="bantuan">Lokasi pengambilan: <strong>Warteg Pak Sanam</strong> (Jalan BDN 1 Cilandak Barat Jakarta Selatan - self-pickup, tidak ada ongkir).</p>
+                        <form id="formCheckout" novalidate autocomplete="on">
+                            <div class="form-baris">
+                                <label for="fNama">Nama Lengkap Pemesan <span class="wajib">*</span></label>
+                                <input type="text" class="input" id="fNama" name="nama" maxlength="100" required
+                                       placeholder="Contoh: Budi Santoso" autocomplete="name"
+                                       pattern="[^0-9]*"
+                                       title="Nama harus mengandung huruf dan tidak boleh berisi angka.">
+                                <div class="bantuan">Nama penanggung jawab pengambilan (tidak boleh berisi angka).</div>
+                                <div class="pesan-galat" data-untuk="nama" style="display:none;color:var(--c-merah);font-size:12px;margin-top:4px;"></div>
+                            </div>
 
-                        <button type="submit" class="btn btn-primer btn-blok" id="btnBuatPesanan" disabled style="margin-top:16px">
-                            <span id="btnBuatTeks">Lanjutkan Pembayaran</span>
-                        </button>
-                        <div class="alert alert-galat" id="galatCheckout" style="margin-top:14px;display:none"></div>
-                    </form>
+                            <div class="form-baris">
+                                <label for="fWa">Nomor WhatsApp Aktif <span class="wajib">*</span></label>
+                                <input type="tel" class="input" id="fWa" name="no_wa" maxlength="20" required
+                                       placeholder="Contoh: 081234567890" autocomplete="tel" inputmode="tel">
+                                <div class="bantuan">Untuk konfirmasi persiapan dapur dan pengiriman nota digital.</div>
+                                <div class="pesan-galat" data-untuk="no_wa" style="display:none;color:var(--c-merah);font-size:12px;margin-top:4px;"></div>
+                            </div>
+
+                            <div class="form-dua">
+                                <div class="form-baris">
+                                    <label for="fTgl">Tanggal Pengambilan <span class="wajib">*</span></label>
+                                    <input type="date" class="input" id="fTgl" name="tanggal_ambil" required>
+                                    <div class="pesan-galat" data-untuk="tanggal_ambil" style="display:none;color:var(--c-merah);font-size:12px;margin-top:4px;"></div>
+                                </div>
+                                <div class="form-baris">
+                                    <label for="fJam">Jam Pengambilan <span class="wajib">*</span></label>
+                                    <select class="select" id="fJam" name="jam_ambil" required></select>
+                                    <div class="pesan-galat" data-untuk="jam_ambil" style="display:none;color:var(--c-merah);font-size:12px;margin-top:4px;"></div>
+                                </div>
+                            </div>
+
+                            <div class="form-baris">
+                                <label for="fCatatan">Catatan Pesanan Khusus (opsional)</label>
+                                <textarea class="textarea" id="fCatatan" name="catatan" maxlength="255"
+                                          placeholder="Misal: sambal dipisah, tanpa lalapan, kemasan diberi tanda, dll."></textarea>
+                                <div class="pesan-galat" data-untuk="catatan" style="display:none;color:var(--c-merah);font-size:12px;margin-top:4px;"></div>
+                            </div>
+
+                            <input type="hidden" id="fJumlahBox" name="jumlah_box" value="0">
+                            
+                            <div style="background:var(--c-bg);padding:12px 14px;border-radius:8px;font-size:13px;line-height:1.5;margin:12px 0;">
+                                📍 <strong>Lokasi Ambil:</strong> Warteg Pak Sanam, Jalan BDN 1 Cilandak Barat, Jakarta Selatan.<br>
+                                ⏱️ <strong>Ketentuan:</strong> Pengambilan mandiri (Self-pickup) jam 09.00 - 19.00 WIB tanpa biaya tambahan/ongkir.
+                            </div>
+
+                            <button type="submit" class="btn btn-primer btn-blok" id="btnBuatPesanan" disabled style="margin-top:16px">
+                                <span id="btnBuatTeks">Lanjutkan ke Pembayaran QRIS →</span>
+                            </button>
+                            <div class="alert alert-galat" id="galatCheckout" style="margin-top:14px;display:none"></div>
+                        </form>
+                    </div>
+
                 </div>
-
             </div>
-        </div>
-    </section>
+        </section>
+    </main>
 
     <!-- ================= FOOTER ================= -->
     <footer class="cust-footer">
         <div class="wadah cust-footer-grid">
             <div>
-                <h4>Warteg Pak Sanam</h4>
-                <p>Melayani pemesanan nasi box dan katering dengan menu harian segar. Pesanan diambil sendiri (self-pickup) di lokasi warteg.</p>
+                <h4>🍱 WARTEG PAK SANAM</h4>
+                <p>Melayani pemesanan nasi box dan katering harian masakan rumahan Nusantara. Seluruh pesanan disiapkan segar dan diambil langsung (self-pickup) di warteg kami.</p>
             </div>
             <div>
                 <h4>Navigasi</h4>
                 <ul>
                     <li><a href="index.html">Beranda</a></li>
-                    <li><a href="index.html#katalog">Menu</a></li>
+                    <li><a href="index.html#katalog">Katalog Menu</a></li>
+                    <li><a href="index.html#kapasitas">Cek Kuota Dapur</a></li>
                     <li><a href="cara-pemesanan.html">Cara Pemesanan</a></li>
                     <li><a href="cek_status.html">Cek Status Pesanan</a></li>
                 </ul>
             </div>
             <div>
-                <h4>Informasi</h4>
+                <h4>Ketentuan Katering</h4>
                 <ul>
-                    <li>Minimum 10 box per pesanan</li>
-                    <li>Promo voucher &ge; 50 box hemat Rp50.000</li>
+                    <li>Minimal order 10 box per transaksi</li>
+                    <li>Promo kelipatan 50 box hemat Rp 50.000</li>
+                    <li>Maksimal dapur 120 box per hari</li>
                     <li>Pesan minimal H-1 sebelum pengambilan</li>
-                    <li>Pembayaran non-tunai via QRIS</li>
-                    <li>Jam operasional: 09:00–19:00 WIB</li>
+                    <li>Pembayaran non-tunai via QRIS Statis</li>
                 </ul>
             </div>
             <div>
-                <h4>Lokasi Pengambilan</h4>
-                <p>Warteg Pak Sanam<br>Jalan BDN 1 Cilandak Barat Jakarta Selatan</p>
-                <p>Telp/WA: 0857-8342-3626</p>
+                <h4>Lokasi &amp; Jam Operasional</h4>
+                <p>Warteg Pak Sanam<br>Jalan BDN 1 Cilandak Barat, Jakarta Selatan</p>
+                <p>Jam Operasional: 09.00 - 19.00 WIB</p>
+                <p>WhatsApp Layanan: 0857-8342-3626</p>
             </div>
         </div>
-        <div class="copy">&copy; 2026 Warteg Pak Sanam. Semua harga dalam Rupiah (IDR).</div>
+        <div class="copy">&copy; 2026 Warteg Pak Sanam. Sistem POS &amp; Pre-Order Katering Harian Berbasis Web. Semua harga dalam Rupiah (IDR).</div>
     </footer>
 </body>
 </html>
-
