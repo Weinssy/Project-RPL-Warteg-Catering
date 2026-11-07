@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Checkout Pesanan - Warung Mas Alif</title>
+    <title>Checkout Pesanan - Warteg Pak Sanam</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -21,7 +21,7 @@
         <div class="wadah cust-nav">
             <a href="index.html" class="cust-logo">
                 <span class="ikon-warteg" aria-hidden="true">🍱</span>
-                <span>Warung Mas Alif<small>Nasi Box &amp; Katering</small></span>
+                <span>Warteg Pak Sanam<small>Nasi Box &amp; Katering</small></span>
             </a>
             <div class="cust-links" id="custLinks">
                 <a href="index.html">Beranda</a>
@@ -56,7 +56,8 @@
                     <div class="ringkasan-total" style="background:none;padding:12px 0 0">
                         <div class="total-baris"><span>Total box</span><span id="totalBox">0</span></div>
                         <div class="total-baris"><span>Subtotal</span><span id="subtotal">Rp0</span></div>
-                        <div class="total-baris besar"><span>Total</span><span class="nilai" id="totalHarga">Rp0</span></div>
+                        <div class="total-baris" id="barisDiskon" style="display:none;color:var(--c-tertier);font-weight:600"><span>Diskon Box (50+)</span><span id="nilaiDiskon">-Rp0</span></div>
+                        <div class="total-baris besar"><span>Total Tagihan</span><span class="nilai" id="totalHarga">Rp0</span></div>
                     </div>
                     <div style="margin-top:16px">
                         <a href="index.html#katalog" class="btn btn-garis btn-kecil">&larr; Ubah Pilihan Menu</a>
@@ -65,7 +66,7 @@
 
                 <!-- KOLOM KANAN: Formulir Pemesan -->
                 <div class="panel-putih">
-                    <div class="alert alert-info" id="infoMinBox">Minimum pemesanan 10 box per transaksi.</div>
+                    <div class="alert alert-info" id="infoMinBox">Minimum 10 box. Pesan &ge; 50 box dapat voucher diskon Rp 50.000 (berlaku kelipatan)!</div>
 
                     <form id="formCheckout" novalidate autocomplete="on">
                         <div class="form-baris">
@@ -107,7 +108,7 @@
                         </div>
 
                         <input type="hidden" id="fJumlahBox" name="jumlah_box" value="0">
-                        <p class="bantuan">Lokasi pengambilan: <strong>Warung Mas Alif</strong> (self-pickup, tidak ada ongkir).</p>
+                        <p class="bantuan">Lokasi pengambilan: <strong>Warteg Pak Sanam</strong> (Jalan BDN 1 Cilandak Barat Jakarta Selatan - self-pickup, tidak ada ongkir).</p>
 
                         <button type="submit" class="btn btn-primer btn-blok" id="btnBuatPesanan" disabled style="margin-top:16px">
                             <span id="btnBuatTeks">Lanjutkan Pembayaran</span>
@@ -124,7 +125,7 @@
     <footer class="cust-footer">
         <div class="wadah cust-footer-grid">
             <div>
-                <h4>Warung Mas Alif</h4>
+                <h4>Warteg Pak Sanam</h4>
                 <p>Melayani pemesanan nasi box dan katering dengan menu harian segar. Pesanan diambil sendiri (self-pickup) di lokasi warteg.</p>
             </div>
             <div>
@@ -140,6 +141,7 @@
                 <h4>Informasi</h4>
                 <ul>
                     <li>Minimum 10 box per pesanan</li>
+                    <li>Promo voucher &ge; 50 box hemat Rp50.000</li>
                     <li>Pesan minimal H-1 sebelum pengambilan</li>
                     <li>Pembayaran non-tunai via QRIS</li>
                     <li>Jam operasional: 09:00–19:00 WIB</li>
@@ -147,11 +149,11 @@
             </div>
             <div>
                 <h4>Lokasi Pengambilan</h4>
-                <p>Warung Mas Alif<br>Jl. Raya Warteg No. 12, Jakarta</p>
-                <p>Telp/WA: 0812-3456-7890</p>
+                <p>Warteg Pak Sanam<br>Jalan BDN 1 Cilandak Barat Jakarta Selatan</p>
+                <p>Telp/WA: 0857-8342-3626</p>
             </div>
         </div>
-        <div class="copy">&copy; 2026 Warung Mas Alif. Semua harga dalam Rupiah (IDR).</div>
+        <div class="copy">&copy; 2026 Warteg Pak Sanam. Semua harga dalam Rupiah (IDR).</div>
     </footer>
 </body>
 </html>

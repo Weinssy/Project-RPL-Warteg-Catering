@@ -227,6 +227,8 @@
         var box = totalBox(), sub = subtotal();
         var minBox = CFG.MINIMAL_BOX || 10;
         var cukup = box >= minBox;
+        var diskon = DB ? DB.hitungDiskon(box) : (Math.floor(box / 50) * 50000);
+        var totalAkhir = Math.max(0, sub - diskon);
 
         // 1. Ringkasan di Halaman Katalog (index.html)
         var isi = $('#ringkasanIsi');
@@ -270,22 +272,33 @@
                         + '</tr>';
                 });
                 h += '</table>';
+                if (diskon > 0) {
+                    h += '<div style="background:#e8f5e9;color:#00855b;padding:8px 12px;border-radius:8px;font-size:13px;margin-top:10px;display:flex;align-items:center;gap:8px;">'
+                        + '<span>🎉</span><span><strong>Diskon 50+ Box:</strong> Hemat ' + formatRupiah(diskon) + ' langsung dipotong!</span>'
+                        + '</div>';
+                }
                 co.innerHTML = h;
             }
         }
 
         if ($('#totalBox')) $('#totalBox').textContent = box;
         if ($('#subtotal')) $('#subtotal').textContent = formatRupiah(sub);
-        if ($('#totalHarga')) $('#totalHarga').textContent = formatRupiah(sub);
-        if ($('#totalCheckout')) $('#totalCheckout').textContent = formatRupiah(sub);
+        if ($('#barisDiskon')) {
+            $('#barisDiskon').style.display = diskon > 0 ? 'flex' : 'none';
+        }
+        if ($('#nilaiDiskon')) $('#nilaiDiskon').textContent = '−' + formatRupiah(diskon);
+        if ($('#totalHarga')) $('#totalHarga').textContent = formatRupiah(totalAkhir);
+        if ($('#totalCheckout')) $('#totalCheckout').textContent = formatRupiah(totalAkhir);
         if ($('#hitungKeranjang')) $('#hitungKeranjang').textContent = box;
         if ($('#cartBarBox')) $('#cartBarBox').textContent = box + ' box';
-        if ($('#cartBarTotal')) $('#cartBarTotal').textContent = formatRupiah(sub);
+        if ($('#cartBarTotal')) $('#cartBarTotal').textContent = formatRupiah(totalAkhir);
         if ($('#cartBar')) $('#cartBar').classList.toggle('aktif', box > 0);
 
         if ($('#btnLanjut')) $('#btnLanjut').disabled = !cukup;
         if ($('#pesanMin')) {
-            $('#pesanMin').textContent = cukup ? (box + ' box siap dipesan') : ('Minimum ' + minBox + ' box, kurang ' + (minBox - box));
+            var teksStatus = cukup ? (box + ' box siap dipesan') : ('Minimum ' + minBox + ' box, kurang ' + (minBox - box));
+            if (diskon > 0) teksStatus += ' (🎉 Diskon ' + formatRupiah(diskon) + ')';
+            $('#pesanMin').textContent = teksStatus;
         }
 
         // Tombol lanjut ke checkout di bagian bawah index.html

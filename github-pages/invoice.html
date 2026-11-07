@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Invoice - Warung Mas Alif</title>
+    <title>Invoice - Warteg Pak Sanam</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -18,7 +18,7 @@
     <div class="wadah cust-nav">
         <a href="index.html" class="cust-logo">
             <span class="ikon-warteg" aria-hidden="true">🍱</span>
-            <span>Warung Mas Alif<small>Nasi Box &amp; Katering</small></span>
+            <span>Warteg Pak Sanam<small>Nasi Box &amp; Katering</small></span>
         </a>
         <div class="cust-links" id="custLinks">
             <a href="index.html">Beranda</a>
@@ -49,7 +49,7 @@
 <footer class="cust-footer">
     <div class="wadah cust-footer-grid">
         <div>
-            <h4>Warung Mas Alif</h4>
+            <h4>Warteg Pak Sanam</h4>
             <p>Melayani pemesanan nasi box dan katering dengan menu harian segar. Pesanan diambil sendiri (self-pickup) di lokasi warteg.</p>
         </div>
         <div>
@@ -65,6 +65,7 @@
             <h4>Informasi</h4>
             <ul>
                 <li>Minimum 10 box per pesanan</li>
+                <li>Promo voucher &ge; 50 box hemat Rp50.000</li>
                 <li>Pesan minimal H-1 sebelum pengambilan</li>
                 <li>Pembayaran non-tunai via QRIS</li>
                 <li>Jam operasional: 09:00–19:00 WIB</li>
@@ -72,11 +73,11 @@
         </div>
         <div>
             <h4>Lokasi Pengambilan</h4>
-            <p>Warung Mas Alif<br>Jl. Raya Warteg No. 12, Jakarta</p>
-            <p>Telp/WA: 0812-3456-7890</p>
+            <p>Warteg Pak Sanam<br>Jalan BDN 1 Cilandak Barat Jakarta Selatan</p>
+            <p>Telp/WA: 0857-8342-3626</p>
         </div>
     </div>
-    <div class="copy">&copy; 2026 Warung Mas Alif. Semua harga dalam Rupiah (IDR).</div>
+    <div class="copy">&copy; 2026 Warteg Pak Sanam. Semua harga dalam Rupiah (IDR).</div>
 </footer>
 
 <script>
@@ -104,12 +105,13 @@ document.addEventListener('DOMContentLoaded', async function () {
     var urlNota = 'nota.html?kode=' + encodeURIComponent(p.kode) + '&t=' + encodeURIComponent(p.token_nota || token);
 
     var subtotal = detail.reduce(function (sum, d) { return sum + (d.subtotal || 0); }, 0);
-    var total = p.total_harga || subtotal;
+    var diskon = (p.diskon !== undefined && p.diskon !== null) ? p.diskon : (window.WARTEG_DB.hitungDiskon(p.total_box || 0));
+    var total = (p.nominal_bayar !== undefined && p.nominal_bayar !== null) ? p.nominal_bayar : Math.max(0, subtotal - diskon);
 
     var html = '<div class="nota-kartu" style="max-width:100%">'
         + '<div class="nota-atas" style="background:' + (lunas ? '#15803d' : 'var(--c-oranye-tua)') + ';">'
         + '<h1>INVOICE</h1>'
-        + '<p style="opacity:.9;font-size:14px">Warung Mas Alif</p>'
+        + '<p style="opacity:.9;font-size:14px">Warteg Pak Sanam</p>'
         + '<div class="kode">' + p.kode + '</div>'
         + '<div style="margin-top:10px;">'
         + '<span style="display:inline-block;padding:4px 12px;border-radius:999px;font-size:12px;font-weight:700;background:' + (lunas ? 'rgba(255,255,255,.95);color:#15803d' : 'rgba(255,255,255,.95);color:#b45309') + ';">'
@@ -142,8 +144,9 @@ document.addEventListener('DOMContentLoaded', async function () {
     html += '</tbody></table>'
         + '<div class="nota-total" style="margin-top:14px">'
         + '<div style="display:flex;justify-content:space-between;padding:6px 0;"><span>Subtotal</span><span>' + window.WARTEG_DB.rupiah(subtotal) + '</span></div>'
-        + '<div style="display:flex;justify-content:space-between;padding:6px 0;"><span>Ongkir</span><span>Rp0 (Ambil Sendiri)</span></div>'
-        + '<div style="display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid var(--c-garis);font-weight:700;font-size:18px;"><span>TOTAL</span><span>' + window.WARTEG_DB.rupiah(total) + '</span></div>'
+        + (diskon > 0 ? '<div style="display:flex;justify-content:space-between;padding:6px 0;color:var(--c-tertier);font-weight:600;"><span>Voucher Diskon (50+ Box)</span><span>− ' + window.WARTEG_DB.rupiah(diskon) + '</span></div>' : '')
+        + '<div style="display:flex;justify-content:space-between;padding:6px 0;"><span>Pengambilan</span><span>Self-Pickup (Rp0)</span></div>'
+        + '<div style="display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid var(--c-garis);font-weight:700;font-size:18px;"><span>TOTAL BAYAR</span><span>' + window.WARTEG_DB.rupiah(total) + '</span></div>'
         + '</div>';
 
     if (lunas) {

@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Pembayaran QRIS - Warung Mas Alif</title>
+    <title>Pembayaran QRIS - Warteg Pak Sanam</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -22,7 +22,7 @@
         <div class="wadah cust-nav">
             <a href="index.html" class="cust-logo">
                 <span class="ikon-warteg" aria-hidden="true">🍱</span>
-                <span>Warung Mas Alif<small>Nasi Box &amp; Katering</small></span>
+                <span>Warteg Pak Sanam<small>Nasi Box &amp; Katering</small></span>
             </a>
             <div class="cust-links" id="custLinks">
                 <a href="index.html">Beranda</a>
@@ -56,7 +56,7 @@
     <footer class="cust-footer">
         <div class="wadah cust-footer-grid">
             <div>
-                <h4>Warung Mas Alif</h4>
+                <h4>Warteg Pak Sanam</h4>
                 <p>Melayani pemesanan nasi box dan katering dengan menu harian segar. Pesanan diambil sendiri
                     (self-pickup) di lokasi warteg.</p>
             </div>
@@ -73,6 +73,7 @@
                 <h4>Informasi</h4>
                 <ul>
                     <li>Minimum 10 box per pesanan</li>
+                    <li>Promo voucher &ge; 50 box hemat Rp50.000</li>
                     <li>Pesan minimal H-1 sebelum pengambilan</li>
                     <li>Pembayaran non-tunai via QRIS</li>
                     <li>Jam operasional: 09:00–19:00 WIB</li>
@@ -80,11 +81,11 @@
             </div>
             <div>
                 <h4>Lokasi Pengambilan</h4>
-                <p>Warung Mas Alif<br>Jl. Raya Warteg No. 12, Jakarta</p>
-                <p>Telp/WA: 0812-3456-7890</p>
+                <p>Warteg Pak Sanam<br>Jalan BDN 1 Cilandak Barat Jakarta Selatan</p>
+                <p>Telp/WA: 0857-8342-3626</p>
             </div>
         </div>
-        <div class="copy">&copy; 2026 Warung Mas Alif. Semua harga dalam Rupiah (IDR).</div>
+        <div class="copy">&copy; 2026 Warteg Pak Sanam. Semua harga dalam Rupiah (IDR).</div>
     </footer>
 
     <script>
@@ -159,8 +160,12 @@
                     }
 
                     // QRIS Box
-                    html += '<div class="qr-kotak">'
-                        + '<div class="bayar-nominal">Total Tagihan: <strong>' + window.WARTEG_DB.rupiah(nominal) + '</strong></div>'
+                    var diskon = (p.diskon !== undefined && p.diskon !== null) ? p.diskon : (window.WARTEG_DB.hitungDiskon(p.total_box || 0));
+                    html += '<div class="qr-kotak">';
+                    if (diskon > 0) {
+                        html += '<div style="background:#e8f5e9;color:#00855b;padding:6px 12px;border-radius:6px;font-size:13px;margin-bottom:10px;font-weight:600;display:inline-block;">🎉 Diskon 50+ Box: Hemat ' + window.WARTEG_DB.rupiah(diskon) + '</div>';
+                    }
+                    html += '<div class="bayar-nominal">Total Tagihan: <strong>' + window.WARTEG_DB.rupiah(nominal) + '</strong></div>'
                         + '<p class="bantuan" style="margin-bottom:12px">Scan QRIS berikut dengan aplikasi bank / e-wallet Anda:</p>'
                         + '<div class="qr-gambar">'
                         + '<img src="uploads/qris/' + qrisGambar + '" alt="QRIS Statis ' + qrisNama + '" style="max-width:280px;width:100%;height:auto;border-radius:8px;" onerror="this.onerror=null;this.src=\'uploads/1.jpeg\';">'

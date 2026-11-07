@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Nota Pesanan - Warung Mas Alif</title>
+    <title>Nota Pesanan - Warteg Pak Sanam</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -18,7 +18,7 @@
     <div class="wadah cust-nav">
         <a href="index.html" class="cust-logo">
             <span class="ikon-warteg" aria-hidden="true">🍱</span>
-            <span>Warung Mas Alif<small>Nasi Box &amp; Katering</small></span>
+            <span>Warteg Pak Sanam<small>Nasi Box &amp; Katering</small></span>
         </a>
         <div class="cust-links" id="custLinks">
             <a href="index.html">Beranda</a>
@@ -49,7 +49,7 @@
 <footer class="cust-footer">
     <div class="wadah cust-footer-grid">
         <div>
-            <h4>Warung Mas Alif</h4>
+            <h4>Warteg Pak Sanam</h4>
             <p>Melayani pemesanan nasi box dan katering dengan menu harian segar. Pesanan diambil sendiri (self-pickup) di lokasi warteg.</p>
         </div>
         <div>
@@ -65,6 +65,7 @@
             <h4>Informasi</h4>
             <ul>
                 <li>Minimum 10 box per pesanan</li>
+                <li>Promo voucher &ge; 50 box hemat Rp50.000</li>
                 <li>Pesan minimal H-1 sebelum pengambilan</li>
                 <li>Pembayaran non-tunai via QRIS</li>
                 <li>Jam operasional: 09:00–19:00 WIB</li>
@@ -72,11 +73,11 @@
         </div>
         <div>
             <h4>Lokasi Pengambilan</h4>
-            <p>Warung Mas Alif<br>Jl. Raya Warteg No. 12, Jakarta</p>
-            <p>Telp/WA: 0812-3456-7890</p>
+            <p>Warteg Pak Sanam<br>Jalan BDN 1 Cilandak Barat Jakarta Selatan</p>
+            <p>Telp/WA: 0857-8342-3626</p>
         </div>
     </div>
-    <div class="copy">&copy; 2026 Warung Mas Alif. Semua harga dalam Rupiah (IDR).</div>
+    <div class="copy">&copy; 2026 Warteg Pak Sanam. Semua harga dalam Rupiah (IDR).</div>
 </footer>
 
 <script>
@@ -103,10 +104,15 @@ document.addEventListener('DOMContentLoaded', async function () {
     var urlBayar = 'pembayaran.html?kode=' + encodeURIComponent(p.kode) + '&t=' + encodeURIComponent(p.token_nota || token);
     var urlInvoice = 'invoice.html?kode=' + encodeURIComponent(p.kode) + '&t=' + encodeURIComponent(p.token_nota || token);
 
+    var subtotal = p.total_harga || 0;
+    var diskon = (p.diskon !== undefined && p.diskon !== null) ? p.diskon : (window.WARTEG_DB.hitungDiskon(p.total_box || 0));
+    var totalBayar = (p.nominal_bayar !== undefined && p.nominal_bayar !== null) ? p.nominal_bayar : Math.max(0, subtotal - diskon);
+    var urlWa = window.WARTEG_DB.linkWaWarteg(p.kode, p.nama_pelanggan, p.total_box, totalBayar, diskon);
+
     var html = '<div class="nota-kartu">'
         + '<div class="nota-atas">'
         + '<h1>Nota Pesanan</h1>'
-        + '<p style="opacity:.9;font-size:14px">Warung Mas Alif · ' + window.WARTEG_DB.tanggalId(p.tanggal_ambil, false) + '</p>'
+        + '<p style="opacity:.9;font-size:14px">Warteg Pak Sanam · ' + window.WARTEG_DB.tanggalId(p.tanggal_ambil, false) + '</p>'
         + '<div class="kode">' + p.kode + '</div>'
         + '</div>'
         + '<div class="nota-isi">'
@@ -120,7 +126,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         + '<div class="item"><div class="label">WhatsApp</div><div>' + p.no_wa + '</div></div>'
         + '<div class="item"><div class="label">Tanggal ambil</div><div>' + window.WARTEG_DB.tanggalId(p.tanggal_ambil) + '</div></div>'
         + '<div class="item"><div class="label">Jam ambil</div><div>' + window.WARTEG_DB.jamPendek(p.jam_ambil) + ' WIB</div></div>'
-        + '<div class="item"><div class="label">Lokasi</div><div>Warung Mas Alif (Self-Pickup)</div></div>'
+        + '<div class="item"><div class="label">Lokasi</div><div>Warteg Pak Sanam (Jalan BDN 1 Cilandak Barat)</div></div>'
         + '</div></div>'
         + '<div class="nota-seksi">'
         + '<h3>Rincian Pesanan</h3>'
@@ -137,7 +143,15 @@ document.addEventListener('DOMContentLoaded', async function () {
     });
 
     html += '</tbody></table>'
-        + '<div class="nota-total"><span>Total</span><span class="nilai">' + window.WARTEG_DB.rupiah(p.total_harga) + '</span></div>';
+        + '<div class="nota-total" style="flex-direction:column;gap:6px;align-items:stretch;margin-top:14px">'
+        + '<div style="display:flex;justify-content:space-between;font-size:14px;color:var(--c-redup)"><span>Subtotal</span><span>' + window.WARTEG_DB.rupiah(subtotal) + '</span></div>';
+
+    if (diskon > 0) {
+        html += '<div style="display:flex;justify-content:space-between;font-size:14px;color:var(--c-tertier);font-weight:600"><span>Diskon Voucher (50+ Box)</span><span>− ' + window.WARTEG_DB.rupiah(diskon) + '</span></div>';
+    }
+
+    html += '<div style="display:flex;justify-content:space-between;font-size:18px;font-weight:800;border-top:1px solid #e2e8f0;padding-top:8px"><span>Total Tagihan</span><span class="nilai">' + window.WARTEG_DB.rupiah(totalBayar) + '</span></div>'
+        + '</div>';
 
     if (p.catatan) {
         html += '<p class="bantuan" style="margin-top:10px"><strong>Catatan:</strong> ' + p.catatan + '</p>';
@@ -164,11 +178,13 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
 
     html += '</div>'
-        + '<div class="nota-aksi">'
+        + '<div class="nota-aksi" style="flex-direction:column;gap:10px">'
+        + '<a href="' + urlWa + '" target="_blank" rel="noopener" class="btn btn-primer btn-blok" style="text-align:center;text-decoration:none">💬 Konfirmasi Pesanan ke WhatsApp Warteg</a>'
+        + '<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;width:100%">'
         + '<button type="button" class="btn btn-garis btn-kecil" onclick="window.print()">Cetak / Simpan</button>'
         + '<a href="javascript:location.reload()" class="btn btn-garis btn-kecil">Muat Ulang Status</a>'
-        + '<a href="index.html" class="btn btn-primer btn-kecil">Pesan Lagi</a>'
-        + '</div></div>'
+        + '<a href="index.html" class="btn btn-garis btn-kecil">Pesan Lagi</a>'
+        + '</div></div></div>'
         + '<p class="bantuan" style="text-align:center;margin-top:16px">Simpan tautan ini untuk memantau status pesanan.</p>';
 
     wadah.innerHTML = html;

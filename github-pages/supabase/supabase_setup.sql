@@ -80,6 +80,7 @@ CREATE TABLE IF NOT EXISTS public.pesanan (
     jam_ambil TIME NOT NULL,
     total_box INTEGER NOT NULL CHECK (total_box > 0),
     total_harga BIGINT NOT NULL CHECK (total_harga >= 0),
+    diskon BIGINT NOT NULL DEFAULT 0,
     status TEXT NOT NULL DEFAULT 'Menunggu Konfirmasi' CHECK (status IN ('Menunggu Konfirmasi', 'Sedang Dimasak', 'Siap Diambil')),
     status_bayar TEXT NOT NULL DEFAULT 'belum_bayar' CHECK (status_bayar IN ('belum_bayar', 'menunggu', 'menunggu_verifikasi', 'berhasil', 'ditolak', 'gagal', 'kedaluwarsa', 'dibatalkan')),
     metode_bayar TEXT NOT NULL DEFAULT 'qris',
@@ -150,6 +151,8 @@ AS $$
 DECLARE
     v_total_box INT := 0;
     v_total_harga BIGINT := 0;
+    v_diskon BIGINT := 0;
+    v_nominal_bayar BIGINT := 0;
     v_item RECORD;
     v_menu_harga INT;
     v_menu_nama TEXT;
@@ -256,9 +259,13 @@ BEGIN
         v_total_harga := v_total_harga + (v_item.jumlah::BIGINT * v_menu_harga);
     END LOOP;
 
-    -- Update total harga final di pesanan
+    -- Hitung diskon voucher katering (kelipatan 50 box = Rp 50.000)
+    v_diskon := FLOOR(v_total_box / 50) * 50000;
+    v_nominal_bayar := GREATEST(0, v_total_harga - v_diskon);
+
+    -- Update total harga & diskon di pesanan
     UPDATE public.pesanan
-    SET total_harga = v_total_harga, nominal_bayar = v_total_harga
+    SET total_harga = v_total_harga, diskon = v_diskon, nominal_bayar = v_nominal_bayar
     WHERE id = v_pesanan_id;
 
     RETURN jsonb_build_object(
@@ -267,7 +274,9 @@ BEGIN
         'kode', v_kode,
         'token_nota', v_token,
         'total_box', v_total_box,
-        'total_harga', v_total_harga
+        'total_harga', v_total_harga,
+        'diskon', v_diskon,
+        'nominal_bayar', v_nominal_bayar
     );
 END;
 $$;
@@ -318,7 +327,7 @@ ON CONFLICT (username) DO NOTHING;
 -- Konfigurasi Toko Awal
 INSERT INTO public.konfigurasi_toko (kunci, nilai) VALUES
   ('qris_gambar', 'qris_90ce220b97a92f248db3.jpg'),
-  ('qris_nama_merchant', 'Warung Mas Alif'),
+  ('qris_nama_merchant', 'Warteg Pak Sanam'),
   ('qris_nmid', 'ID1025439892668'),
   ('qris_instruksi', 'Scan QRIS di atas dengan aplikasi bank atau e-wallet Anda. Masukkan nominal pembayaran secara MANUAL sesuai total tagihan karena QRIS ini bersifat statis (nominal tidak otomatis terisi).'),
   ('batas_bayar_jam', '24')

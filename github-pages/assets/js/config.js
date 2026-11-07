@@ -15,18 +15,22 @@ window.WARTEG_CONFIG = {
     SUPABASE_ANON_KEY: "sb_publishable_YJ4vgdO8paMOMmxDgnuQWA_rQ6uVi51", // Contoh: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 
     // Pengaturan Operasional Warteg
-    NAMA_WARTEG: "Warung Mas Alif",
+    NAMA_WARTEG: "Warteg Pak Sanam",
     KAPASITAS_HARIAN: 120,      // Maksimum total box per tanggal pengambilan
     MINIMAL_BOX: 10,           // Batas minimum box katering per pemesanan
     STOK_MAKS: 120,            // Batas maksimal jatah stok per menu per hari
+
+    // Aturan Promo & Diskon Box
+    DISKON_PER_BOX: 50,        // Setiap kelipatan 50 box
+    NOMINAL_DISKON: 50000,     // Mendapat voucher potongan Rp 50.000
 
     // Waktu & Ketentuan Pengambilan (Self-Pickup)
     JAM_BUKA: "09:00",
     JAM_TUTUP: "19:00",
     MINIMAL_H_MINUS: 1,        // Pemesanan paling cepat untuk H+1
     MAKS_HARI_KE: 30,          // Maksimal pemesanan hingga 30 hari ke depan
-    LOKASI_AMBIL: "Warung Mas Alif (Self-Pickup)",
-    ALAMAT_WARTEG: "Jl. Warteg Kharisma Sejahtera No. 12, Jakarta",
-    TELEPON_WARTEG: "081234567890"
+    LOKASI_AMBIL: "Warteg Pak Sanam (Self-Pickup)",
+    ALAMAT_WARTEG: "Jalan BDN 1 Cilandak Barat Jakarta Selatan",
+    TELEPON_WARTEG: "0857-8342-3626"
 };
 

@@ -76,8 +76,16 @@
         if (!noWa) return '';
         var clean = noWa.replace(/\D/g, '');
         if (clean.startsWith('0')) clean = '62' + clean.slice(1);
-        var pesan = 'Halo Kak ' + nama + ', pesanan nasi box Anda (' + kode + ' sejumlah ' + box + ' box) di ' + CFG.NAMA_WARTEG + ' sudah SIAP DIAMBIL. Terima kasih!';
+        var pesan = 'Halo Kak ' + nama + ', pesanan nasi box Anda (' + kode + ' sejumlah ' + box + ' box) di ' + (CFG.NAMA_WARTEG || 'Warteg Pak Sanam') + ' sudah SIAP DIAMBIL. Terima kasih!';
         return 'https://wa.me/' + clean + '?text=' + encodeURIComponent(pesan);
+    }
+
+    function linkWaWarteg(kode, nama, box, total, diskon) {
+        var telp = (CFG.TELEPON_WARTEG || '0857-8342-3626').replace(/\D/g, '');
+        if (telp.startsWith('0')) telp = '62' + telp.slice(1);
+        var diskonTeks = (diskon && diskon > 0) ? ' (Termasuk Diskon: ' + rupiah(diskon) + ')' : '';
+        var pesan = 'Halo ' + (CFG.NAMA_WARTEG || 'Warteg Pak Sanam') + ', saya telah membuat pesanan katering dengan Kode: ' + kode + ' untuk ' + box + ' box atas nama ' + nama + '. Total Tagihan: ' + rupiah(total) + diskonTeks + '. Mohon konfirmasinya.';
+        return 'https://wa.me/' + telp + '?text=' + encodeURIComponent(pesan);
     }
 
     // -----------------------------------------------------------------
@@ -114,7 +122,7 @@
             aktivitas: [],
             konfigurasi_toko: {
                 qris_gambar: 'qris_90ce220b97a92f248db3.jpg',
-                qris_nama_merchant: 'Warung Mas Alif',
+                qris_nama_merchant: 'Warteg Pak Sanam',
                 qris_nmid: 'ID1025439892668',
                 qris_instruksi: 'Scan QRIS di atas dengan aplikasi bank atau e-wallet Anda. Masukkan nominal pembayaran secara MANUAL sesuai total tagihan karena QRIS ini bersifat statis (nominal tidak otomatis terisi).',
                 batas_bayar_jam: '24'
@@ -251,6 +259,15 @@
         kelasStatusBayar: kelasStatusBayar,
         badgeStatus: badgeStatus,
         linkWa: linkWa,
+        linkWaWarteg: linkWaWarteg,
+
+        // Hitung Potongan Diskon Kelipatan Box (50 box = Rp 50.000, 100 box = Rp 100.000)
+        hitungDiskon: function (box) {
+            var perBox = CFG.DISKON_PER_BOX || 50;
+            var nomDiskon = CFG.NOMINAL_DISKON || 50000;
+            var b = parseInt(box, 10) || 0;
+            return Math.floor(b / perBox) * nomDiskon;
+        },
 
         // Reset Data Demo
         resetDataDemo: function () {
@@ -436,6 +453,10 @@
                 });
             }
 
+            // Hitung diskon voucher kelipatan 50 box
+            var diskon = this.hitungDiskon(total_box);
+            var nominal_bayar = Math.max(0, total_harga - diskon);
+
             var seq = (state.pesanan || []).filter(function (p) { return p.tanggal_ambil === tanggal_ambil; }).length + 1;
             var kode = 'WRT-' + tanggal_ambil.replace(/-/g, '') + '-' + String(seq).padStart(3, '0');
             var token_nota = 'tok_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
@@ -450,7 +471,8 @@
                 jam_ambil: jam_ambil + ':00',
                 total_box: total_box,
                 total_harga: total_harga,
-                nominal_bayar: total_harga,
+                diskon: diskon,
+                nominal_bayar: nominal_bayar,
                 status: 'Menunggu Konfirmasi',
                 status_bayar: 'belum_bayar',
                 token_nota: token_nota,
@@ -482,7 +504,9 @@
                 kode: kode,
                 token_nota: token_nota,
                 total_box: total_box,
-                total_harga: total_harga
+                total_harga: total_harga,
+                diskon: diskon,
+                nominal_bayar: nominal_bayar
             };
         },
 
