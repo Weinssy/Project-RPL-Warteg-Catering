@@ -1676,6 +1676,44 @@ body.cust {
    IMPROVISASI DESAIN BARU ANTISLOP (FIGCRAFT SYSTEM)
    ===================================================================== */
 
+/* ---------- Helper Responsif ---------- */
+.mob-only {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .desk-only {
+    display: none !important;
+  }
+  .mob-only {
+    display: inline !important;
+  }
+}
+
+/* ---------- Standarisasi Radius Tombol (Figcraft 8px) ---------- */
+.btn {
+  border-radius: 8px;
+  font-weight: 700;
+}
+
+.btn-kecil {
+  border-radius: 8px;
+  padding: 9px 16px;
+  font-size: 13px;
+}
+
+.btn-garis {
+  background: #ffffff;
+  color: var(--c-teks);
+  border: 1px solid var(--c-garis);
+}
+
+.btn-garis:hover {
+  background: var(--c-surface-low);
+  border-color: #cbbdb2;
+  color: var(--c-teks);
+}
+
 /* ---------- Top Notice Bar ---------- */
 .top-notice-bar {
   background: #231815;
@@ -1705,9 +1743,10 @@ body.cust {
 
 @media (max-width: 768px) {
   .top-notice-inner {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
     font-size: 11px;
   }
 }
@@ -1726,14 +1765,14 @@ body.cust {
 }
 
 .cust-logo-emblem {
-  width: 42px;
-  height: 42px;
+  width: 40px;
+  height: 40px;
   border-radius: 10px;
   background: var(--c-primer);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 22px;
+  font-size: 20px;
   flex-shrink: 0;
   box-shadow: 0 2px 8px rgba(158, 55, 0, .2);
 }
@@ -1745,7 +1784,7 @@ body.cust {
 }
 
 .cust-logo-title {
-  font-size: 16px;
+  font-size: 15.5px;
   font-weight: 800;
   color: var(--c-teks);
   letter-spacing: .02em;
@@ -1760,12 +1799,28 @@ body.cust {
   text-transform: none;
 }
 
+.cust-links {
+  gap: 22px;
+}
+
+.cust-links a:not(.btn) {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--c-redup);
+}
+
+.cust-links a:not(.btn):hover,
+.cust-links a.aktif:not(.btn) {
+  color: var(--c-primer);
+  background: transparent;
+}
+
 .nav-quota-pill {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   padding: 6px 12px;
-  border-radius: 8px;
+  border-radius: 999px;
   background: var(--c-hijau-bg);
   border: 1px solid #c8e6c9;
   font-size: 12px;
@@ -1775,7 +1830,7 @@ body.cust {
 
 .nav-quota-pill .dot-aman {
   color: var(--c-hijau);
-  font-size: 10px;
+  font-size: 9px;
 }
 
 .link-admin {
@@ -1783,8 +1838,30 @@ body.cust {
   font-weight: 700 !important;
 }
 
-@media (max-width: 992px) {
+.cust-toggle {
+  background: #f5f3ef;
+  border: 1px solid var(--c-garis);
+  border-radius: 8px;
+  width: 38px;
+  height: 38px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  font-size: 18px;
+  color: var(--c-teks);
+}
+
+@media (max-width: 1080px) {
   .nav-quota-pill {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .cust-toggle {
+    display: inline-flex;
+  }
+  .cust-logo-sub {
     display: none;
   }
 }
@@ -1792,7 +1869,8 @@ body.cust {
 /* ---------- Hero Narrative & Pillars ---------- */
 .hero {
   background: linear-gradient(180deg, #fff5ee 0%, var(--c-bg) 100%);
-  padding: 48px 0;
+  padding: 44px 0 36px;
+  border-bottom: 0;
 }
 
 .hero-grid {
@@ -1813,26 +1891,28 @@ body.cust {
   border: 1px solid #fbd8c6;
   font-weight: 700;
   font-size: 11px;
-  letter-spacing: .05em;
+  letter-spacing: .04em;
   text-transform: uppercase;
   padding: 5px 12px;
   border-radius: 6px;
 }
 
 .hero-narrative h1 {
-  font-size: clamp(28px, 4vw, 40px);
-  line-height: 1.2;
-  letter-spacing: -.02em;
-  margin-bottom: 16px;
+  font-family: var(--font-sans);
+  font-size: clamp(28px, 3.6vw, 40px);
+  line-height: 1.18;
+  letter-spacing: -.025em;
+  margin-bottom: 14px;
   color: var(--c-teks);
   font-weight: 800;
 }
 
 .hero-narrative p.lead {
-  font-size: 15px;
+  font-size: 14.5px;
   color: var(--c-redup);
-  line-height: 1.6;
+  line-height: 1.65;
   margin-bottom: 22px;
+  max-width: 580px;
 }
 
 .hero-pillars-grid {
@@ -1875,6 +1955,11 @@ body.cust {
   color: #854d0e;
 }
 
+.hero-cta .btn {
+  padding: 12px 20px;
+  font-size: 13.5px;
+}
+
 /* ---------- Hero Right: Featured Showcase Card ---------- */
 .hero-featured-card {
   background: #ffffff;
@@ -1892,14 +1977,15 @@ body.cust {
   align-self: flex-start;
   background: #fff2eb;
   color: var(--c-primer);
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 700;
   padding: 4px 10px;
   border-radius: 6px;
-  letter-spacing: .03em;
+  letter-spacing: .04em;
 }
 
 .feat-title {
+  font-family: var(--font-sans);
   font-size: 20px;
   font-weight: 800;
   color: var(--c-teks);
@@ -1920,7 +2006,7 @@ body.cust {
 
 .feat-price small {
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .feat-min {
@@ -1968,38 +2054,509 @@ body.cust {
 
 .feat-action-btn {
   margin-top: 4px;
+  border-radius: 8px;
+  padding: 12px 18px;
+  font-size: 13.5px;
 }
 
 @media (max-width: 860px) {
   .hero-grid {
     grid-template-columns: 1fr;
-    gap: 28px;
+    gap: 24px;
   }
 }
 
-/* ---------- Kapasitas & Status Row ---------- */
-.kapasitas-status-row {
+@media (max-width: 640px) {
+  .hero {
+    padding: 24px 0 20px;
+  }
+
+  .hero-pillars-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    margin-bottom: 18px;
+  }
+
+  .hero-pillar-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 10px 14px;
+  }
+
+  .hero-pillar-card .pillar-title {
+    margin-bottom: 0;
+    font-size: 12.5px;
+  }
+
+  .hero-pillar-card .pillar-sub {
+    font-size: 11.5px;
+    text-align: right;
+  }
+
+  .hero-cta .btn {
+    width: 100%;
+  }
+
+  .hero-featured-card {
+    display: none;
+  }
+}
+
+/* ---------- Inline Kapasitas & Kuota Dapur Bar ---------- */
+.seksi-kapasitas-inline {
+  padding: 8px 0 28px;
+}
+
+.panel-kapasitas-inline {
+  background: #ffffff;
+  border: 1px solid var(--c-garis);
+  border-radius: 14px;
+  padding: 20px 24px;
+  box-shadow: 0 2px 12px rgba(35, 24, 21, .04);
+  display: grid;
+  grid-template-columns: 320px 1fr auto;
+  gap: 28px;
+  align-items: center;
+}
+
+.kap-col-tanggal {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.kap-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--c-redup);
   display: flex;
   align-items: center;
+  gap: 6px;
+}
+
+.kap-date-input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.kap-date-input {
+  padding: 9px 12px;
+  font-size: 13.5px;
+  font-weight: 600;
+  border-radius: 8px;
+  background: #f5f3ef;
+  border: 1px solid var(--c-garis);
+  color: var(--c-teks);
+}
+
+.kap-btn-cek {
+  flex-shrink: 0;
+  padding: 9px 14px;
+  font-size: 12.5px;
+}
+
+.kap-hint {
+  font-size: 11px;
+  color: var(--c-redup);
+}
+
+.kap-col-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.kap-bar-header {
+  display: flex;
+  align-items: baseline;
   justify-content: space-between;
-  margin-top: 14px;
-  gap: 12px;
-  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.kap-bar-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--c-teks);
+}
+
+.kap-bar-title b {
+  color: var(--c-hijau);
+}
+
+.kap-bar-used {
+  font-size: 11.5px;
+  color: var(--c-redup);
+}
+
+.panel-kapasitas-inline .bar-kapasitas {
+  height: 10px;
+  background: #e2d9d0;
+  border-radius: 999px;
+  margin-top: 0;
+}
+
+.panel-kapasitas-inline .bar-kapasitas > span {
+  background: var(--c-hijau);
+}
+
+.panel-kapasitas-inline .bar-kapasitas.kuning > span {
+  background: var(--c-kuning);
+}
+
+.panel-kapasitas-inline .bar-kapasitas.merah > span {
+  background: var(--c-merah);
+}
+
+.kap-bar-foot {
+  font-size: 11px;
+  color: var(--c-redup);
+}
+
+.kap-col-status {
+  background: var(--c-hijau-bg);
+  border: 1px solid #c8e6c9;
+  border-radius: 10px;
+  padding: 10px 18px;
+  text-align: center;
+  min-width: 148px;
 }
 
 .badge-kuota-aman {
+  display: block;
+  color: var(--c-hijau);
+  font-weight: 800;
+  font-size: 12.5px;
+  letter-spacing: .03em;
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+
+.kap-status-sub {
+  font-size: 11px;
+  color: var(--c-hijau);
+  margin-top: 2px;
+  font-weight: 500;
+}
+
+@media (max-width: 960px) {
+  .panel-kapasitas-inline {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    padding: 16px;
+  }
+
+  .kap-col-status {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    text-align: left;
+    padding: 8px 14px;
+  }
+}
+
+/* ---------- Katalog Menu & Filter Chips ---------- */
+.seksi-kepala-kiri {
+  text-align: left;
+  margin-bottom: 20px;
+}
+
+.seksi-kepala-kiri h2 {
+  font-family: var(--font-sans);
+  font-size: clamp(20px, 2.5vw, 24px);
+  font-weight: 800;
+  letter-spacing: -.015em;
+  margin-bottom: 4px;
+}
+
+.seksi-kepala-kiri p {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--c-redup);
+}
+
+.kategori-filter {
+  gap: 8px;
+  margin-bottom: 22px;
+}
+
+.kategori-filter .filter-btn {
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 12.5px;
+  font-weight: 600;
+  background: #ffffff;
+  border: 1px solid var(--c-garis);
+  color: var(--c-redup);
+}
+
+.kategori-filter .filter-btn:hover {
+  border-color: var(--c-primer);
+  color: var(--c-primer);
+}
+
+.kategori-filter .filter-btn.aktif {
+  background: var(--c-primer);
+  border-color: var(--c-primer);
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(158, 55, 0, .2);
+}
+
+.katalog-layout {
+  grid-template-columns: 1fr 370px;
+  gap: 24px;
+}
+
+@media (max-width: 960px) {
+  .katalog-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.kategori-blok {
+  margin-bottom: 24px;
+}
+
+.kategori-blok-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.kategori-blok h3 {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  font-weight: 800;
+  margin-bottom: 0;
+  color: var(--c-teks);
+}
+
+.kategori-blok .aturan {
+  font-size: 12px;
+  color: var(--c-redup);
+  margin-bottom: 0;
+}
+
+/* Horizontal Row Menu Cards (Sesuai Mockup Figcraft) */
+.grid-menu-cust {
+  display: grid;
+  grid-template-columns: 1fr !important;
+  gap: 12px;
+}
+
+.kartu-cust {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 20px;
+  border-radius: 12px;
+  background: #ffffff;
+  border: 1px solid var(--c-garis);
+  box-shadow: 0 1px 4px rgba(35, 24, 21, .03);
+}
+
+.kartu-cust:hover {
+  transform: none;
+  border-color: #cbbdb2;
+  box-shadow: 0 4px 14px rgba(35, 24, 21, .06);
+}
+
+.kartu-cust.dipilih {
+  border-color: var(--c-primer);
+  background: #fffdfb;
+  box-shadow: 0 0 0 1.5px rgba(158, 55, 0, .18);
+}
+
+.kartu-cust .foto {
+  width: 68px;
+  height: 68px;
+  aspect-ratio: 1 / 1;
+  border-radius: 10px;
+  flex-shrink: 0;
+  font-size: 28px;
+  background: var(--c-primer-bg);
+}
+
+.kartu-cust .isi {
+  padding: 0;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.kartu-cust .isi-baris-atas {
+  display: none;
+}
+
+.kartu-cust .nama {
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--c-teks);
+  line-height: 1.3;
+}
+
+.kartu-cust .desk {
+  font-size: 12.5px;
+  color: var(--c-redup);
+  line-height: 1.45;
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.kartu-cust .harga {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: var(--c-primer);
+  margin-top: 4px;
+}
+
+.kartu-cust .harga-satuan {
+  font-weight: 600;
+  font-size: 12.5px;
+  color: var(--c-primer);
+}
+
+.kartu-cust .pilih {
+  margin-top: 0;
+  flex-shrink: 0;
+}
+
+/* Stepper Inline di Kartu Menu (- 0 Box +) */
+.kartu-stepper {
   display: inline-flex;
   align-items: center;
-  background: var(--c-hijau-bg);
-  border: 1px solid #c8e6c9;
-  color: var(--c-hijau);
-  font-weight: 700;
-  font-size: 12px;
-  padding: 6px 14px;
+  gap: 6px;
+}
+
+.kartu-stepper .step-btn {
+  width: 32px;
+  height: 32px;
   border-radius: 8px;
+  border: 0;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity .15s ease, transform .1s ease;
+  line-height: 1;
+}
+
+.kartu-stepper .step-btn.minus {
+  background: #f5f3ef;
+  color: var(--c-teks);
+  border: 1px solid var(--c-garis);
+}
+
+.kartu-stepper .step-btn.minus:hover:not(:disabled) {
+  background: #ebe4dc;
+}
+
+.kartu-stepper .step-btn.plus {
+  background: var(--c-primer);
+  color: #ffffff;
+}
+
+.kartu-stepper .step-btn.plus:hover:not(:disabled) {
+  background: var(--c-primer-gelap);
+}
+
+.kartu-stepper .step-btn:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+.kartu-stepper .step-qty-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-width: 60px;
+  padding: 0 4px;
+}
+
+.kartu-stepper .step-qty-input {
+  width: 28px;
+  border: 0;
+  background: transparent;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--c-teks);
+  text-align: right;
+  padding: 0;
+  -moz-appearance: textfield;
+}
+
+.kartu-stepper .step-qty-input::-webkit-outer-spin-button,
+.kartu-stepper .step-qty-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.kartu-stepper .step-qty-input:focus {
+  outline: none;
+  border-bottom: 1.5px solid var(--c-primer);
+}
+
+.kartu-stepper .step-qty-unit {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--c-teks);
+}
+
+@media (max-width: 600px) {
+  .kartu-cust {
+    flex-wrap: wrap;
+    padding: 14px 16px;
+    gap: 12px;
+  }
+
+  .kartu-cust .foto {
+    width: 54px;
+    height: 54px;
+    font-size: 24px;
+  }
+
+  .kartu-cust .desk {
+    white-space: normal;
+  }
+
+  .kartu-cust .pilih {
+    width: 100%;
+    display: flex;
+    justify-content: flex-end;
+    padding-top: 6px;
+    border-top: 1px dashed var(--c-garis);
+  }
 }
 
 /* ---------- Sticky Order Tray Enhancements ---------- */
+.ringkasan {
+  background: #ffffff;
+  border-radius: 14px;
+}
+
+.ringkasan-kepala {
+  background: #ffffff;
+  padding: 16px 20px;
+  font-size: 15px;
+}
+
 .ringkasan-judul-teks {
   display: flex;
   align-items: center;
@@ -2015,40 +2572,178 @@ body.cust {
   border-radius: 6px;
 }
 
-.promo-milestone-tray {
+.cart-min-banner {
+  margin: 14px 20px 0;
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.cart-min-banner.terpenuhi {
+  background: var(--c-hijau-bg);
+  border: 1px solid #c8e6c9;
+  color: var(--c-hijau);
+}
+
+.cart-min-banner.kurang {
   background: #fff8ed;
-  border-bottom: 1px solid #f5dcb7;
-  padding: 10px 18px;
+  border: 1px solid #f5dcb7;
+  color: #b45309;
+}
+
+.promo-milestone-tray {
+  margin: 10px 20px 0;
+  background: #fff8ed;
+  border: 1px solid #f5dcb7;
+  border-radius: 10px;
+  padding: 12px 14px;
 }
 
 .promo-milestone-head {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  align-items: flex-start;
+  gap: 8px;
 }
 
 .promo-milestone-head .promo-icon {
-  font-size: 20px;
+  font-size: 15px;
+  line-height: 1.2;
 }
 
 .promo-milestone-title {
   display: block;
-  font-size: 11.5px;
-  font-weight: 700;
+  font-size: 11px;
+  font-weight: 800;
   color: #b45309;
-  letter-spacing: .02em;
+  letter-spacing: .03em;
 }
 
 .promo-milestone-sub {
-  font-size: 11px;
+  font-size: 11.5px;
   color: #854d0e;
+  margin-top: 2px;
+}
+
+.promo-progress-track {
+  height: 6px;
+  background: #f5dcb7;
+  border-radius: 999px;
+  margin-top: 8px;
+  overflow: hidden;
+}
+
+.promo-progress-fill {
+  display: block;
+  height: 100%;
+  background: #d97706;
+  border-radius: 999px;
+  transition: width .3s ease;
+}
+
+.ringkasan-isi {
+  padding: 12px 20px;
+}
+
+.baris-menu {
+  padding: 8px 0;
+}
+
+.baris-menu-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.baris-menu .nm {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--c-teks);
+}
+
+.baris-menu .sub-item-harga {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--c-teks);
+  white-space: nowrap;
+}
+
+.baris-menu-ctrl {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 5px;
+}
+
+.stepper.stepper-mini {
+  border-radius: 6px;
+}
+
+.stepper.stepper-mini button {
+  width: 26px;
+  height: 26px;
+  font-size: 14px;
+}
+
+.stepper.stepper-mini input {
+  width: 34px;
+  height: 26px;
+  font-size: 12px;
+}
+
+.ringkasan-total {
+  background: #ffffff;
+  border-top: 1px solid var(--c-garis);
+  padding: 14px 20px 10px;
+}
+
+.total-baris {
+  font-size: 13px;
+  color: var(--c-redup);
+  margin-bottom: 6px;
+}
+
+.total-baris .nilai {
+  color: var(--c-teks);
+  font-weight: 600;
+}
+
+.total-baris .diskon-aktif {
+  color: var(--c-hijau);
+  font-weight: 700;
+}
+
+.total-baris .diskon-belum {
+  color: var(--c-redup);
+  font-weight: 500;
+  font-size: 12px;
+}
+
+.total-baris.besar {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--c-teks);
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--c-garis);
+}
+
+.total-baris.besar .nilai {
+  font-size: 17px;
+  color: var(--c-primer);
+}
+
+.ringkasan-aksi {
+  padding: 8px 20px 18px;
 }
 
 .trust-micro-copy {
   font-size: 11px;
   color: var(--c-redup);
   text-align: center;
-  margin-top: 6px;
+  margin-top: 8px;
 }
 
 /* ---------- Alur Pemesanan 4 Langkah ---------- */
@@ -2062,7 +2757,7 @@ body.cust {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 18px;
-  margin-top: 28px;
+  margin-top: 22px;
 }
 
 .alur-card {
@@ -2089,6 +2784,7 @@ body.cust {
 }
 
 .alur-card h3 {
+  font-family: var(--font-sans);
   font-size: 15px;
   font-weight: 700;
   color: var(--c-teks);
@@ -2112,4 +2808,72 @@ body.cust {
   .alur-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* ---------- Dark Espresso Footer (Tanpa Kotak Putih) ---------- */
+.cust-footer {
+  background: #231815;
+  color: #d6c7bc;
+  border-top: 1px solid #3d2c27;
+  padding: 44px 0 28px;
+  margin-top: 0;
+}
+
+.cust-footer h4 {
+  font-family: var(--font-sans);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: .02em;
+  margin-bottom: 12px;
+}
+
+.cust-footer p,
+.cust-footer li {
+  color: #b8a69b;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.cust-footer a {
+  color: #b8a69b;
+}
+
+.cust-footer a:hover {
+  color: #fdba74;
+}
+
+.cust-footer .copy {
+  border-top: 1px solid #3d2c27;
+  color: #9c897e;
+  opacity: 1;
+  text-align: left;
+  margin-top: 28px;
+  padding-top: 18px;
+  font-size: 12px;
+}
+
+/* ---------- Mobile Bottom Cart Bar ---------- */
+.cart-bar {
+  background: #ffffff;
+  border-top: 1px solid var(--c-garis);
+  padding: 12px 16px;
+}
+
+.cart-bar .info b {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: var(--c-teks);
+}
+
+.cart-bar .info span {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--c-primer);
+}
+
+.cart-bar .btn {
+  border-radius: 8px;
+  padding: 10px 18px;
+  font-size: 13px;
 }

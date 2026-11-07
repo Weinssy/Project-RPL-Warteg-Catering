@@ -128,22 +128,35 @@
                 batas_bayar_jam: '24'
             },
             menu: [
-                { id: 1, nama: 'Nasi Ayam', kategori: 'nasi', harga: 15000, foto: '567776efe02122c01fcd.jpg', aktif: true },
-                { id: 2, nama: 'Nasi Ikan', kategori: 'nasi', harga: 17000, foto: '58fe9cd7bf786e6ab41c.jpg', aktif: true },
-                { id: 3, nama: 'Nasi Udang', kategori: 'nasi', harga: 20000, foto: '6204c3f5c6b75a69ad21.jpg', aktif: true },
-                { id: 4, nama: 'Paket Hemat Komplit', kategori: 'paket a', harga: 25000, foto: '67a12609967b2741de56.jpg', aktif: true },
-                { id: 5, nama: 'Ayam Lengkuas', kategori: 'lauk', harga: 12000, foto: '6a8bf56fcc847b405553.jpg', aktif: true },
-                { id: 6, nama: 'Sayur Asem Segar', kategori: 'sayur', harga: 6000, foto: '7dfbefbad3bb846f2dca.jpg', aktif: true }
+                { id: 4, nama: 'Paket Selera Nusantara A', kategori: 'paket a', harga: 25000, foto: '67a12609967b2741de56.jpg', deskripsi: 'Nasi Putih Wangi + Ayam Goreng Lengkuas Rempah + Tempe Orek Basah + Tumis Buncis Jagung + Sambal Terasi & Lalapan', aktif: true },
+                { id: 7, nama: 'Paket B - Rendang Daging Sapi Empuk', kategori: 'paket b', harga: 32000, foto: '567776efe02122c01fcd.jpg', deskripsi: 'Nasi Putih Wangi + Rendang Empuk + Sayur Daun Singkong + Telur Dadar + Sambal Ijo', aktif: true },
+                { id: 8, nama: 'Paket C - Ikan Tongkol Suwir Balado', kategori: 'paket c', harga: 24000, foto: '58fe9cd7bf786e6ab41c.jpg', deskripsi: 'Nasi Putih + Tongkol Suwir Pedas Gurih + Sayur Urap Kelapa + Bakwan Jagung + Sambal', aktif: true },
+                { id: 1, nama: 'Nasi Ayam Lengkuas Spesial', kategori: 'nasi', harga: 18000, foto: '567776efe02122c01fcd.jpg', deskripsi: 'Nasi putih pulen dengan ayam goreng bumbu lengkuas gurih, tahu/tempe, dan sambal khas warteg.', aktif: true },
+                { id: 2, nama: 'Nasi Ikan Bumbu Kuning', kategori: 'nasi', harga: 17000, foto: '58fe9cd7bf786e6ab41c.jpg', deskripsi: 'Nasi putih hangat dengan ikan goreng bumbu kuning rempah segar dan lalapan.', aktif: true },
+                { id: 3, nama: 'Nasi Udang Balado Pete', kategori: 'nasi', harga: 20000, foto: '6204c3f5c6b75a69ad21.jpg', deskripsi: 'Nasi putih dengan udang segar masak balado merah meresap dan sayur pendamping.', aktif: true },
+                { id: 5, nama: 'Ayam Bakar Bumbu Madu Khas Pak Sanam', kategori: 'lauk', harga: 15000, foto: '6a8bf56fcc847b405553.jpg', deskripsi: 'Ayam potong bakar dengan olesan kecap madu dan rempah khas warteg.', aktif: true },
+                { id: 9, nama: 'Cumi Asin Tumis Cabe Ijo', kategori: 'lauk', harga: 14000, foto: '6204c3f5c6b75a69ad21.jpg', deskripsi: 'Cumi asin empuk tidak alot dimasak dengan cabai hijau besar dan tomat ijo segar.', aktif: true },
+                { id: 6, nama: 'Sayur Asem Segar Jakarta', kategori: 'sayur', harga: 6000, foto: '7dfbefbad3bb846f2dca.jpg', deskripsi: 'Sayur asem kuah segar lengkap dengan jagung manis, melinjo, labu siam, dan kacang panjang.', aktif: true }
             ],
             menu_harian: [
                 { id: 1, menu_id: 1, tanggal: t0, tersedia: true, stok: 120 },
                 { id: 2, menu_id: 2, tanggal: t0, tersedia: true, stok: 120 },
                 { id: 3, menu_id: 3, tanggal: t0, tersedia: true, stok: 120 },
                 { id: 4, menu_id: 4, tanggal: t0, tersedia: true, stok: 120 },
-                { id: 5, menu_id: 1, tanggal: t1, tersedia: true, stok: 120 },
-                { id: 6, menu_id: 2, tanggal: t1, tersedia: true, stok: 120 },
-                { id: 7, menu_id: 3, tanggal: t1, tersedia: true, stok: 120 },
-                { id: 8, menu_id: 4, tanggal: t1, tersedia: true, stok: 120 }
+                { id: 5, menu_id: 5, tanggal: t0, tersedia: true, stok: 120 },
+                { id: 6, menu_id: 6, tanggal: t0, tersedia: true, stok: 120 },
+                { id: 7, menu_id: 7, tanggal: t0, tersedia: true, stok: 120 },
+                { id: 8, menu_id: 8, tanggal: t0, tersedia: true, stok: 120 },
+                { id: 9, menu_id: 9, tanggal: t0, tersedia: true, stok: 120 },
+                { id: 10, menu_id: 1, tanggal: t1, tersedia: true, stok: 120 },
+                { id: 11, menu_id: 2, tanggal: t1, tersedia: true, stok: 120 },
+                { id: 12, menu_id: 3, tanggal: t1, tersedia: true, stok: 120 },
+                { id: 13, menu_id: 4, tanggal: t1, tersedia: true, stok: 120 },
+                { id: 14, menu_id: 5, tanggal: t1, tersedia: true, stok: 120 },
+                { id: 15, menu_id: 6, tanggal: t1, tersedia: true, stok: 120 },
+                { id: 16, menu_id: 7, tanggal: t1, tersedia: true, stok: 120 },
+                { id: 17, menu_id: 8, tanggal: t1, tersedia: true, stok: 120 },
+                { id: 18, menu_id: 9, tanggal: t1, tersedia: true, stok: 120 }
             ],
             pesanan: [
                 {
@@ -337,14 +350,15 @@
                     return menus.map(function (m) {
                         var h = hMap[m.id];
                         var terjual = jMap[m.id] || 0;
-                        var tersedia = h ? h.tersedia : false;
-                        var stok = h ? h.stok : null;
+                        var tersedia = h ? !!h.tersedia : !!m.aktif;
+                        var stok = (h && h.stok !== undefined) ? h.stok : 120;
                         var foto = (h && h.foto) || m.foto;
                         return {
                             id: m.id,
                             nama: m.nama,
                             kategori: m.kategori,
                             harga: m.harga,
+                            deskripsi: m.deskripsi || '',
                             aktif: m.aktif,
                             foto: foto,
                             tersedia: tersedia,
@@ -377,14 +391,15 @@
             return menus.map(function (m) {
                 var h = hMap[m.id];
                 var terjual = jMap[m.id] || 0;
-                var tersedia = h ? !!h.tersedia : false;
-                var stok = (h && h.stok !== undefined) ? h.stok : null;
+                var tersedia = h ? !!h.tersedia : !!m.aktif;
+                var stok = (h && h.stok !== undefined) ? h.stok : 120;
                 var foto = (h && h.foto) || m.foto;
                 return {
                     id: m.id,
                     nama: m.nama,
                     kategori: m.kategori,
                     harga: m.harga,
+                    deskripsi: m.deskripsi || '',
                     aktif: m.aktif,
                     foto: foto,
                     tersedia: tersedia,
