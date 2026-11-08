@@ -2033,14 +2033,18 @@ body.cust {
 .feat-menu-list li {
   font-size: 13px;
   color: var(--c-teks);
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  position: relative;
+  padding-left: 14px;
+  line-height: 1.4;
 }
 
-.feat-menu-list .check-mark {
-  color: var(--c-hijau);
-  font-weight: 700;
+.feat-menu-list li::before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  color: var(--c-primer);
+  font-size: 15px;
+  line-height: 1;
 }
 
 .feat-pack-notice {

@@ -188,7 +188,7 @@
                 $('#badgeKuotaAman').textContent = '⚠ HAMPIR PENUH';
                 if ($('#badgeKuotaSub')) $('#badgeKuotaSub').textContent = 'Sisa ' + kap.sisa + ' box lagi';
             } else {
-                $('#badgeKuotaAman').textContent = '✓ KUOTA AMAN';
+                $('#badgeKuotaAman').textContent = 'KUOTA AMAN';
                 if ($('#badgeKuotaSub')) $('#badgeKuotaSub').textContent = 'Pesanan siap diterima';
             }
         }
@@ -429,7 +429,7 @@
                 pesanMinEl.textContent = '⚠ ' + box + ' Box Terpilih (Kurang ' + (minBox - box) + ' box lagi dari min. ' + minBox + ' box)';
                 if (bannerMin) bannerMin.className = 'cart-min-status kurang';
             } else {
-                pesanMinEl.textContent = '✓ ' + box + ' Box Terpilih (Syarat min. ' + minBox + ' box terpenuhi)';
+                pesanMinEl.textContent = box + ' Box Terpilih (Syarat min. ' + minBox + ' box terpenuhi)';
                 if (bannerMin) bannerMin.className = 'cart-min-status cukup';
             }
         }
