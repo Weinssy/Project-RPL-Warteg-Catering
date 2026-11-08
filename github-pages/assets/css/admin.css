@@ -258,6 +258,7 @@ input[type="file"].form-control { padding: 8px; }
 /* ---------------- Progress ---------------- */
 .progress { height: 10px; border-radius: 999px; background: #e2e8f0; overflow: hidden; margin: 12px 0; }
 .progress-bar { height: 100%; background: var(--oranye); border-radius: 999px; transition: width .3s; }
+.progress-bar.level-aman { background: var(--hijau); }
 .progress-bar.level-penuh { background: var(--merah); }
 .progress-bar.level-hampir { background: var(--kuning); }
 
@@ -334,6 +335,7 @@ input[type="file"].form-control { padding: 8px; }
   font-size: 12px; color: var(--teks); cursor: pointer; padding: 4px; line-height: 1.15;
   font-family: inherit; transition: border-color .15s, background .15s;
 }
+.sel-hari:focus-visible { outline: 2px solid var(--oranye); outline-offset: 1px; }
 .sel-hari .angka { font-weight: 700; font-size: 14px; }
 .sel-hari .kecil { font-size: 10px; color: var(--redup); }
 .sel-hari.ada { background: var(--oranye-bg); border-color: #fed7aa; }

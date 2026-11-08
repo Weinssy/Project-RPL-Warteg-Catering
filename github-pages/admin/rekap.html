@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Rekap Harian - Warung Mas Alif</title>
+    <title>Rekap Harian - Warteg Pak Sanam</title>
     <link rel="stylesheet" href="../assets/css/admin.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../assets/js/config.js"></script>
@@ -13,23 +13,35 @@
 <body>
 <div class="main-content">
     <section class="grid-kalender" id="rekapApp">
+        <!-- Kalender Rekap Bulanan -->
         <div class="content-card">
-            <div class="card-header">
-                <button type="button" class="btn btn-secondary btn-kecil" id="bulanSebelum">Sebelumnya</button>
-                <h2 id="judulBulan">November 2026</h2>
-                <button type="button" class="btn btn-secondary btn-kecil" id="bulanBerikut">Berikutnya</button>
+            <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+                <div style="display:flex;align-items:center;gap:6px;">
+                    <button type="button" class="btn btn-secondary btn-kecil" id="bulanSebelum" aria-label="Bulan Sebelumnya">‹ Sebelumnya</button>
+                    <button type="button" class="btn btn-secondary btn-kecil" id="btnHariIni">Hari Ini</button>
+                    <button type="button" class="btn btn-secondary btn-kecil" id="bulanBerikut" aria-label="Bulan Berikutnya">Berikutnya ›</button>
+                </div>
+                <h2 id="judulBulan" style="margin:0;font-size:16px;font-weight:800;">November 2026</h2>
             </div>
             <div class="card-body">
                 <div class="kalender-nama-hari">
                     <span>Sen</span><span>Sel</span><span>Rab</span><span>Kam</span><span>Jum</span><span>Sab</span><span>Min</span>
                 </div>
                 <div class="kalender-grid" id="kalender"></div>
-                <p class="teks-redup legenda" style="margin-top:14px;">Setiap tanggal menampilkan jumlah pesanan, total box, dan sisa kuota berdasarkan tanggal pengambilan.</p>
+                <p class="teks-redup legenda" style="margin-top:14px;line-height:1.5;">
+                    Keterangan: Kotak berlatar oranye menandakan terdapat pesanan katering masuk. Batas kapasitas dapur adalah 120 box per hari.
+                </p>
             </div>
         </div>
+
+        <!-- Detail Pesanan Tanggal Terpilih -->
         <div class="content-card">
-            <div class="card-header"><h2 id="judulRekap">Rekap Tanggal</h2></div>
-            <div class="card-body" id="isiRekap"><p class="kosong">Pilih tanggal pada kalender untuk melihat rincian.</p></div>
+            <div class="card-header">
+                <h2 id="judulRekap" style="margin:0;font-size:16px;">Rekap Tanggal</h2>
+            </div>
+            <div class="card-body" id="isiRekap">
+                <p class="kosong">Pilih tanggal pada kalender untuk melihat rincian.</p>
+            </div>
         </div>
     </section>
 </div>
@@ -42,6 +54,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     var curThn = skrg.getFullYear();
     var curBln = skrg.getMonth() + 1;
     var tglTerpilih = skrg.toISOString().slice(0, 10);
+    var hariIniStr = tglTerpilih;
 
     var namaBulan = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 
@@ -56,63 +69,155 @@ document.addEventListener('DOMContentLoaded', async function () {
         var kal = document.getElementById('kalender');
         kal.innerHTML = '';
 
+        // Kotak kosong awal bulan
         for (var i = 0; i < startDay; i++) {
             var kosong = document.createElement('div');
-            kosong.className = 'hari-sel mati';
+            kosong.className = 'sel-hari sel-kosong';
             kal.appendChild(kosong);
         }
 
+        // Kotak tanggal
         for (var d = 1; d <= totalHari; d++) {
             var strTgl = curThn + '-' + String(curBln).padStart(2, '0') + '-' + String(d).padStart(2, '0');
             var info = dataBulan[strTgl] || { box: 0, pesanan: 0 };
             var sisa = Math.max(0, 120 - info.box);
 
-            var sel = document.createElement('div');
-            sel.className = 'hari-sel' + (strTgl === tglTerpilih ? ' terpilih' : '') + (info.box >= 120 ? ' penuh' : (info.box >= 100 ? ' hampir' : ''));
-            sel.innerHTML = '<span class="tgl">' + d + '</span>'
-                + (info.box > 0 ? '<span class="box-stat">' + info.box + ' box</span><span class="pesanan-stat">' + info.pesanan + ' pesanan</span>' : '<span class="sisa-stat">sisa 120</span>');
+            var kelas = 'sel-hari'
+                + (info.box > 0 ? (sisa === 0 ? ' penuh' : ' ada') : '')
+                + (strTgl === hariIniStr ? ' hari-ini' : '')
+                + (strTgl === tglTerpilih ? ' dipilih' : '');
 
-            sel.dataset.tanggal = strTgl;
-            sel.onclick = function () {
-                tglTerpilih = this.dataset.tanggal;
-                document.querySelectorAll('.hari-sel').forEach(function (x) { x.classList.remove('terpilih'); });
-                this.classList.add('terpilih');
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = kelas;
+            btn.dataset.tgl = strTgl;
+            btn.setAttribute('aria-pressed', strTgl === tglTerpilih ? 'true' : 'false');
+            btn.setAttribute('aria-label', d + ' ' + namaBulan[curBln] + (info.box > 0 ? ', ' + info.box + ' box, ' + info.pesanan + ' pesanan' : ', sisa 120 box'));
+
+            var innerHtml = '<span class="angka">' + d + '</span>';
+            if (info.box > 0) {
+                innerHtml += '<span class="kecil">' + info.pesanan + ' pesanan</span>'
+                    + '<span style="font-weight:700;font-size:11px;">' + info.box + ' box</span>'
+                    + '<span class="kecil">sisa ' + sisa + '</span>';
+            } else {
+                innerHtml += '<span class="kecil">sisa 120</span>';
+            }
+            btn.innerHTML = innerHtml;
+
+            btn.onclick = function () {
+                tglTerpilih = this.dataset.tgl;
+                document.querySelectorAll('.sel-hari').forEach(function (x) {
+                    x.classList.remove('dipilih');
+                    x.setAttribute('aria-pressed', 'false');
+                });
+                this.classList.add('dipilih');
+                this.setAttribute('aria-pressed', 'true');
                 muatRekapTanggal(tglTerpilih);
             };
-            kal.appendChild(sel);
+
+            kal.appendChild(btn);
         }
     }
 
     async function muatRekapTanggal(tgl) {
-        document.getElementById('judulRekap').textContent = 'Rekap: ' + window.WARTEG_DB.tanggalId(tgl);
+        var judulEl = document.getElementById('judulRekap');
         var isi = document.getElementById('isiRekap');
-        isi.innerHTML = '<p class="kosong">Memuat pesanan...</p>';
+        if (judulEl) judulEl.textContent = 'Rekap: ' + window.WARTEG_DB.tanggalId(tgl);
+        isi.innerHTML = '<div class="kosong"><div class="spinner" style="margin:0 auto 10px;"></div><p>Memuat rekap data...</p></div>';
 
-        var kap = await window.WARTEG_DB.getKapasitasTanggal(tgl);
-        var res = await window.WARTEG_DB.getDaftarPemesan({ tanggal: tgl, per: 100 });
+        try {
+            var kap = await window.WARTEG_DB.getKapasitasTanggal(tgl);
+            var res = await window.WARTEG_DB.getDaftarPemesan({ tanggal: tgl, per: 100 });
+            var items = res.items || [];
 
-        var html = '<div class="grid-kartu" style="grid-template-columns:1fr 1fr;margin-bottom:16px;">'
-            + '<div class="kartu-stat"><span>Box Dipesan</span><strong>' + kap.box + ' box</strong></div>'
-            + '<div class="kartu-stat ' + (kap.level === 'penuh' ? 'kartu-merah' : (kap.level === 'hampir' ? 'kartu-kuning' : '')) + '"><span>Sisa Kuota</span><strong>' + kap.sisa + ' box</strong></div>'
-            + '</div>';
-
-        if (!res.items || !res.items.length) {
-            html += '<p class="kosong">Tidak ada pesanan masuk untuk tanggal ini.</p>';
-        } else {
-            html += '<table class="nota-rincian-tabel" style="width:100%;font-size:13px;">'
-                + '<thead><tr><th style="text-align:left">Kode</th><th>Pelanggan</th><th>Box</th><th>Jam</th><th>Status</th></tr></thead><tbody>';
-            res.items.forEach(function (p) {
-                html += '<tr>'
-                    + '<td><strong>' + p.kode + '</strong></td>'
-                    + '<td>' + p.nama_pelanggan + '<br><small class="teks-redup">' + p.no_wa + '</small></td>'
-                    + '<td style="text-align:center">' + p.total_box + '</td>'
-                    + '<td style="text-align:center">' + window.WARTEG_DB.jamPendek(p.jam_ambil) + '</td>'
-                    + '<td>' + window.WARTEG_DB.badgeStatus(p.status) + '</td>'
-                    + '</tr>';
+            // Agregat Menu yang dipesan
+            var menuAgg = {};
+            var totalBoxDihitung = 0;
+            items.forEach(function (p) {
+                (p.items || []).forEach(function (it) {
+                    menuAgg[it.nama] = (menuAgg[it.nama] || 0) + (it.jumlah || 0);
+                    totalBoxDihitung += (it.jumlah || 0);
+                });
             });
-            html += '</tbody></table>';
+
+            var persenPakai = kap.kapasitas > 0 ? Math.min(100, Math.round((kap.box / kap.kapasitas) * 100)) : 0;
+            var levelClass = kap.level === 'penuh' ? 'level-penuh' : (kap.level === 'hampir' ? 'level-hampir' : 'level-aman');
+
+            var html = '<div style="margin-bottom:16px;">'
+                + '<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px;">'
+                + '<span style="font-weight:700;font-size:13.5px;">Kapasitas Dapur</span>'
+                + '<strong style="font-size:14px;color:var(--teks);">' + kap.box + ' dari ' + kap.kapasitas + ' Box</strong>'
+                + '</div>'
+                + '<div class="progress" style="margin:6px 0 8px;">'
+                + '<div class="progress-bar ' + levelClass + '" style="width:' + persenPakai + '%;"></div>'
+                + '</div>'
+                + '<p class="teks-redup" style="font-size:12px;margin:0;">'
+                + 'Sisa kuota: <strong>' + kap.sisa + ' box</strong>' + (kap.sisa === 0 ? ' (Penuh)' : '') + ' · ' + items.length + ' transaksi pesanan'
+                + '</p>'
+                + '</div>';
+
+            if (!items.length) {
+                html += '<div class="kosong" style="padding:32px 16px;border-top:1px dashed var(--garis);">'
+                    + '<div style="font-size:36px;margin-bottom:8px;">📅</div>'
+                    + '<p><strong>Tidak Ada Pesanan</strong><br>'
+                    + '<span class="teks-redup" style="font-size:12.5px;">Belum ada pesanan katering untuk tanggal ini. Kuota dapur 120 box masih tersedia penuh.</span></p>'
+                    + '</div>';
+            } else {
+                // Ringkasan Menu
+                html += '<div style="border-top:1px dashed var(--garis);padding-top:14px;margin-top:14px;">'
+                    + '<h3 style="font-size:13.5px;font-weight:800;color:var(--teks);margin-bottom:8px;">Ringkasan Menu Dipesan</h3>'
+                    + '<ul class="rekap-menu">';
+                
+                var menuKeys = Object.keys(menuAgg);
+                if (menuKeys.length > 0) {
+                    menuKeys.forEach(function (mName) {
+                        html += '<li><span>' + mName + '</span><strong>' + menuAgg[mName] + ' box</strong></li>';
+                    });
+                }
+                html += '<li class="total"><span>Total Menu Terjadwal</span><strong>' + kap.box + ' box</strong></li>';
+                html += '</ul></div>';
+
+                // Daftar Pesanan
+                html += '<div style="border-top:1px dashed var(--garis);padding-top:14px;margin-top:14px;">'
+                    + '<h3 style="font-size:13.5px;font-weight:800;color:var(--teks);margin-bottom:10px;">Daftar Pesanan (' + items.length + ')</h3>'
+                    + '<div class="rekap-pemesan">';
+
+                items.forEach(function (p) {
+                    var cleanWa = (p.no_wa || '').replace(/\D/g, '');
+                    if (cleanWa.startsWith('0')) cleanWa = '62' + cleanWa.slice(1);
+
+                    html += '<div class="item-pemesan">'
+                        + '<div class="baris">'
+                        + '<div><strong style="font-size:14px;">' + p.nama_pelanggan + '</strong> <span style="font-size:12px;color:var(--redup);">(' + p.kode + ')</span></div>'
+                        + window.WARTEG_DB.badgeStatus(p.status)
+                        + '</div>'
+                        + '<div class="teks-redup" style="font-size:12px;margin:3px 0 6px;">'
+                        + 'Jam Ambil: <b>' + window.WARTEG_DB.jamPendek(p.jam_ambil) + ' WIB</b> · '
+                        + 'Total: <b>' + p.total_box + ' box</b> (' + window.WARTEG_DB.rupiah(p.total_harga) + ')'
+                        + '</div>';
+
+                    if (p.ringkas) {
+                        html += '<div style="font-size:12px;color:var(--teks);background:#f8fafc;padding:6px 10px;border-radius:6px;border:1px solid #f1f5f9;margin-bottom:8px;">'
+                            + '🍱 ' + p.ringkas
+                            + '</div>';
+                    }
+
+                    html += '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'
+                        + '<a href="pemesan.html?q=' + encodeURIComponent(p.kode) + '" class="btn-action btn-detail" style="font-size:11.5px;text-decoration:none;">Buka Detail Pesanan →</a>';
+                    if (cleanWa) {
+                        html += '<a href="https://wa.me/' + cleanWa + '" target="_blank" rel="noopener" class="btn-action btn-wa" style="font-size:11.5px;text-decoration:none;">Chat WA Pelanggan</a>';
+                    }
+                    html += '</div></div>';
+                });
+
+                html += '</div></div>';
+            }
+
+            isi.innerHTML = html;
+        } catch (err) {
+            console.error('Gagal memuat rekap tanggal:', err);
+            isi.innerHTML = '<div class="kosong" style="color:var(--merah);"><p>Gagal memuat rincian rekap: ' + (err.message || 'Terjadi kesalahan') + '</p></div>';
         }
-        isi.innerHTML = html;
     }
 
     document.getElementById('bulanSebelum').onclick = function () {
@@ -125,6 +230,14 @@ document.addEventListener('DOMContentLoaded', async function () {
         if (curBln > 12) { curBln = 1; curThn++; }
         renderKalender();
     };
+    document.getElementById('btnHariIni').onclick = function () {
+        var dNow = new Date();
+        curThn = dNow.getFullYear();
+        curBln = dNow.getMonth() + 1;
+        tglTerpilih = hariIniStr;
+        renderKalender();
+        muatRekapTanggal(tglTerpilih);
+    };
 
     renderKalender();
     muatRekapTanggal(tglTerpilih);
@@ -132,4 +245,3 @@ document.addEventListener('DOMContentLoaded', async function () {
 </script>
 </body>
 </html>
-

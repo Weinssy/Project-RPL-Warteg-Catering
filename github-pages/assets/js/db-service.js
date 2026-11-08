@@ -65,11 +65,11 @@
 
     function badgeStatus(status) {
         var map = {
-            'Menunggu Konfirmasi': '<span class="badge badge-status status-menunggu">Menunggu Konfirmasi</span>',
-            'Sedang Dimasak': '<span class="badge badge-status status-masak">Sedang Dimasak</span>',
-            'Siap Diambil': '<span class="badge badge-status status-siap">Siap Diambil</span>'
+            'Menunggu Konfirmasi': '<span class="badge badge-menunggu">Menunggu Konfirmasi</span>',
+            'Sedang Dimasak': '<span class="badge badge-masak">Sedang Dimasak</span>',
+            'Siap Diambil': '<span class="badge badge-siap">Siap Diambil</span>'
         };
-        return map[status] || '<span class="badge badge-status">' + (status || '-') + '</span>';
+        return map[status] || '<span class="badge">' + (status || '-') + '</span>';
     }
 
     function linkWa(noWa, nama, box, kode) {
@@ -732,6 +732,10 @@
             }
         },
 
+        getSesiAdmin: function () {
+            return this.getAdminSesi();
+        },
+
         logoutAdmin: function () {
             sessionStorage.removeItem(SESSION_KEY);
             return true;
@@ -745,6 +749,64 @@
             var status = filter.status || '';
             var hal = parseInt(filter.hal, 10) || 1;
             var per = parseInt(filter.per, 10) || 10;
+
+            if (isSupabaseReady) {
+                try {
+                    var query = supabaseClient
+                        .from('pesanan')
+                        .select('*, detail_pesanan(*, menu(nama))');
+                    if (tgl) {
+                        query = query.eq('tanggal_ambil', tgl);
+                    }
+                    if (status) {
+                        query = query.eq('status', status);
+                    }
+                    if (q) {
+                        query = query.or('kode.ilike.%' + q + '%,nama_pelanggan.ilike.%' + q + '%');
+                    }
+                    var { data, error } = await query
+                        .order('tanggal_ambil', { ascending: false })
+                        .order('id', { ascending: false });
+
+                    if (!error && data) {
+                        var total = data.length;
+                        var totalHal = Math.max(1, Math.ceil(total / per));
+                        hal = Math.min(hal, totalHal);
+                        var offset = (hal - 1) * per;
+                        var slice = data.slice(offset, offset + per);
+
+                        var hasil = slice.map(function (p) {
+                            var det = (p.detail_pesanan || []).map(function (d) {
+                                return {
+                                    nama: (d.menu && d.menu.nama) ? d.menu.nama : 'Menu #' + d.menu_id,
+                                    jumlah: d.jumlah,
+                                    harga: rupiah(d.harga_satuan),
+                                    subtotal: rupiah(d.subtotal)
+                                };
+                            });
+                            var ringkas = det.map(function (d) { return d.nama + ' x' + d.jumlah; }).join(', ');
+                            return {
+                                id: p.id,
+                                kode: p.kode,
+                                nama_pelanggan: p.nama_pelanggan,
+                                no_wa: p.no_wa,
+                                tanggal_ambil: p.tanggal_ambil,
+                                jam_ambil: p.jam_ambil,
+                                total_box: p.total_box,
+                                total_harga: p.total_harga,
+                                status: p.status,
+                                status_bayar: p.status_bayar,
+                                token_nota: p.token_nota,
+                                ringkas: ringkas,
+                                items: det
+                            };
+                        });
+                        return { items: hasil, total: total, hal: hal, totalHal: totalHal, offset: offset };
+                    }
+                } catch (e) {
+                    console.warn('Supabase getDaftarPemesan error:', e);
+                }
+            }
 
             var state = loadLocalState();
             var list = state.pesanan || [];
@@ -937,9 +999,35 @@
 
         // Rekap Bulanan untuk Kalender Admin
         getRekapBulan: async function (tahun, bulan) {
-            var state = loadLocalState();
             var prefix = tahun + '-' + String(bulan).padStart(2, '0');
             var result = {};
+
+            if (isSupabaseReady) {
+                try {
+                    var startDate = prefix + '-01';
+                    var lastDay = new Date(tahun, bulan, 0).getDate();
+                    var endDate = prefix + '-' + String(lastDay).padStart(2, '0');
+                    var { data, error } = await supabaseClient
+                        .from('pesanan')
+                        .select('tanggal_ambil, total_box, status_bayar')
+                        .gte('tanggal_ambil', startDate)
+                        .lte('tanggal_ambil', endDate)
+                        .neq('status_bayar', 'dibatalkan');
+                    if (!error && data) {
+                        data.forEach(function (p) {
+                            var tgl = p.tanggal_ambil;
+                            result[tgl] = result[tgl] || { box: 0, pesanan: 0 };
+                            result[tgl].box += (p.total_box || 0);
+                            result[tgl].pesanan++;
+                        });
+                        return result;
+                    }
+                } catch (e) {
+                    console.warn('Supabase getRekapBulan error:', e);
+                }
+            }
+
+            var state = loadLocalState();
             (state.pesanan || []).forEach(function (p) {
                 if ((p.tanggal_ambil || '').startsWith(prefix) && p.status_bayar !== 'dibatalkan') {
                     var tgl = p.tanggal_ambil;
@@ -954,11 +1042,16 @@
         // Ambil Daftar Admin
         getDaftarAdmin: async function () {
             if (isSupabaseReady) {
-                var { data, error } = await supabaseClient
-                    .from('admin')
-                    .select('id, username, nama, role, email, telepon, bahasa, foto, dibuat_pada')
-                    .order('id', { ascending: true });
-                if (!error && data) return data;
+                try {
+                    var { data, error } = await supabaseClient
+                        .from('admin')
+                        .select('id, username, nama, role, email, telepon, bahasa, foto, dibuat_pada')
+                        .order('id', { ascending: true });
+                    if (!error && data) return data;
+                    if (error) console.warn('Supabase getDaftarAdmin error:', error);
+                } catch (e) {
+                    console.warn('Supabase getDaftarAdmin exception:', e);
+                }
             }
             var state = loadLocalState();
             return state.admin || [];

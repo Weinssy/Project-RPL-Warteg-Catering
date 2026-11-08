@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Manajemen Admin - Warung Mas Alif</title>
+    <title>Manajemen Admin - Warteg Pak Sanam</title>
     <link rel="stylesheet" href="../assets/css/admin.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../assets/js/config.js"></script>
@@ -111,37 +111,58 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     async function muatAdminList() {
-        var list = await window.WARTEG_DB.getDaftarAdmin();
-        var sesi = window.WARTEG_DB.getSesiAdmin() || {};
-
         var tbody = document.getElementById('tbodyAdmin');
-        tbody.innerHTML = '';
-        if (!list || !list.length) {
-            tbody.innerHTML = '<tr><td colspan="5" class="kosong">Belum ada akun admin terdaftar.</td></tr>';
-            return;
-        }
+        try {
+            var list = await window.WARTEG_DB.getDaftarAdmin();
+            var sesi = (window.WARTEG_DB.getAdminSesi ? window.WARTEG_DB.getAdminSesi() : (window.WARTEG_DB.getSesiAdmin ? window.WARTEG_DB.getSesiAdmin() : {})) || {};
 
-        list.forEach(function (adm) {
-            var saya = (sesi.id && parseInt(sesi.id, 10) === parseInt(adm.id, 10)) || (sesi.username === adm.username);
-            var isOwner = (adm.role === 'owner');
-
-            var aksiHtml = '';
-            if (!saya && !isOwner) {
-                aksiHtml = '<button type="button" class="btn btn-kecil btn-hapus-admin" data-id="' + adm.id + '" data-nama="' + (adm.nama || '') + '" data-username="' + adm.username + '">Hapus</button>';
-            } else if (saya) {
-                aksiHtml = '<span class="tag-saya" style="font-size:11px;background:#e0f2fe;color:#0369a1;padding:2px 8px;border-radius:999px;">Sesi Anda</span>';
-            } else {
-                aksiHtml = '<span class="teks-redup">&mdash;</span>';
+            tbody.innerHTML = '';
+            if (!list || !list.length) {
+                tbody.innerHTML = '<tr><td colspan="5" class="kosong">Belum ada akun admin terdaftar.</td></tr>';
+                return;
             }
 
-            var tr = document.createElement('tr');
-            tr.innerHTML = '<td><strong>' + adm.nama + '</strong></td>'
-                + '<td>' + adm.username + '</td>'
-                + '<td><span class="role-badge' + (isOwner ? ' owner' : '') + '">' + (adm.role || 'admin').toUpperCase() + '</span></td>'
-                + '<td style="font-size:12px;">' + (adm.telepon || adm.email || '-') + '</td>'
-                + '<td class="kolom-aksi">' + aksiHtml + '</td>';
-            tbody.appendChild(tr);
-        });
+            list.forEach(function (adm) {
+                var saya = (sesi.id && parseInt(sesi.id, 10) === parseInt(adm.id, 10)) || (sesi.username === adm.username);
+                var isOwner = (adm.role === 'owner');
+                var inisial = (adm.nama || adm.username || 'A').charAt(0).toUpperCase();
+
+                var aksiHtml = '';
+                if (!saya && !isOwner) {
+                    aksiHtml = '<button type="button" class="btn btn-kecil btn-hapus-admin" data-id="' + adm.id + '" data-nama="' + (adm.nama || '') + '" data-username="' + adm.username + '">Hapus</button>';
+                } else if (saya) {
+                    aksiHtml = '<span class="tag-saya">Sesi Anda</span>';
+                } else {
+                    aksiHtml = '<span class="teks-redup">-</span>';
+                }
+
+                var kontak = [];
+                if (adm.telepon) kontak.push('WA: ' + adm.telepon);
+                if (adm.email) kontak.push(adm.email);
+                var kontakTeks = kontak.length ? kontak.join('<br>') : '<span class="teks-redup">-</span>';
+
+                var fotoHtml = '';
+                if (adm.foto) {
+                    fotoHtml = '<img src="../uploads/admin/' + adm.foto + '" alt="' + adm.nama + '" class="avatar" style="width:34px;height:34px;object-fit:cover;border-radius:8px;" onerror="this.outerHTML=\'<span class=\\\'avatar avatar-inisial\\\' style=\\\'width:34px;height:34px;font-size:13px;\\\'>' + inisial + '</span>\'">';
+                } else {
+                    fotoHtml = '<span class="avatar avatar-inisial" style="width:34px;height:34px;font-size:13px;">' + inisial + '</span>';
+                }
+
+                var tr = document.createElement('tr');
+                tr.innerHTML = '<td><div class="sel-admin" style="display:flex;align-items:center;gap:10px;">'
+                    + fotoHtml
+                    + '<div><strong>' + adm.nama + '</strong>' + (saya ? ' <span class="badge-saya">Anda</span>' : '') + '</div>'
+                    + '</div></td>'
+                    + '<td><code style="font-size:12.5px;">' + adm.username + '</code></td>'
+                    + '<td><span class="role-badge' + (isOwner ? ' owner' : '') + '">' + (adm.role || 'admin').toUpperCase() + '</span></td>'
+                    + '<td style="font-size:12px;line-height:1.4;">' + kontakTeks + '</td>'
+                    + '<td class="kolom-aksi">' + aksiHtml + '</td>';
+                tbody.appendChild(tr);
+            });
+        } catch (err) {
+            console.error('Gagal memuat admin list:', err);
+            tbody.innerHTML = '<tr><td colspan="5" class="kosong" style="color:var(--merah);">Gagal memuat akun admin: ' + (err.message || 'Terjadi kesalahan.') + '</td></tr>';
+        }
     }
 
     // Event Hapus Admin
@@ -154,7 +175,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!window.confirm('Hapus akun admin "' + label + '"?\n\nTindakan ini tidak dapat dibatalkan.')) return;
         b.disabled = true;
 
-        var sesi = window.WARTEG_DB.getSesiAdmin() || {};
+        var sesi = (window.WARTEG_DB.getAdminSesi ? window.WARTEG_DB.getAdminSesi() : (window.WARTEG_DB.getSesiAdmin ? window.WARTEG_DB.getSesiAdmin() : {})) || {};
         var res = await window.WARTEG_DB.hapusAdmin(id, sesi.id);
 
         if (!res || !res.ok) {
