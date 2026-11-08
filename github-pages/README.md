@@ -1,6 +1,6 @@
-# Warteg Kharisma — Versi GitHub Pages + Supabase
+# Warteg Pak Sanam - Versi GitHub Pages + Supabase
 
-Modul mandiri ini merupakan versi aplikasi **Sistem Katering & POS Warung Mas Alif** yang dirancang agar dapat di-hosting secara langsung di **GitHub Pages** dengan backend cloud **Supabase (PostgreSQL Database, Storage & RPC)**.
+Modul mandiri ini merupakan versi aplikasi **Sistem Katering & POS Warteg Pak Sanam** yang dirancang agar dapat di-hosting secara langsung di **GitHub Pages** dengan backend cloud **Supabase (PostgreSQL Database, Storage & RPC)**.
 
 Semua kebutuhan aset, style, dan script terisolasi di dalam folder `github-pages/` agar repositori tetap rapi.
 

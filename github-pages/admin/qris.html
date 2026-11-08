@@ -77,7 +77,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     if (cfg.qris_gambar) {
         imgQris.src = cfg.qris_gambar.startsWith('data:') ? cfg.qris_gambar : ('../uploads/qris/' + cfg.qris_gambar);
     }
-    document.getElementById('qrisNama').value = cfg.qris_nama_merchant || 'Warung Mas Alif';
+    document.getElementById('qrisNama').value = cfg.qris_nama_merchant || 'Warteg Pak Sanam';
     document.getElementById('qrisNmid').value = cfg.qris_nmid || 'ID1025439892668';
     document.getElementById('qrisInstruksi').value = cfg.qris_instruksi || '';
     document.getElementById('qrisBatasJam').value = cfg.batas_bayar_jam || 24;

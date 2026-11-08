@@ -2497,8 +2497,8 @@ body.cust {
 
 .stepper-kartu .btn-step,
 .kartu-stepper .step-btn {
-  width: 34px;
-  height: 34px;
+  width: 40px;
+  height: 40px;
   border-radius: 8px;
   border: 0;
   font-size: 17px;
@@ -2981,4 +2981,19 @@ body.cust {
   border-radius: 8px;
   padding: 10px 18px;
   font-size: 13px;
+}
+
+@media (max-width: 960px) {
+  .cart-bar.tampil,
+  .cart-bar.aktif {
+    display: flex;
+  }
+}
+
+.stepper .btn-step,
+.stepper button {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  min-height: 40px;
 }

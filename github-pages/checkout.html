@@ -116,11 +116,35 @@
                                 <div class="form-baris">
                                     <label for="fTgl">Tanggal Pengambilan <span class="wajib">*</span></label>
                                     <input type="date" class="input" id="fTgl" name="tanggal_ambil" required>
+                                    <div class="bantuan" id="infoKuotaTanggalCheckout">Aturan H-1 s/d H+30 (Maks. 120 box/hari).</div>
                                     <div class="pesan-galat" data-untuk="tanggal_ambil" style="display:none;color:var(--c-merah);font-size:12px;margin-top:4px;"></div>
                                 </div>
                                 <div class="form-baris">
                                     <label for="fJam">Jam Pengambilan <span class="wajib">*</span></label>
-                                    <select class="select" id="fJam" name="jam_ambil" required></select>
+                                    <select class="select" id="fJam" name="jam_ambil" required>
+                                        <option value="09:00">09:00 WIB</option>
+                                        <option value="09:30">09:30 WIB</option>
+                                        <option value="10:00">10:00 WIB</option>
+                                        <option value="10:30">10:30 WIB</option>
+                                        <option value="11:00" selected>11:00 WIB</option>
+                                        <option value="11:30">11:30 WIB</option>
+                                        <option value="12:00">12:00 WIB</option>
+                                        <option value="12:30">12:30 WIB</option>
+                                        <option value="13:00">13:00 WIB</option>
+                                        <option value="13:30">13:30 WIB</option>
+                                        <option value="14:00">14:00 WIB</option>
+                                        <option value="14:30">14:30 WIB</option>
+                                        <option value="15:00">15:00 WIB</option>
+                                        <option value="15:30">15:30 WIB</option>
+                                        <option value="16:00">16:00 WIB</option>
+                                        <option value="16:30">16:30 WIB</option>
+                                        <option value="17:00">17:00 WIB</option>
+                                        <option value="17:30">17:30 WIB</option>
+                                        <option value="18:00">18:00 WIB</option>
+                                        <option value="18:30">18:30 WIB</option>
+                                        <option value="19:00">19:00 WIB</option>
+                                    </select>
+                                    <div class="bantuan">Jam operasional dapur: 09.00 - 19.00 WIB.</div>
                                     <div class="pesan-galat" data-untuk="jam_ambil" style="display:none;color:var(--c-merah);font-size:12px;margin-top:4px;"></div>
                                 </div>
                             </div>

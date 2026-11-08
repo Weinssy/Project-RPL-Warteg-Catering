@@ -1,850 +1,770 @@
 // =====================================================================
-// APLIKASI PELANGGAN (WARTEG PAK SANAM - GITHUB PAGES + SUPABASE)
-// Mengatur UI: Keranjang, Meal Builder, Cek Kuota, Filter Kategori, & Form Checkout
+// LOGIKA HALAMAN UTAMA PELANGGAN (KATALOG, CEK KUOTA, & CHECKOUT)
+// Sistem Katering & POS Warteg Pak Sanam (GitHub Pages Edition)
 // =====================================================================
 (function () {
     'use strict';
 
     var DB = window.WARTEG_DB;
     var CFG = window.WARTEG_CONFIG || {};
+    var STORAGE_CART = 'warteg_keranjang_v2';
 
-    function $(s, r) { return (r || document).querySelector(s); }
-    function $$(s, r) { return [].slice.call((r || document).querySelectorAll(s)); }
+    var tglMin = DB.addDaysIso(CFG.MINIMAL_H_MINUS || 1);
+    var tglMaks = DB.addDaysIso(CFG.MAKS_HARI_KE || 30);
+    var metaAwal = DB.getCartMeta ? DB.getCartMeta() : { tanggal: tglMin, jam: '11:00' };
+    var tglPilih = metaAwal.tanggal || tglMin;
+    var jamPilih = metaAwal.jam || '11:00';
 
-    function toast(msg, tipe) {
-        var area = $('#custToast');
+    var katalogMenu = [];
+    var keranjang = muatKeranjangStorage();
+    var kategoriAktif = 'semua';
+    var sisaKuotaSaatIni = CFG.KAPASITAS_HARIAN || 120;
+
+    function muatKeranjangStorage() {
+        try {
+            var raw = localStorage.getItem(STORAGE_CART);
+            var obj = raw ? JSON.parse(raw) : {};
+            return (obj && typeof obj === 'object') ? obj : {};
+        } catch (e) {
+            return {};
+        }
+    }
+
+    function simpanKeranjangStorage() {
+        try {
+            localStorage.setItem(STORAGE_CART, JSON.stringify(keranjang));
+        } catch (e) {}
+    }
+
+    // -----------------------------------------------------------------
+    // 0. Toast Notification Helper
+    // -----------------------------------------------------------------
+    var toastTimer = null;
+    function tampilToast(pesan) {
+        var area = document.getElementById('custToast');
         if (!area) return;
-        var t = document.createElement('div');
-        t.className = 'cust-toast ' + (tipe || '');
-        t.setAttribute('role', 'status');
-        t.textContent = msg;
-        area.appendChild(t);
-        setTimeout(function () { t.remove(); }, 3500);
+        area.innerHTML = '<div class="cust-toast-item">' + DB.escapeHtml(pesan) + '</div>';
+        if (toastTimer) clearTimeout(toastTimer);
+        toastTimer = setTimeout(function () {
+            area.innerHTML = '';
+        }, 2800);
     }
-
-    function formatRupiah(n) { return DB ? DB.rupiah(n) : 'Rp' + n; }
 
     // -----------------------------------------------------------------
-    // Format Tanggal Minimal (H-1) & Maksimal (H+30)
+    // 1. Setup Input Tanggal & Navigasi Mobile
     // -----------------------------------------------------------------
-    function getOffsetDate(dOffset) {
-        var d = new Date();
-        d.setDate(d.getDate() + dOffset);
-        var yyyy = d.getFullYear();
-        var mm = String(d.getMonth() + 1).padStart(2, '0');
-        var dd = String(d.getDate()).padStart(2, '0');
-        return yyyy + '-' + mm + '-' + dd;
-    }
+    function initNavDanTanggal() {
+        var btnToggle = document.getElementById('custToggle');
+        var navLinks = document.getElementById('custLinks');
+        if (btnToggle && navLinks && !btnToggle.dataset.boundToggle) {
+            btnToggle.dataset.boundToggle = '1';
+            btnToggle.addEventListener('click', function () {
+                var buka = navLinks.classList.toggle('buka');
+                btnToggle.setAttribute('aria-expanded', buka ? 'true' : 'false');
+            });
+            navLinks.querySelectorAll('a').forEach(function (a) {
+                a.addEventListener('click', function () {
+                    navLinks.classList.remove('buka');
+                    btnToggle.setAttribute('aria-expanded', 'false');
+                });
+            });
+        }
 
-    var tglMin = getOffsetDate(CFG.MINIMAL_H_MINUS || 1);
-    var tglMaks = getOffsetDate(CFG.MAKS_HARI_KE || 30);
-    var tglPilih = tglMin;
-    var katalogMenusCache = [];
+        var inpCek = document.getElementById('cekTanggal');
+        var inpFormTgl = document.getElementById('fTgl') || document.getElementById('tanggal');
+        var inpFormJam = document.getElementById('fJam') || document.getElementById('jam');
 
-    // -----------------------------------------------------------------
-    // Validasi Nama Pemesan (Tanpa Angka)
-    // -----------------------------------------------------------------
-    function adaHuruf(t) { return /[A-Za-z\u00C0-\u024F\u1E00-\u1EFF]/.test(t); }
-    function namaValid(s) {
-        var t = String(s == null ? '' : s).trim();
-        if (!t) return false;
-        if (/\d/.test(t)) return false;   // Tolak angka sama sekali
-        return adaHuruf(t);               // Wajib ada minimal satu huruf
-    }
+        [inpCek, inpFormTgl].forEach(function (el) {
+            if (!el) return;
+            el.min = tglMin;
+            el.max = tglMaks;
+            el.value = tglPilih;
+        });
 
-    function pesanGalatNama(s) {
-        var t = String(s == null ? '' : s).trim();
-        if (!t) return 'Nama pemesan wajib diisi.';
-        if (/\d/.test(t)) return 'Nama tidak boleh mengandung angka.';
-        if (!adaHuruf(t)) return 'Nama harus mengandung huruf, tidak boleh berupa angka saja.';
-        return '';
-    }
+        if (inpFormJam) {
+            inpFormJam.value = jamPilih;
+            inpFormJam.addEventListener('change', function () {
+                jamPilih = this.value || '11:00';
+                if (DB.setCartMeta) DB.setCartMeta({ tanggal: tglPilih, jam: jamPilih });
+            });
+        }
 
-    function waValid(v) {
-        var d = String(v || '').replace(/[^\d]/g, '');
-        if (d.charAt(0) === '0') d = '62' + d.slice(1);
-        return d.length >= 10 && d.length <= 16;
-    }
+        var btnCek = document.getElementById('btnCekTanggal');
+        if (btnCek && inpCek) {
+            btnCek.addEventListener('click', function () {
+                if (inpCek.value) {
+                    muatDataTanggal(inpCek.value);
+                    tampilToast('Menampilkan kuota & menu untuk ' + DB.tanggalId(inpCek.value, false));
+                }
+            });
+            inpCek.addEventListener('change', function () {
+                if (this.value) muatDataTanggal(this.value);
+            });
+        }
 
-    function tampilGalat(field, pesan) {
-        var el = $('.pesan-galat[data-untuk="' + field + '"]');
-        if (el) {
-            el.textContent = pesan || '';
-            el.style.display = pesan ? 'block' : 'none';
+        if (inpFormTgl) {
+            inpFormTgl.addEventListener('change', function () {
+                if (this.value) {
+                    muatDataTanggal(this.value);
+                }
+            });
+        }
+
+        // Filter Chips Kategori
+        var filterWrap = document.getElementById('kategoriFilter');
+        if (filterWrap) {
+            filterWrap.querySelectorAll('.filter-btn').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    filterWrap.querySelectorAll('.filter-btn').forEach(function (b) {
+                        b.classList.remove('aktif');
+                        b.setAttribute('aria-selected', 'false');
+                    });
+                    this.classList.add('aktif');
+                    this.setAttribute('aria-selected', 'true');
+                    kategoriAktif = this.getAttribute('data-filter') || 'semua';
+                    renderKatalog();
+                });
+            });
+        }
+
+        // Tombol Kosongkan Keranjang
+        var btnKosongkan = document.getElementById('kosongkanKeranjang');
+        if (btnKosongkan) {
+            btnKosongkan.addEventListener('click', function () {
+                if (totalItemKeranjang() === 0) return;
+                if (confirm('Kosongkan semua menu di keranjang pesanan?')) {
+                    keranjang = {};
+                    simpanKeranjangStorage();
+                    renderKatalog();
+                    renderRingkasan();
+                    tampilToast('Keranjang pesanan dikosongkan');
+                }
+            });
+        }
+
+        // Tombol Lanjut ke Checkout
+        var btnLanjut = document.getElementById('btnLanjut');
+        if (btnLanjut) {
+            btnLanjut.addEventListener('click', function () {
+                if (DB.setCartMeta) DB.setCartMeta({ tanggal: tglPilih, jam: jamPilih });
+                var secCheckout = document.getElementById('checkout');
+                if (secCheckout) {
+                    secCheckout.scrollIntoView({ behavior: 'smooth' });
+                    var inpNama = document.getElementById('nama');
+                    if (inpNama) setTimeout(function () { inpNama.focus(); }, 400);
+                } else {
+                    window.location.href = 'checkout.html';
+                }
+            });
+        }
+
+        // Tombol Hero: + Tambah 10 Box Paket Ini ke Pesanan
+        var btnHeroPaket = document.getElementById('btnTambahPaketHero');
+        if (btnHeroPaket) {
+            btnHeroPaket.addEventListener('click', function () {
+                if (!katalogMenu || !katalogMenu.length) return;
+                var paketA = katalogMenu.find(function (m) {
+                    return String(m.kategori || '').toLowerCase() === 'paket a' || m.id === 1;
+                }) || katalogMenu[0];
+
+                if (paketA) {
+                    ubahKuantitasMenu(paketA.id, 10, true);
+                    tampilToast('10 Box ' + paketA.nama + ' ditambahkan ke keranjang');
+                    var secKatalog = document.getElementById('katalog');
+                    if (secKatalog) secKatalog.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
         }
     }
 
-    // -----------------------------------------------------------------
-    // Deskripsi Menu Otomatis (Untuk Menu Supabase / LocalStorage)
-    // -----------------------------------------------------------------
-    var deskripsiDefaultMap = {
-        'paket hemat komplit': 'Nasi Putih Wangi + Ayam Goreng Lengkuas Rempah + Tempe Orek Basah + Tumis Buncis Jagung + Sambal Terasi & Lalapan',
-        'paket selera nusantara a': 'Nasi Putih Wangi + Ayam Goreng Lengkuas Rempah + Tempe Orek Basah + Tumis Buncis Jagung + Sambal Terasi & Lalapan',
-        'paket b - rendang daging sapi empuk': 'Nasi Putih Wangi + Rendang Empuk + Sayur Daun Singkong + Telur Dadar + Sambal Ijo',
-        'paket c - ikan tongkol suwir balado': 'Nasi Putih + Tongkol Suwir Pedas Gurih + Sayur Urap Kelapa + Bakwan Jagung + Sambal',
-        'nasi ayam': 'Nasi putih pulen hangat + Ayam goreng bumbu lengkuas rempah + Tempe orek + Sambal terasi & lalapan segar',
-        'nasi ayam lengkuas spesial': 'Nasi putih pulen hangat + Ayam goreng bumbu lengkuas rempah + Tempe orek + Sambal terasi & lalapan segar',
-        'nasi ikan': 'Nasi putih pulen + Ikan goreng bumbu kuning gurih + Sayur harian + Sambal khas Warteg Pak Sanam',
-        'nasi ikan bumbu kuning': 'Nasi putih pulen + Ikan goreng bumbu kuning gurih + Sayur harian + Sambal khas Warteg Pak Sanam',
-        'nasi udang': 'Nasi putih pulen + Udang masak balado merah pedas gurih + Tumis sayur segar + Sambal',
-        'nasi udang balado pete': 'Nasi putih pulen + Udang masak balado merah pedas gurih + Tumis sayur segar + Sambal',
-        'ayam lengkuas': 'Ayam potong goreng bumbu rempah lengkuas gurih khas Warteg Pak Sanam.',
-        'ayam bakar bumbu madu khas pak sanam': 'Ayam potong bakar dengan olesan kecap madu dan rempah khas warteg.',
-        'cumi asin tumis cabe ijo': 'Cumi asin empuk tidak alot dimasak dengan cabai hijau besar dan tomat ijo segar.',
-        'sayur asem segar': 'Sayur asem kuah segar lengkap dengan jagung manis, melinjo, labu siam, dan kacang panjang.',
-        'sayur asem segar jakarta': 'Sayur asem kuah segar lengkap dengan jagung manis, melinjo, labu siam, dan kacang panjang.'
-    };
-
-    function getDeskripsiMenu(m) {
-        if (m.deskripsi && m.deskripsi.trim()) return m.deskripsi;
-        var key = String(m.nama || '').toLowerCase().trim();
-        if (deskripsiDefaultMap[key]) return deskripsiDefaultMap[key];
-        var kat = String(m.kategori || '').toLowerCase();
-        if (kat.indexOf('paket') === 0) {
-            return 'Nasi Putih Wangi + Lauk Utama Pilihan + Sayur Tumis Segar + Tempe Orek + Sambal Khas & Alat Makan Higienis';
+    function sinkronTanggal(tglBaru) {
+        var valTgl = DB.validasiTanggalAmbil ? DB.validasiTanggalAmbil(tglBaru) : { ok: true };
+        if (!valTgl.ok) {
+            tampilToast(valTgl.pesan);
+            tglPilih = tglMin;
+        } else {
+            tglPilih = tglBaru;
         }
-        if (kat === 'nasi') {
-            return 'Nasi box lengkap dengan lauk utama pilihan, sayur harian segar, sambal khas Pak Sanam, dan lalapan.';
+        if (DB.setCartMeta) DB.setCartMeta({ tanggal: tglPilih, jam: jamPilih });
+
+        var inpCek = document.getElementById('cekTanggal');
+        var inpFormTgl = document.getElementById('fTgl') || document.getElementById('tanggal');
+        if (inpCek && inpCek.value !== tglPilih) inpCek.value = tglPilih;
+        if (inpFormTgl && inpFormTgl.value !== tglPilih) inpFormTgl.value = tglPilih;
+    }
+
+    // -----------------------------------------------------------------
+    // 2. Muat Data Kuota & Katalog Menu per Tanggal
+    // -----------------------------------------------------------------
+    async function muatDataTanggal(tgl) {
+        sinkronTanggal(tgl);
+        await muatKuota(tglPilih);
+
+        var wadah = document.getElementById('katalogMenu');
+        if (wadah) {
+            wadah.innerHTML = '<div class="kosong"><p>Memuat katalog menu untuk ' + DB.escapeHtml(DB.tanggalId(tglPilih)) + '...</p></div>';
         }
-        if (kat === 'lauk') {
-            return 'Lauk masakan rumahan segar bumbu rempah otentik khas dapur Warteg Pak Sanam.';
+        katalogMenu = await DB.getMenuTanggal(tglPilih);
+
+        // Sesuaikan item keranjang jika pada tanggal baru menu tidak tersedia atau stok berkurang
+        sesuaikanKeranjangDenganStokTanggal();
+
+        if (wadah) {
+            updateLabelTabKategori();
+            renderKatalog();
         }
-        return 'Sayur & pelengkap masakan harian segar dimasak setiap pagi.';
+        renderRingkasan();
     }
 
-    function getUnitMenu(kat) {
-        var k = String(kat || '').toLowerCase();
-        if (k === 'lauk' || k === 'sayur') return 'Porsi';
-        return 'Box';
-    }
+    function sesuaikanKeranjangDenganStokTanggal() {
+        var map = {};
+        (katalogMenu || []).forEach(function (m) { map[m.id] = m; });
+        var adaPerubahan = false;
 
-    // -----------------------------------------------------------------
-    // Keranjang Belanja (LocalStorage)
-    // -----------------------------------------------------------------
-    var CART_KEY = 'warteg_cart_items';
-    var keranjang = {};
-    try {
-        keranjang = JSON.parse(localStorage.getItem(CART_KEY) || '{}') || {};
-    } catch (e) { keranjang = {}; }
-
-    function simpanKeranjang() {
-        try { localStorage.setItem(CART_KEY, JSON.stringify(keranjang)); } catch (e) { }
-    }
-
-    function totalBox() {
-        var t = 0;
-        Object.keys(keranjang).forEach(function (k) { t += (keranjang[k].jumlah || 0); });
-        return t;
-    }
-
-    function subtotal() {
-        var t = 0;
-        Object.keys(keranjang).forEach(function (k) { t += ((keranjang[k].harga || 0) * (keranjang[k].jumlah || 0)); });
-        return t;
-    }
-
-    // -----------------------------------------------------------------
-    // Pilihan Jam Pengambilan
-    // -----------------------------------------------------------------
-    function isiPilihanJam() {
-        var sel = $('#fJam');
-        if (!sel) return;
-        var buka = CFG.JAM_BUKA || '09:00', tutup = CFG.JAM_TUTUP || '19:00';
-        var b = parseInt(buka.slice(0, 2), 10), t = parseInt(tutup.slice(0, 2), 10);
-        sel.innerHTML = '';
-        for (var h = b; h <= t; h++) {
-            for (var mi = 0; mi < 60; mi += 30) {
-                if (h === t && mi > 0) break;
-                var hh = String(h).padStart(2, '0'), mm = String(mi).padStart(2, '0');
-                var opt = document.createElement('option');
-                opt.value = hh + ':' + mm;
-                opt.textContent = hh + ':' + mm + ' WIB';
-                sel.appendChild(opt);
+        Object.keys(keranjang).forEach(function (idStr) {
+            var id = Number(idStr);
+            var qty = keranjang[id] || 0;
+            var m = map[id];
+            if (!m || !m.aktif || !m.tersedia) {
+                delete keranjang[id];
+                adaPerubahan = true;
+                return;
             }
+            if (m.stok !== null && m.stok !== undefined) {
+                var sisaStok = Math.max(0, Number(m.stok) - Number(m.terjual || 0));
+                if (qty > sisaStok) {
+                    if (sisaStok <= 0) delete keranjang[id];
+                    else keranjang[id] = sisaStok;
+                    adaPerubahan = true;
+                }
+            }
+        });
+
+        if (adaPerubahan) {
+            simpanKeranjangStorage();
+            tampilToast('Keranjang disesuaikan dengan stok menu pada tanggal ' + DB.tanggalId(tglPilih, false));
         }
     }
 
-    async function perbaruiKapasitas(tanggal) {
-        if (!DB) return;
-        var kap = await DB.getKapasitasTanggal(tanggal);
-        var maks = kap.kapasitas || 120;
-        if ($('#kapTerpakai')) $('#kapTerpakai').textContent = kap.box;
-        if ($('#kapSisa')) $('#kapSisa').textContent = kap.sisa;
-        if ($('#navSisaKuota')) $('#navSisaKuota').textContent = kap.sisa;
+    async function muatKuota(tgl) {
+        var info = await DB.getKapasitasTanggal(tgl);
+        sisaKuotaSaatIni = info.sisa;
 
-        // Progress bar menunjukkan proporsi ketersediaan kuota dapur
-        var persenSisa = maks > 0 ? Math.max(6, Math.min(100, Math.round((kap.sisa / maks) * 100))) : 100;
-        if ($('#barKapasitas')) {
-            $('#barKapasitas').style.width = (kap.sisa === 0 ? 0 : persenSisa) + '%';
+        var elTerpakai = document.getElementById('kapTerpakai');
+        var elSisa = document.getElementById('kapSisa');
+        var elTeksTgl = document.getElementById('teksTanggal');
+        var elBar = document.getElementById('barKapasitas');
+        var kotakSisa = document.getElementById('kotakSisa');
+        var badgeTitle = document.getElementById('badgeKuotaAman');
+        var badgeSub = document.getElementById('badgeKuotaSub');
+
+        if (elTerpakai) elTerpakai.textContent = info.terpakai;
+        if (elSisa) elSisa.textContent = info.sisa;
+        if (elTeksTgl) {
+            elTeksTgl.textContent = 'Jadwal Pengambilan: ' + info.tanggal_id + ' · Batas dapur 120 box/hari';
         }
-        if ($('#kotakSisa')) {
-            $('#kotakSisa').className = 'kapasitas-kotak sisa ' + kap.level;
+        if (elBar) {
+            var persenTersedia = Math.max(0, 100 - info.persen);
+            elBar.style.width = persenTersedia + '%';
+            elBar.className = info.level === 'penuh' ? 'penuh' : (info.level === 'hampir' ? 'hampir' : '');
         }
-        if ($('#badgeKuotaAman')) {
-            if (kap.level === 'penuh') {
-                $('#badgeKuotaAman').textContent = '✕ KUOTA PENUH';
-                if ($('#badgeKuotaSub')) $('#badgeKuotaSub').textContent = 'Pilih tanggal lain';
-            } else if (kap.level === 'hampir') {
-                $('#badgeKuotaAman').textContent = '⚠ HAMPIR PENUH';
-                if ($('#badgeKuotaSub')) $('#badgeKuotaSub').textContent = 'Sisa ' + kap.sisa + ' box lagi';
+        if (kotakSisa) {
+            kotakSisa.className = 'kapasitas-kotak sisa ' + info.level;
+        }
+        if (badgeTitle && badgeSub) {
+            if (info.level === 'penuh') {
+                badgeTitle.textContent = 'KUOTA PENUH';
+                badgeSub.textContent = 'Pilih tanggal lain';
+            } else if (info.level === 'hampir') {
+                badgeTitle.textContent = 'HAMPIR PENUH';
+                badgeSub.textContent = 'Sisa ' + info.sisa + ' box lagi';
             } else {
-                $('#badgeKuotaAman').textContent = 'KUOTA AMAN';
-                if ($('#badgeKuotaSub')) $('#badgeKuotaSub').textContent = 'Pesanan siap diterima';
+                badgeTitle.textContent = 'KUOTA AMAN';
+                badgeSub.textContent = 'Pesanan siap diterima';
             }
         }
-        if ($('#teksTanggal')) {
-            $('#teksTanggal').textContent = 'Jadwal: ' + DB.tanggalId(tanggal) + ' (' + CFG.JAM_BUKA + '–' + CFG.JAM_TUTUP + ' WIB) · Batas 120 box/hari menjaga masakan tetap segar prima';
+
+        // Update pill kuota di navbar dengan konteks tanggal terpilih (Temuan 19)
+        var navQuotaPill = document.getElementById('navQuotaPill');
+        if (navQuotaPill) {
+            var labelTgl = (tgl === tglMin) ? 'Besok' : DB.tanggalId(tgl, false);
+            navQuotaPill.innerHTML = '<span class="dot-aman" aria-hidden="true">●</span> Sisa Kuota (' + DB.escapeHtml(labelTgl) + '): <b id="navSisaKuota">' + info.sisa + '</b> Box';
+        }
+
+        // Update info jadwal ambil di keranjang/checkout jika elemen tersedia
+        var infoTglCheckout = document.getElementById('infoKuotaTanggalCheckout');
+        if (infoTglCheckout) {
+            infoTglCheckout.textContent = 'Kuota tersedia pada ' + info.tanggal_id + ': ' + info.sisa + ' dari ' + info.kapasitas + ' box.';
         }
     }
 
-    var labelKategori = {
-        'paket a': ['Paket Nasi Box A', 'Paket komplit favorit siap santap lengkap dengan dus sekat & alat makan.'],
-        'paket b': ['Paket Nasi Box B', 'Paket spesial menu daging & lauk pilihan untuk acara penting.'],
-        'paket c': ['Paket Nasi Box C', 'Paket hemat praktis dengan komposisi lauk Nusantara.'],
-        'nasi': ['Pilihan Nasi Box Harian', 'Nasi putih pulen hangat dengan lauk utama dan sayur harian.'],
-        'lauk': ['Lauk Ayam, Daging & Seafood', 'Pilihan lauk tambahan atau racikan porsi katering.'],
-        'sayur': ['Sayuran & Pelengkap', 'Sayur segar harian dan pelengkap makan siang.']
-    };
+    // -----------------------------------------------------------------
+    // 3. Kelompok Kategori & Update Label Jumlah Menu di Tab Filter
+    // -----------------------------------------------------------------
+    function kelompokKategori(katRaw) {
+        var k = String(katRaw || '').toLowerCase();
+        if (k.indexOf('paket') === 0) return 'paket';
+        if (k === 'nasi') return 'nasi';
+        if (k === 'lauk') return 'lauk';
+        if (k === 'sayur') return 'sayur';
+        return 'lainnya';
+    }
 
-    function perbaruiLabelFilter(menus) {
-        var wrap = $('#kategoriFilter');
-        if (!wrap || !menus) return;
+    function updateLabelTabKategori() {
+        var filterWrap = document.getElementById('kategoriFilter');
+        if (!filterWrap) return;
+
         var counts = {
-            semua: menus.length,
+            semua: katalogMenu.length,
             paket: 0,
             nasi: 0,
             lauk: 0,
             sayur: 0
         };
-        menus.forEach(function (m) {
-            var k = String(m.kategori || 'nasi').toLowerCase();
-            if (k.indexOf('paket') === 0) counts.paket++;
-            else if (counts[k] !== undefined) counts[k]++;
+
+        katalogMenu.forEach(function (m) {
+            var g = kelompokKategori(m.kategori);
+            if (counts[g] !== undefined) counts[g]++;
         });
 
-        var labelMap = {
-            semua: 'Semua Menu (' + counts.semua + ')',
-            paket: 'Paket Nasi Box (' + counts.paket + ')',
-            nasi: 'Nasi Pilihan (' + counts.nasi + ')',
-            lauk: 'Lauk Ayam & Daging (' + counts.lauk + ')',
-            sayur: 'Sayuran & Pelengkap (' + counts.sayur + ')'
+        var labelBase = {
+            semua: 'Semua Menu',
+            paket: 'Paket Nasi Box',
+            nasi: 'Nasi Pilihan',
+            lauk: 'Lauk Ayam & Daging',
+            sayur: 'Sayuran & Pelengkap'
         };
 
-        $$('.filter-btn', wrap).forEach(function (btn) {
+        filterWrap.querySelectorAll('.filter-btn').forEach(function (btn) {
             var f = btn.getAttribute('data-filter');
-            if (labelMap[f]) btn.textContent = labelMap[f];
+            if (labelBase[f]) {
+                btn.textContent = labelBase[f] + ' (' + (counts[f] || 0) + ')';
+            }
         });
     }
 
-    async function muatKatalog(tanggal) {
-        var wadah = $('#katalogMenu');
-        if (!wadah || !DB) return;
-        wadah.innerHTML = '<div class="kosong"><p>Memuat menu untuk tanggal ' + DB.tanggalId(tanggal, false) + '...</p></div>';
+    // -----------------------------------------------------------------
+    // 4. Render Katalog Menu (4-Zone Clean Card)
+    // -----------------------------------------------------------------
+    function cocokFilter(menu, filter) {
+        if (filter === 'semua') return true;
+        return kelompokKategori(menu.kategori) === filter;
+    }
 
-        var menus = await DB.getMenuTanggal(tanggal);
-        katalogMenusCache = menus || [];
-        if (!menus || !menus.length) {
-            wadah.innerHTML = '<div class="kosong"><div class="ikon">🍽️</div><p>Belum ada menu yang dibuka untuk tanggal ini. Silakan pilih tanggal lain di atas.</p></div>';
+    function buatKartuMenuHtml(m) {
+        var qty = keranjang[m.id] || 0;
+        var sisaStok = m.stok === null ? null : Math.max(0, m.stok - (m.terjual || 0));
+        var habis = !m.tersedia || (sisaStok !== null && sisaStok <= 0);
+        var terpilihClass = qty > 0 ? ' terpilih' : '';
+        var habisClass = habis ? ' habis' : '';
+
+        var unitLabel = m.is_box ? 'Box' : 'Porsi';
+
+        var metaStok = '';
+        if (habis) {
+            metaStok = '<span class="stok-habis-pill">Habis untuk tanggal ini</span>';
+        } else if (sisaStok !== null && sisaStok <= 25) {
+            metaStok = '<span class="stok-tipis-pill">Tersisa ' + sisaStok + ' ' + unitLabel.toLowerCase() + '</span>';
+        }
+
+        var deskripsiText = m.deskripsi || 'Dimasak segar dengan bumbu rempah pilihan khas Warteg Pak Sanam.';
+
+        return '<article class="kartu-menu' + terpilihClass + habisClass + '" data-id="' + m.id + '">'
+            + '<div class="isi">'
+            + '<div class="menu-info-kiri">'
+            + '<div class="nama">' + DB.escapeHtml(m.nama) + '</div>'
+            + '<div class="menu-deskripsi">' + DB.escapeHtml(deskripsiText) + '</div>'
+            + '<div class="menu-harga-baris">'
+            + '<span class="harga">' + DB.rupiah(m.harga) + ' <small>/ ' + unitLabel + '</small></span>'
+            + metaStok
+            + '</div>'
+            + '</div>'
+            + '<div class="kontrol">'
+            + '<div class="stepper">'
+            + '<button type="button" class="btn-step js-min" data-id="' + m.id + '" ' + (habis || qty <= 0 ? 'disabled' : '') + ' aria-label="Kurangi ' + DB.escapeHtml(m.nama) + '">−</button>'
+            + '<input type="number" class="qty-input js-qty" data-id="' + m.id + '" min="0" max="120" value="' + qty + '" ' + (habis ? 'disabled' : '') + ' aria-label="Jumlah ' + DB.escapeHtml(m.nama) + '">'
+            + '<span class="qty-unit-badge">' + qty + ' ' + unitLabel + '</span>'
+            + '<button type="button" class="btn-step plus js-plus" data-id="' + m.id + '" ' + (habis ? 'disabled' : '') + ' aria-label="Tambah ' + DB.escapeHtml(m.nama) + '">+</button>'
+            + '</div>'
+            + '</div>'
+            + '</div>'
+            + '</article>';
+    }
+
+    function renderKatalog() {
+        var wadah = document.getElementById('katalogMenu');
+        if (!wadah) return;
+
+        var daftar = katalogMenu.filter(function (m) {
+            return cocokFilter(m, kategoriAktif);
+        });
+
+        if (!daftar.length) {
+            wadah.innerHTML = '<div class="kosong"><p>Tidak ada menu untuk kategori ini.</p></div>';
             return;
         }
 
-        perbaruiLabelFilter(menus);
-
-        // Kelompokkan per kategori (Dahulukan Paket Nasi Box, lalu Nasi, Lauk, Sayur)
-        var grup = {};
-        menus.forEach(function (m) {
-            var k = String(m.kategori || 'nasi').toLowerCase();
-            grup[k] = grup[k] || [];
-            grup[k].push(m);
+        var html = '<div class="menu-grid">';
+        daftar.forEach(function (m) {
+            html += buatKartuMenuHtml(m);
         });
-
-        var html = '';
-        var urutan = ['paket a', 'paket b', 'paket c', 'nasi', 'lauk', 'sayur'];
-        urutan.forEach(function (kat) {
-            var items = grup[kat];
-            if (!items || !items.length) return;
-            var infoKat = labelKategori[kat] || [kat.toUpperCase(), ''];
-            var grupFilter = kat.indexOf('paket') === 0 ? 'paket' : kat;
-
-            html += '<div class="kategori-blok" data-kategori="' + kat + '" data-grup-filter="' + grupFilter + '">';
-            html += '<div class="kategori-blok-head">';
-            html += '<h3>' + infoKat[0] + '</h3>';
-            html += '<p class="aturan">' + infoKat[1] + '</p>';
-            html += '</div>';
-            html += '<div class="list-menu-cust">';
-
-            items.forEach(function (m) {
-                var tersedia = m.tersedia && m.aktif;
-                var sisa = m.stok === null ? null : Math.max(0, m.stok - (m.jumlah || 0));
-                var habis = (sisa !== null && sisa <= 0);
-                var bisa = tersedia && !habis;
-                var itemKeranjang = keranjang[m.id];
-                var jmlPilih = itemKeranjang ? (itemKeranjang.jumlah || 0) : 0;
-                var unitLabel = getUnitMenu(kat);
-                var deskripsi = getDeskripsiMenu(m);
-
-                var kelasStok = '';
-                if (sisa !== null) {
-                    kelasStok = sisa <= 0 ? 'habis' : (sisa <= (m.stok * 0.2) ? 'tipis' : 'aman');
-                }
-
-                var imgUrl = m.foto ? ('uploads/menu/' + m.foto) : '';
-
-                html += '<div class="kartu-cust kartu-row' + (bisa ? '' : ' habis') + (jmlPilih > 0 ? ' dipilih' : '') + '"'
-                    + ' data-menu-id="' + m.id + '"'
-                    + ' data-nama="' + m.nama + '"'
-                    + ' data-harga="' + m.harga + '"'
-                    + ' data-kategori="' + kat + '"'
-                    + ' data-unit="' + unitLabel + '"'
-                    + ' data-sisa-stok="' + (sisa === null ? '' : sisa) + '">';
-
-                // Thumbnail kiri
-                html += '<div class="kartu-row-thumb">';
-                if (imgUrl) {
-                    html += '<img src="' + imgUrl + '" alt="' + m.nama + '" loading="lazy" onerror="this.onerror=null;this.parentNode.innerHTML=\'🍱\';">';
-                } else {
-                    html += '<span aria-hidden="true">🍱</span>';
-                }
-                html += '</div>';
-
-                // Info tengah (Judul, Deskripsi, Harga & Stok)
-                html += '<div class="kartu-row-info">';
-                html += '<div class="nama">' + m.nama + '</div>';
-                html += '<div class="desk">' + deskripsi + '</div>';
-                html += '<div class="kartu-row-meta">';
-                html += '<span class="harga">' + formatRupiah(m.harga) + ' <small>/ ' + unitLabel + '</small></span>';
-                html += '<span class="badge-stok ' + kelasStok + '">';
-                if (!tersedia) html += '• Tidak tersedia';
-                else if (sisa === null) html += '• Tersedia';
-                else if (habis) html += '• Stok habis';
-                else html += '• Sisa ' + sisa + ' ' + unitLabel.toLowerCase();
-                html += '</span>';
-                html += '</div>';
-                html += '</div>';
-
-                // Stepper kanan langsung pada kartu
-                html += '<div class="kartu-row-aksi">';
-                if (bisa) {
-                    html += '<div class="stepper-kartu">';
-                    html += '<button type="button" class="btn-step minus" data-kartu-kurang="' + m.id + '" aria-label="Kurangi ' + m.nama + '">−</button>';
-                    html += '<div class="step-qty-wrap">'
-                        + '<input type="number" class="input-step-qty" min="0" max="' + (sisa !== null ? sisa : 120) + '" value="' + jmlPilih + '" data-kartu-input="' + m.id + '" aria-label="Jumlah ' + m.nama + '">'
-                        + '<span class="step-qty-unit">' + unitLabel + '</span>'
-                        + '</div>';
-                    html += '<button type="button" class="btn-step plus" data-kartu-tambah="' + m.id + '" aria-label="Tambah ' + m.nama + '">+</button>';
-                    html += '</div>';
-                } else {
-                    html += '<button type="button" class="btn btn-garis btn-kecil" disabled>Habis</button>';
-                }
-                html += '</div>';
-
-                html += '</div>';
-            });
-
-            html += '</div></div>';
-        });
+        html += '</div>';
 
         wadah.innerHTML = html;
-        pasangEventKartu();
+        pasangEventKatalog(wadah);
     }
 
-    function ubahKuantitasMenu(id, nama, harga, kat, delta, nilaiLangsung) {
-        var sekarang = keranjang[id] ? (keranjang[id].jumlah || 0) : 0;
-        var baru = (nilaiLangsung !== undefined) ? nilaiLangsung : (sekarang + delta);
+    function pasangEventKatalog(wadah) {
+        wadah.querySelectorAll('.js-min').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var id = Number(this.getAttribute('data-id'));
+                var step = (keranjang[id] && keranjang[id] <= 10 && keranjang[id] >= 5) ? 1 : 1;
+                ubahKuantitasMenu(id, -step);
+            });
+        });
 
-        // Jika baru pertama kali klik "+" dari 0, tambahkan 1 (atau sesuai klik)
-        if (baru <= 0) {
-            if (keranjang[id]) {
-                delete keranjang[id];
-                toast('Dihapus dari keranjang: ' + nama);
-            }
+        wadah.querySelectorAll('.js-plus').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var id = Number(this.getAttribute('data-id'));
+                var cur = keranjang[id] || 0;
+                var m = katalogMenu.find(function (x) { return x.id === id; });
+                // Jika menu box utama pertama kali diklik dan total box di keranjang masih 0, langsung lompat ke 10 box
+                var delta = (cur === 0 && totalBox() === 0 && m && m.is_box) ? 10 : 1;
+                ubahKuantitasMenu(id, delta);
+            });
+        });
+
+        wadah.querySelectorAll('.js-qty').forEach(function (inp) {
+            inp.addEventListener('change', function () {
+                var id = Number(this.getAttribute('data-id'));
+                var val = Math.max(0, parseInt(this.value || '0', 10) || 0);
+                setKuantitasMenu(id, val);
+            });
+        });
+    }
+
+    function batasMaksItem(m, curQty) {
+        var maks = 120;
+        if (m && m.stok !== null && m.stok !== undefined) {
+            var sisaStok = Math.max(0, Number(m.stok) - Number(m.terjual || 0));
+            maks = Math.min(maks, sisaStok);
+        }
+        if (m && m.is_box) {
+            var boxLain = Math.max(0, totalBox() - (curQty || 0));
+            var sisaKuota = Math.max(0, sisaKuotaSaatIni - boxLain);
+            maks = Math.min(maks, sisaKuota);
+        }
+        return Math.max(0, maks);
+    }
+
+    function ubahKuantitasMenu(id, delta, silentToast) {
+        var cur = keranjang[id] || 0;
+        setKuantitasMenu(id, cur + delta, silentToast);
+    }
+
+    function setKuantitasMenu(id, targetQty, silentToast) {
+        var cur = keranjang[id] || 0;
+        var m = katalogMenu.find(function (x) { return x.id === id; });
+        var maks = batasMaksItem(m, cur);
+        var baru = Math.max(0, Math.min(maks, targetQty));
+
+        if (targetQty > maks && m) {
+            var unitLbl = m.is_box ? 'box' : 'porsi';
+            tampilToast('Maksimal ' + maks + ' ' + unitLbl + ' untuk ' + m.nama + ' (sesuai sisa stok/kuota dapur)');
+        }
+
+        if (baru === 0) {
+            delete keranjang[id];
         } else {
-            if (baru > 120) baru = 120;
-            var baruTambah = !keranjang[id];
-            keranjang[id] = {
-                id: id,
-                nama: nama,
-                harga: harga,
-                kategori: kat,
-                jumlah: baru
-            };
-            if (baruTambah) {
-                toast('Ditambahkan: ' + nama + ' (' + baru + ' box)', 'sukses');
+            keranjang[id] = baru;
+        }
+        simpanKeranjangStorage();
+
+        if (!silentToast && m && baru > cur) {
+            tampilToast((baru - cur) + 'x ' + m.nama + ' ditambahkan ke keranjang');
+        }
+
+        renderKatalog();
+        renderRingkasan();
+    }
+
+    // -----------------------------------------------------------------
+    // 5. Kalkulasi Box Utama vs Porsi Tambahan & Render Ringkasan
+    // -----------------------------------------------------------------
+    function totalBox() {
+        var map = {};
+        katalogMenu.forEach(function (m) { map[m.id] = m; });
+        return Object.keys(keranjang).reduce(function (acc, k) {
+            var m = map[Number(k)];
+            if (m && m.is_box) {
+                return acc + (keranjang[k] || 0);
+            }
+            return acc;
+        }, 0);
+    }
+
+    function totalPorsiTambahan() {
+        var map = {};
+        katalogMenu.forEach(function (m) { map[m.id] = m; });
+        return Object.keys(keranjang).reduce(function (acc, k) {
+            var m = map[Number(k)];
+            if (m && !m.is_box) {
+                return acc + (keranjang[k] || 0);
+            }
+            return acc;
+        }, 0);
+    }
+
+    function totalItemKeranjang() {
+        return Object.keys(keranjang).reduce(function (acc, k) {
+            return acc + (keranjang[k] || 0);
+        }, 0);
+    }
+
+    function totalHarga() {
+        var map = {};
+        katalogMenu.forEach(function (m) { map[m.id] = m; });
+        return Object.keys(keranjang).reduce(function (acc, k) {
+            var m = map[k];
+            return acc + (m ? m.harga * keranjang[k] : 0);
+        }, 0);
+    }
+
+    function renderRingkasan() {
+        var isi = document.getElementById('ringkasanIsi') || document.getElementById('ringkasanCheckoutIsi');
+        var elTotalBox = document.getElementById('totalBox');
+        var elSubtotal = document.getElementById('subtotal');
+        var elBarisDiskon = document.getElementById('barisDiskon');
+        var elNilaiDiskon = document.getElementById('nilaiDiskon');
+        var elTotalHarga = document.getElementById('totalHarga');
+        var elPesanMin = document.getElementById('pesanMin');
+        var elStatusBanner = document.getElementById('statusMinBoxBanner');
+        var btnLanjut = document.getElementById('btnLanjut');
+        var btnSubmit = document.getElementById('btnBuatPesanan') || document.getElementById('btnSubmit');
+        var btnKosongkan = document.getElementById('kosongkanKeranjang');
+
+        // Promo Milestone Elements
+        var promoSub = document.getElementById('promoMilestoneSub');
+        var promoBar = document.getElementById('promoMilestoneBar');
+
+        // Mobile Cart Bar
+        var cartBar = document.getElementById('cartBar');
+        var cartBarBox = document.getElementById('cartBarBox');
+        var cartBarTotal = document.getElementById('cartBarTotal');
+
+        var map = {};
+        katalogMenu.forEach(function (m) { map[m.id] = m; });
+
+        var jmlBox = totalBox();
+        var jmlPorsi = totalPorsiTambahan();
+        var jmlSemua = totalItemKeranjang();
+        var subHarga = totalHarga();
+        var diskon = DB.hitungDiskon(jmlBox);
+        var hargaBersih = Math.max(0, subHarga - diskon);
+        var minBox = CFG.MINIMAL_BOX || 10;
+
+        if (elTotalBox) elTotalBox.textContent = jmlBox + (jmlPorsi > 0 ? ' Box + ' + jmlPorsi + ' Porsi' : '');
+        if (elSubtotal) elSubtotal.textContent = DB.rupiah(subHarga);
+        if (elTotalHarga) elTotalHarga.textContent = DB.rupiah(hargaBersih);
+        if (btnKosongkan) btnKosongkan.hidden = (jmlSemua === 0);
+
+        // Update Rincian Diskon di Keranjang
+        if (elBarisDiskon && elNilaiDiskon) {
+            elBarisDiskon.style.display = 'flex';
+            if (diskon > 0) {
+                elNilaiDiskon.className = 'diskon-aktif';
+                elNilaiDiskon.textContent = '- ' + DB.rupiah(diskon);
+            } else {
+                elNilaiDiskon.className = 'diskon-belum';
+                elNilaiDiskon.textContent = 'Rp 0 (Belum 50 Box)';
             }
         }
-        simpanKeranjang();
-        renderKeranjang();
-    }
 
-    function renderKeranjang() {
-        var box = totalBox(), sub = subtotal();
-        var minBox = CFG.MINIMAL_BOX || 10;
-        var cukup = box >= minBox;
-        var diskon = DB ? DB.hitungDiskon(box) : (Math.floor(box / 50) * 50000);
-        var totalAkhir = Math.max(0, sub - diskon);
+        // Update Milestone Promo Kelipatan 50 Box
+        if (promoSub && promoBar) {
+            var sisaKe50 = 50 - (jmlBox % 50);
+            var persenMilestone = jmlBox === 0 ? 0 : (jmlBox % 50 === 0 ? 100 : Math.round(((jmlBox % 50) / 50) * 100));
+            promoBar.style.width = persenMilestone + '%';
 
-        // 1. Ringkasan di Halaman Katalog (index.html)
-        var isi = $('#ringkasanIsi');
-        var btnKosongkan = $('#kosongkanKeranjang');
-        if (btnKosongkan) btnKosongkan.hidden = (box === 0);
-
-        if (isi) {
-            if (box === 0) {
-                isi.innerHTML = '<div class="ringkasan-kosong">Keranjang masih kosong.<br>Klik tombol <b>+</b> pada menu di samping untuk mulai memesan.</div>';
+            if (jmlBox === 0) {
+                promoSub.textContent = 'Pesan 50 box untuk klaim diskon Rp 50.000!';
+            } else if (diskon > 0 && jmlBox % 50 === 0) {
+                promoSub.textContent = 'Selamat! Voucher diskon ' + DB.rupiah(diskon) + ' aktif otomatis.';
+            } else if (diskon > 0) {
+                promoSub.textContent = 'Diskon ' + DB.rupiah(diskon) + ' aktif! Tambah ' + sisaKe50 + ' box lagi untuk ekstra Rp 50.000.';
             } else {
-                var html = '';
-                Object.keys(keranjang).forEach(function (id) {
-                    var it = keranjang[id];
-                    var subItem = (it.harga || 0) * (it.jumlah || 0);
-                    html += '<div class="baris-menu" data-id="' + id + '">'
-                        + '<div class="baris-menu-atas">'
-                        + '<div class="nm"><strong>' + it.jumlah + 'x</strong> ' + it.nama + '</div>'
-                        + '<div class=" nilai-item">' + formatRupiah(subItem) + '</div>'
+                promoSub.textContent = 'Pesan ' + sisaKe50 + ' box lagi untuk klaim diskon Rp 50.000!';
+            }
+        }
+
+        // Info Jadwal Ambil di Ringkasan Keranjang (Temuan 9)
+        var infoJadwalHtml = '<div style="font-size:12px;color:var(--c-teks-2);background:#fdf8f2;border:1px solid var(--c-garis);border-radius:8px;padding:7px 10px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;">'
+            + '<span>📅 Ambil: <strong>' + DB.escapeHtml(DB.tanggalId(tglPilih, false)) + '</strong></span>'
+            + '<span style="color:var(--c-primer);font-weight:700;">Sisa ' + sisaKuotaSaatIni + ' box</span>'
+            + '</div>';
+
+        // Daftar Item di Keranjang
+        if (isi) {
+            var keys = Object.keys(keranjang).filter(function (k) { return keranjang[k] > 0 && map[k]; });
+            if (!keys.length) {
+                isi.innerHTML = infoJadwalHtml + '<div class="ringkasan-kosong">Keranjang masih kosong.<br>Klik tombol <b>+</b> pada menu di samping untuk mulai memesan.</div>';
+            } else {
+                var html = infoJadwalHtml;
+                keys.forEach(function (k) {
+                    var m = map[k];
+                    var q = keranjang[k];
+                    var sub = m.harga * q;
+                    var uLabel = m.is_box ? 'box' : 'porsi';
+                    html += '<div class="ringkasan-item">'
+                        + '<div class="ringkasan-item-kiri">'
+                        + '<span class="nama"><strong>' + q + 'x</strong> ' + DB.escapeHtml(m.nama) + ' <small style="color:var(--c-redup);">(' + uLabel + ')</small></span>'
+                        + '<div class="ringkasan-item-kontrol">'
+                        + '<button type="button" class="btn-mini-step js-cart-min" data-id="' + m.id + '" aria-label="Kurangi ' + DB.escapeHtml(m.nama) + '">−</button>'
+                        + '<button type="button" class="btn-mini-step js-cart-plus" data-id="' + m.id + '" aria-label="Tambah ' + DB.escapeHtml(m.nama) + '">+</button>'
+                        + '<button type="button" class="btn-mini-hapus js-cart-del" data-id="' + m.id + '" aria-label="Hapus ' + DB.escapeHtml(m.nama) + '">Hapus</button>'
                         + '</div>'
-                        + '<div class="baris-menu-bawah">'
-                        + '<span class="hr">' + formatRupiah(it.harga) + ' / box</span>'
-                        + '<div class="baris-menu-kontrol">'
-                        + '<div class="stepper stepper-mini">'
-                        + '<button type="button" data-kurang="' + id + '" aria-label="Kurangi">−</button>'
-                        + '<input type="number" value="' + it.jumlah + '" min="1" max="120" data-ubah="' + id + '" aria-label="Jumlah">'
-                        + '<button type="button" data-tambah="' + id + '" aria-label="Tambah">+</button>'
                         + '</div>'
-                        + '<button type="button" class="hapus" data-hapus="' + id + '" title="Hapus menu">×</button>'
-                        + '</div>'
-                        + '</div>'
+                        + '<span class="sub">' + DB.rupiah(sub) + '</span>'
                         + '</div>';
                 });
                 isi.innerHTML = html;
-            }
-        }
 
-        // 2. Banner Status Syarat Minimal 10 Box
-        var bannerMin = $('#statusMinBoxBanner');
-        var pesanMinEl = $('#pesanMin');
-        if (pesanMinEl) {
-            if (box === 0) {
-                pesanMinEl.textContent = '📦 Belum ada box dipilih (Minimal pemesanan ' + minBox + ' box)';
-                if (bannerMin) bannerMin.className = 'cart-min-status netral';
-            } else if (!cukup) {
-                pesanMinEl.textContent = '⚠ ' + box + ' Box Terpilih (Kurang ' + (minBox - box) + ' box lagi dari min. ' + minBox + ' box)';
-                if (bannerMin) bannerMin.className = 'cart-min-status kurang';
-            } else {
-                pesanMinEl.textContent = box + ' Box Terpilih (Syarat min. ' + minBox + ' box terpenuhi)';
-                if (bannerMin) bannerMin.className = 'cart-min-status cukup';
-            }
-        }
-
-        // 3. Milestone Promo Kelipatan 50 Box + Progress Bar
-        var promoSub = $('#promoMilestoneSub');
-        var promoBar = $('#promoMilestoneBar');
-        if (promoSub && promoBar) {
-            if (box === 0) {
-                promoSub.textContent = 'Pesan 50 box lagi untuk klaim diskon Rp 50.000!';
-                promoBar.style.width = '0%';
-            } else if (box < 50) {
-                var kurang50 = 50 - box;
-                var pct50 = Math.min(100, Math.round((box / 50) * 100));
-                promoSub.textContent = 'Pesan ' + kurang50 + ' box lagi untuk klaim diskon Rp 50.000!';
-                promoBar.style.width = pct50 + '%';
-            } else if (box < 100) {
-                var kurang100 = 100 - box;
-                var pct100 = Math.min(100, Math.round(((box - 50) / 50) * 100));
-                promoSub.textContent = '🎉 Diskon Rp 50.000 aktif! (' + kurang100 + ' box lagi diskon Rp 100.000)';
-                promoBar.style.width = Math.max(20, pct100) + '%';
-            } else {
-                promoSub.textContent = '🎉 Diskon Maksimal Rp 100.000 aktif pada pesanan ini!';
-                promoBar.style.width = '100%';
-            }
-        }
-
-        // 4. Ringkasan di Halaman Checkout (checkout.html)
-        var co = $('#ringkasanCheckoutIsi');
-        if (co) {
-            if (box === 0) {
-                co.innerHTML = '<p class="bantuan">Belum ada menu dipilih. <a href="index.html#katalog" style="color:var(--c-primer);font-weight:600">Pilih menu dahulu &rarr;</a></p>';
-            } else {
-                var h = '<table class="nota-rincian-tabel" style="font-size:13px;width:100%;border-collapse:collapse;">';
-                Object.keys(keranjang).forEach(function (id) {
-                    var it = keranjang[id];
-                    h += '<tr style="border-bottom:1px solid #f1f5f9;padding:6px 0;">'
-                        + '<td style="padding:6px 0;"><strong>' + it.nama + '</strong><br><span style="font-size:12px;color:var(--c-redup);">' + formatRupiah(it.harga) + ' × ' + it.jumlah + '</span></td>'
-                        + '<td style="text-align:right;padding:6px 0;font-weight:600;">' + formatRupiah(it.harga * it.jumlah) + '</td>'
-                        + '</tr>';
+                isi.querySelectorAll('.js-cart-min').forEach(function (b) {
+                    b.onclick = function () { ubahKuantitasMenu(Number(this.getAttribute('data-id')), -1, true); };
                 });
-                h += '</table>';
-                if (diskon > 0) {
-                    h += '<div style="background:#e8f5e9;color:#1b6e44;padding:8px 12px;border-radius:8px;font-size:13px;margin-top:10px;display:flex;align-items:center;gap:8px;">'
-                        + '<span>🎉</span><span><strong>Diskon 50+ Box:</strong> Hemat ' + formatRupiah(diskon) + ' langsung dipotong!</span>'
-                        + '</div>';
-                }
-                co.innerHTML = h;
+                isi.querySelectorAll('.js-cart-plus').forEach(function (b) {
+                    b.onclick = function () { ubahKuantitasMenu(Number(this.getAttribute('data-id')), 1, true); };
+                });
+                isi.querySelectorAll('.js-cart-del').forEach(function (b) {
+                    b.onclick = function () {
+                        var id = Number(this.getAttribute('data-id'));
+                        delete keranjang[id];
+                        simpanKeranjangStorage();
+                        renderKatalog();
+                        renderRingkasan();
+                    };
+                });
             }
         }
 
-        if ($('#totalBox')) $('#totalBox').textContent = box;
-        if ($('#subtotal')) $('#subtotal').textContent = formatRupiah(sub);
-
-        // Baris diskon selalu tampil informatif di index.html & tampil saat aktif di checkout.html
-        var barisDiskonEl = $('#barisDiskon');
-        var nilaiDiskonEl = $('#nilaiDiskon');
-        if (nilaiDiskonEl) {
-            if (diskon > 0) {
-                nilaiDiskonEl.textContent = '−' + formatRupiah(diskon);
-                nilaiDiskonEl.className = 'diskon-aktif';
-                if (barisDiskonEl) barisDiskonEl.style.display = 'flex';
+        // Validasi Minimal 10 Box Utama & Maksimal Sisa Kuota
+        var memenuhiSyarat = (jmlBox >= minBox && jmlBox <= sisaKuotaSaatIni);
+        if (elPesanMin && elStatusBanner) {
+            if (jmlBox === 0 && jmlPorsi === 0) {
+                elStatusBanner.className = 'cart-min-status';
+                elPesanMin.textContent = '📦 0 Box Terpilih (Syarat minimal ' + minBox + ' box)';
+            } else if (jmlBox < minBox) {
+                elStatusBanner.className = 'cart-min-status kurang';
+                elPesanMin.textContent = '⚠️ ' + jmlBox + ' Box Utama Terpilih (Kurang ' + (minBox - jmlBox) + ' box paket/nasi lagi)';
+            } else if (jmlBox > sisaKuotaSaatIni) {
+                elStatusBanner.className = 'cart-min-status kurang';
+                elPesanMin.textContent = '⚠️ Melebihi sisa kuota dapur (' + sisaKuotaSaatIni + ' box tersedia)';
             } else {
-                nilaiDiskonEl.textContent = 'Rp 0 (Belum 50 Box)';
-                nilaiDiskonEl.className = 'diskon-belum';
-                if (barisDiskonEl && co) {
-                    barisDiskonEl.style.display = 'none';
-                } else if (barisDiskonEl) {
-                    barisDiskonEl.style.display = 'flex';
-                }
+                elStatusBanner.className = 'cart-min-status cukup';
+                elPesanMin.textContent = jmlBox + ' Box Terpilih' + (jmlPorsi > 0 ? ' (+ ' + jmlPorsi + ' Porsi Lauk/Sayur)' : '') + ' · Syarat min. ' + minBox + ' box terpenuhi';
             }
         }
 
-        if ($('#totalHarga')) $('#totalHarga').textContent = formatRupiah(totalAkhir);
-        if ($('#totalCheckout')) $('#totalCheckout').textContent = formatRupiah(totalAkhir);
-        if ($('#hitungKeranjang')) $('#hitungKeranjang').textContent = box;
-        if ($('#cartBarBox')) $('#cartBarBox').textContent = box + ' Box Terpilih';
-        if ($('#cartBarTotal')) $('#cartBarTotal').textContent = 'Total: ' + formatRupiah(totalAkhir);
-        if ($('#cartBar')) $('#cartBar').classList.toggle('aktif', box > 0);
+        if (btnLanjut) btnLanjut.disabled = !memenuhiSyarat;
+        if (btnSubmit) btnSubmit.disabled = !memenuhiSyarat;
 
-        if ($('#btnLanjut')) $('#btnLanjut').disabled = !cukup;
-
-        // Tombol lanjut ke checkout di mobile bottom bar
-        var ctaCheckout = $('#btnKeCheckout');
-        if (ctaCheckout) {
-            ctaCheckout.textContent = 'Checkout (' + box + ') →';
-            ctaCheckout.style.pointerEvents = cukup ? 'auto' : 'none';
-            ctaCheckout.style.opacity = cukup ? '1' : '.6';
-            ctaCheckout.setAttribute('aria-disabled', cukup ? 'false' : 'true');
+        // Bottom Bar Mobile
+        if (cartBar && cartBarBox && cartBarTotal) {
+            if (jmlSemua > 0) {
+                cartBar.classList.add('tampil');
+                cartBarBox.textContent = jmlBox + ' Box Terpilih';
+                cartBarTotal.textContent = 'Total: ' + DB.rupiah(hargaBersih);
+            } else {
+                cartBar.classList.remove('tampil');
+            }
         }
-
-        if ($('#fJumlahBox')) $('#fJumlahBox').value = box;
-
-        // Sinkronisasi angka stepper pada setiap kartu menu di katalog
-        $$('.kartu-cust[data-menu-id]').forEach(function (k) {
-            var mid = k.getAttribute('data-menu-id');
-            var jml = keranjang[mid] ? (keranjang[mid].jumlah || 0) : 0;
-            k.classList.toggle('dipilih', jml > 0);
-            var inp = k.querySelector('[data-kartu-input]');
-            if (inp && document.activeElement !== inp) {
-                inp.value = jml;
-            }
-        });
-
-        // Tombol Submit Form Checkout
-        periksaSiapKirim();
-    }
-
-    function periksaSiapKirim() {
-        var btn = $('#btnBuatPesanan');
-        if (!btn) return;
-        var box = totalBox();
-        var minBox = CFG.MINIMAL_BOX || 10;
-        var nama = ($('#fNama') || {}).value || '';
-        var namaOk = nama.trim().length >= 1 && namaValid(nama.trim());
-        var wa = ($('#fWa') || {}).value || '';
-        var cukup = box >= minBox && namaOk && waValid(wa);
-        btn.disabled = !cukup;
-    }
-
-    function pasangEventKartu() {
-        $$('.kartu-cust[data-menu-id]').forEach(function (kartu) {
-            var id = kartu.getAttribute('data-menu-id');
-            var nama = kartu.getAttribute('data-nama');
-            var harga = parseInt(kartu.getAttribute('data-harga'), 10) || 0;
-            var kat = kartu.getAttribute('data-kategori');
-
-            var btnKurang = kartu.querySelector('[data-kartu-kurang]');
-            var btnTambah = kartu.querySelector('[data-kartu-tambah]');
-            var inpQty = kartu.querySelector('[data-kartu-input]');
-
-            if (btnKurang) {
-                btnKurang.onclick = function (e) {
-                    e.stopPropagation();
-                    ubahKuantitasMenu(id, nama, harga, kat, -1);
-                };
-            }
-            if (btnTambah) {
-                btnTambah.onclick = function (e) {
-                    e.stopPropagation();
-                    ubahKuantitasMenu(id, nama, harga, kat, 1);
-                };
-            }
-            if (inpQty) {
-                inpQty.oninput = function (e) {
-                    e.stopPropagation();
-                    var v = parseInt(this.value, 10);
-                    if (isNaN(v) || v < 0) v = 0;
-                    ubahKuantitasMenu(id, nama, harga, kat, 0, v);
-                };
-            }
-        });
     }
 
     // -----------------------------------------------------------------
-    // Event Handler Utama
+    // 6. Submit Form Checkout
+    // -----------------------------------------------------------------
+    function initFormCheckout() {
+        var form = document.getElementById('formCheckout') || document.getElementById('formPesan');
+        var galatBox = document.getElementById('galatCheckout');
+        var btnSubmit = document.getElementById('btnBuatPesanan') || document.getElementById('btnSubmit');
+
+        if (!form) return;
+
+        form.addEventListener('submit', async function (e) {
+            e.preventDefault();
+            if (galatBox) galatBox.style.display = 'none';
+
+            var elNama = document.getElementById('fNama') || document.getElementById('nama');
+            var elWa = document.getElementById('fWa') || document.getElementById('wa');
+            var elTgl = document.getElementById('fTgl') || document.getElementById('tanggal');
+            var elJam = document.getElementById('fJam') || document.getElementById('jam');
+            var elCatatan = document.getElementById('fCatatan') || document.getElementById('catatan');
+
+            var nama = (elNama ? elNama.value : '').trim();
+            var wa = (elWa ? elWa.value : '').trim();
+            var tgl = (elTgl && elTgl.value) ? elTgl.value : tglPilih;
+            var jam = (elJam && elJam.value) ? elJam.value : jamPilih;
+            var catatan = (elCatatan ? elCatatan.value : '').trim();
+
+            var items = Object.keys(keranjang)
+                .filter(function (k) { return keranjang[k] > 0; })
+                .map(function (k) { return { menu_id: Number(k), jumlah: Number(keranjang[k]) }; });
+
+            if (!nama || !wa || !tgl || !jam) {
+                tampilGalat('Mohon lengkapi nama, nomor WhatsApp, tanggal, dan jam pengambilan.');
+                return;
+            }
+
+            if (totalBox() < (CFG.MINIMAL_BOX || 10)) {
+                tampilGalat('Jumlah pesanan minimal adalah 10 box utama (Paket Nasi Box atau Nasi Pilihan).');
+                return;
+            }
+
+            btnSubmit.disabled = true;
+            var teksAsli = btnSubmit.textContent;
+            btnSubmit.textContent = 'Memproses Pesanan...';
+
+            var hasil = await DB.buatPesanan({
+                nama_pelanggan: nama,
+                no_wa: wa,
+                tanggal_ambil: tgl,
+                jam_ambil: jam,
+                catatan: catatan,
+                items: items
+            });
+
+            if (!hasil || !hasil.ok) {
+                btnSubmit.disabled = false;
+                btnSubmit.textContent = teksAsli;
+                tampilGalat((hasil && hasil.pesan) || 'Terjadi kesalahan saat menyimpan pesanan.');
+                return;
+            }
+
+            // Bersihkan keranjang setelah sukses
+            keranjang = {};
+            simpanKeranjangStorage();
+
+            // Arahkan ke halaman pembayaran QRIS
+            window.location.href = DB.urlPembayaran(hasil.kode, hasil.token_nota);
+        });
+
+        function tampilGalat(pesan) {
+            if (!galatBox) {
+                alert(pesan);
+                return;
+            }
+            galatBox.textContent = pesan;
+            galatBox.style.display = 'block';
+            galatBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }
+
+    // -----------------------------------------------------------------
+    // Jalankan Saat DOM Siap
     // -----------------------------------------------------------------
     document.addEventListener('DOMContentLoaded', function () {
-        // 1. Toggle Navigasi Mobile
-        var btnToggle = $('#custToggle'), navLinks = $('#custLinks');
-        if (btnToggle && navLinks) {
-            btnToggle.onclick = function () {
-                var buka = navLinks.classList.toggle('buka');
-                btnToggle.setAttribute('aria-expanded', buka ? 'true' : 'false');
-            };
-        }
-
-        // 2. Filter Kategori Menu (Chips)
-        var filterWrap = $('#kategoriFilter');
-        if (filterWrap) {
-            filterWrap.addEventListener('click', function (e) {
-                var btn = e.target.closest('.filter-btn');
-                if (!btn) return;
-                var filter = btn.getAttribute('data-filter');
-                $$('.filter-btn', filterWrap).forEach(function (b) {
-                    var aktif = (b === btn);
-                    b.classList.toggle('aktif', aktif);
-                    b.setAttribute('aria-selected', aktif ? 'true' : 'false');
-                });
-                $$('.kategori-blok').forEach(function (blok) {
-                    var kat = blok.getAttribute('data-kategori');
-                    var grup = blok.getAttribute('data-grup-filter');
-                    if (filter === 'semua') {
-                        blok.style.display = '';
-                    } else if (filter === 'paket') {
-                        blok.style.display = (grup === 'paket' || (kat && kat.indexOf('paket') === 0)) ? '' : 'none';
-                    } else {
-                        blok.style.display = (kat === filter || grup === filter) ? '' : 'none';
-                    }
-                });
-            });
-        }
-
-        // 3. Tombol Hero "+ Tambah 10 Box Paket Ini ke Pesanan"
-        var btnPaketHero = $('#btnTambahPaketHero');
-        if (btnPaketHero) {
-            btnPaketHero.onclick = function () {
-                var paketMenu = (katalogMenusCache || []).find(function (m) {
-                    return String(m.kategori || '').toLowerCase().indexOf('paket') === 0 || m.id === 4;
-                }) || (katalogMenusCache && katalogMenusCache[0]);
-
-                var id = paketMenu ? String(paketMenu.id) : '4';
-                var nama = paketMenu ? paketMenu.nama : 'Paket Selera Nusantara A';
-                var harga = paketMenu ? (parseInt(paketMenu.harga, 10) || 25000) : 25000;
-                var kat = paketMenu ? paketMenu.kategori : 'paket a';
-
-                var skrg = keranjang[id] ? (keranjang[id].jumlah || 0) : 0;
-                keranjang[id] = {
-                    id: id,
-                    nama: nama,
-                    harga: harga,
-                    kategori: kat,
-                    jumlah: Math.min(120, skrg + 10)
-                };
-                simpanKeranjang();
-                renderKeranjang();
-                toast('+10 Box ' + nama + ' berhasil ditambahkan ke pesanan!', 'sukses');
-                var elKat = $('#katalog');
-                if (elKat) elKat.scrollIntoView({ behavior: 'smooth' });
-            };
-        }
-
-        // 4. Setup Tanggal
-        var inpTgl = $('#cekTanggal'), inpTglForm = $('#fTgl');
-        if (inpTgl) {
-            inpTgl.min = tglMin;
-            inpTgl.max = tglMaks;
-            inpTgl.value = tglPilih;
-            inpTgl.onchange = function () {
-                tglPilih = inpTgl.value || tglMin;
-                if (inpTglForm) inpTglForm.value = tglPilih;
-                perbaruiKapasitas(tglPilih);
-                muatKatalog(tglPilih);
-            };
-        }
-        if (inpTglForm) {
-            inpTglForm.min = tglMin;
-            inpTglForm.max = tglMaks;
-            inpTglForm.value = tglPilih;
-        }
-
-        var btnCek = $('#btnCekTanggal');
-        if (btnCek && inpTgl) {
-            btnCek.onclick = function () {
-                tglPilih = inpTgl.value || tglMin;
-                if (inpTglForm) inpTglForm.value = tglPilih;
-                perbaruiKapasitas(tglPilih);
-                muatKatalog(tglPilih);
-            };
-        }
-
-        isiPilihanJam();
-        if ($('#katalogMenu')) {
-            perbaruiKapasitas(tglPilih);
-            muatKatalog(tglPilih);
-        }
-        renderKeranjang();
-
-        // 5. Delegasi Event Keranjang (Stepper & Hapus)
-        var ringkasan = $('#ringkasan');
-        if (ringkasan) {
-            ringkasan.onclick = function (e) {
-                var kurangId = e.target.getAttribute('data-kurang');
-                var tambahId = e.target.getAttribute('data-tambah');
-                var hapusId = e.target.getAttribute('data-hapus');
-
-                if (kurangId && keranjang[kurangId]) {
-                    if (keranjang[kurangId].jumlah <= 1) {
-                        delete keranjang[kurangId];
-                    } else {
-                        keranjang[kurangId].jumlah = keranjang[kurangId].jumlah - 1;
-                    }
-                    simpanKeranjang();
-                    renderKeranjang();
-                } else if (tambahId && keranjang[tambahId]) {
-                    keranjang[tambahId].jumlah = Math.min(120, (keranjang[tambahId].jumlah || 1) + 1);
-                    simpanKeranjang();
-                    renderKeranjang();
-                } else if (hapusId && keranjang[hapusId]) {
-                    delete keranjang[hapusId];
-                    simpanKeranjang();
-                    renderKeranjang();
-                }
-            };
-
-            ringkasan.oninput = function (e) {
-                var ubahId = e.target.getAttribute('data-ubah');
-                if (ubahId && keranjang[ubahId]) {
-                    var v = parseInt(e.target.value, 10);
-                    keranjang[ubahId].jumlah = isNaN(v) || v < 1 ? 1 : Math.min(120, v);
-                    simpanKeranjang();
-                    renderKeranjang();
-                }
-            };
-        }
-
-        var btnKosongkan = $('#kosongkanKeranjang');
-        if (btnKosongkan) {
-            btnKosongkan.onclick = function () {
-                if (confirm('Kosongkan semua menu di keranjang?')) {
-                    keranjang = {};
-                    simpanKeranjang();
-                    renderKeranjang();
-                }
-            };
-        }
-
-        // Tombol Lanjut ke Checkout (Halaman index -> navigasi ke checkout.html)
-        var btnLanjut = $('#btnLanjut');
-        if (btnLanjut) {
-            btnLanjut.onclick = function () {
-                window.location.href = 'checkout.html';
-            };
-        }
-
-        // 6. Validasi Nama Live di Form Checkout
-        var fNama = $('#fNama');
-        if (fNama) {
-            fNama.addEventListener('blur', function () {
-                var v = this.value.trim();
-                if (v === '') { tampilGalat('nama', ''); return; }
-                tampilGalat('nama', pesanGalatNama(v));
-                periksaSiapKirim();
-            });
-            fNama.addEventListener('input', function () {
-                if (namaValid(this.value.trim())) tampilGalat('nama', '');
-                periksaSiapKirim();
-            });
-        }
-
-        var fWa = $('#fWa');
-        if (fWa) {
-            fWa.addEventListener('input', function () {
-                periksaSiapKirim();
-            });
-            fWa.addEventListener('blur', function () {
-                var v = this.value.trim();
-                if (v && !waValid(v)) {
-                    tampilGalat('no_wa', 'Nomor WhatsApp tidak valid (minimal 10 digit).');
-                } else {
-                    tampilGalat('no_wa', '');
-                }
-            });
-        }
-
-        // 7. Submit Form Checkout (Halaman checkout.html)
-        var form = $('#formCheckout');
-        if (form) {
-            form.onsubmit = async function (e) {
-                e.preventDefault();
-                var galatDiv = $('#galatCheckout');
-                if (galatDiv) { galatDiv.style.display = 'none'; galatDiv.textContent = ''; }
-
-                var nama = (fNama || {}).value || '';
-                var no_wa = (fWa || {}).value || '';
-                var tgl = (inpTglForm || {}).value || tglPilih;
-                var jam = ($('#fJam') || {}).value || '10:00';
-                var catatan = ($('#fCatatan') || {}).value || '';
-
-                var gNama = pesanGalatNama(nama);
-                if (gNama) {
-                    tampilGalat('nama', gNama);
-                    if (fNama) fNama.focus();
-                    return;
-                }
-
-                if (!waValid(no_wa)) {
-                    tampilGalat('no_wa', 'Nomor WhatsApp tidak valid.');
-                    if (fWa) fWa.focus();
-                    return;
-                }
-
-                var items = Object.keys(keranjang).map(function (k) {
-                    return { menu_id: parseInt(k, 10), jumlah: keranjang[k].jumlah };
-                });
-
-                var box = totalBox();
-                var minBox = CFG.MINIMAL_BOX || 10;
-                if (box < minBox) {
-                    if (galatDiv) {
-                        galatDiv.textContent = 'Minimum pemesanan adalah ' + minBox + ' box.';
-                        galatDiv.style.display = 'block';
-                    }
-                    return;
-                }
-
-                var btnSubmit = $('#btnBuatPesanan');
-                var btnTeks = $('#btnBuatTeks');
-                if (btnSubmit) { btnSubmit.disabled = true; }
-                if (btnTeks) { btnTeks.textContent = 'Memproses Pesanan...'; }
-
-                var res = await DB.buatPesanan({
-                    nama: nama.trim(),
-                    no_wa: no_wa.trim(),
-                    tanggal_ambil: tgl,
-                    jam_ambil: jam,
-                    catatan: catatan.trim(),
-                    items: items
-                });
-
-                if (!res || !res.ok) {
-                    if (btnSubmit) btnSubmit.disabled = false;
-                    if (btnTeks) btnTeks.textContent = 'Lanjutkan Pembayaran';
-                    if (galatDiv) {
-                        galatDiv.textContent = (res && res.pesan) || 'Gagal membuat pesanan. Silakan periksa kembali.';
-                        galatDiv.style.display = 'block';
-                    }
-                    return;
-                }
-
-                // Berhasil: Kosongkan keranjang & Redirect ke pembayaran
-                keranjang = {};
-                simpanKeranjang();
-                window.location.href = 'pembayaran.html?kode=' + encodeURIComponent(res.kode) + '&t=' + encodeURIComponent(res.token_nota);
-            };
-        }
+        initNavDanTanggal();
+        initFormCheckout();
+        muatDataTanggal(tglPilih);
     });
 })();

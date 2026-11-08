@@ -21,6 +21,8 @@
                 <option value="Menunggu Konfirmasi">Menunggu Konfirmasi</option>
                 <option value="Sedang Dimasak">Sedang Dimasak</option>
                 <option value="Siap Diambil">Siap Diambil</option>
+                <option value="Selesai">Selesai (Sudah Diambil)</option>
+                <option value="Dibatalkan">Dibatalkan</option>
             </select>
             <button class="btn btn-primary" type="submit">Terapkan</button>
             <button class="btn btn-secondary" type="button" id="btnReset">Reset</button>
@@ -58,7 +60,7 @@
 
 <!-- Modal Detail Pesanan -->
 <div class="modal" id="modalDetail" hidden style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,23,42,0.55);z-index:9999;display:none;align-items:center;justify-content:center;padding:20px;">
-    <div class="modal-kotak" role="dialog" aria-modal="true" style="background:#fff;border-radius:12px;max-width:580px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 16px 36px rgba(0,0,0,0.22);">
+    <div class="modal-kotak" role="dialog" aria-modal="true" style="background:#fff;border-radius:12px;max-width:600px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 16px 36px rgba(0,0,0,0.22);">
         <div class="modal-kepala" style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid #e5e7eb;">
             <div style="display:flex;align-items:center;gap:10px;">
                 <h2 id="modalJudul" style="font-size:17px;margin:0;font-weight:700;">Detail Pesanan</h2>
@@ -71,15 +73,26 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', async function () {
+    var DB = window.WARTEG_DB;
     window.WARTEG_ADMIN_LAYOUT.render('pemesan', 'Daftar Pemesan');
 
     var curHal = 1;
 
-    // Baca query param jika diarahkan dari halaman rekap
     var urlParams = new URLSearchParams(window.location.search);
     var qAwal = urlParams.get('q');
     if (qAwal) {
         document.getElementById('filQ').value = qAwal;
+    }
+
+    async function eksekusiUbahStatus(id, kode, statusBaru, pesanKonfirmasi) {
+        if (!confirm(pesanKonfirmasi)) return false;
+        var h = await DB.ubahStatusKatering(id, statusBaru);
+        if (!h || !h.ok) {
+            alert((h && h.pesan) || 'Gagal memperbarui status pesanan.');
+            return false;
+        }
+        if (h.wa_url) window.open(h.wa_url, '_blank');
+        return true;
     }
 
     async function muatDaftar() {
@@ -87,7 +100,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         var tgl = document.getElementById('filTgl').value;
         var st = document.getElementById('filStatus').value;
 
-        var res = await window.WARTEG_DB.getDaftarPemesan({ q: q, tanggal: tgl, status: st, hal: curHal, per: 10 });
+        var res = await DB.getDaftarPemesan({ q: q, tanggal: tgl, status: st, hal: curHal, per: 10 });
         var tbody = document.getElementById('tbodyPemesan');
         tbody.innerHTML = '';
 
@@ -103,24 +116,31 @@ document.addEventListener('DOMContentLoaded', async function () {
 
         res.items.forEach(function (p, i) {
             var tr = document.createElement('tr');
+            var lunas = (p.status_bayar === 'berhasil' || p.status_bayar === 'lunas');
 
             var aksiHtml = '<div class="action-buttons">'
                 + '<button type="button" class="btn-action btn-detail js-btn-detail" data-id="' + p.id + '">Detail</button>';
 
             if (p.status === 'Menunggu Konfirmasi') {
-                aksiHtml += '<button type="button" class="btn-action btn-masak js-btn-masak" data-id="' + p.id + '" data-kode="' + p.kode + '">Mulai Masak</button>';
+                if (lunas) {
+                    aksiHtml += '<button type="button" class="btn-action btn-masak js-btn-masak" data-id="' + p.id + '" data-kode="' + DB.escapeHtml(p.kode) + '">Mulai Masak</button>';
+                } else if (p.status_bayar === 'menunggu_verifikasi') {
+                    aksiHtml += '<a href="verifikasi.html" class="btn-action btn-detail" style="text-decoration:none;">Verifikasi Bayar</a>';
+                }
             } else if (p.status === 'Sedang Dimasak') {
-                aksiHtml += '<button type="button" class="btn-action btn-siap js-btn-siap" data-id="' + p.id + '" data-kode="' + p.kode + '">Siap Diambil</button>';
+                aksiHtml += '<button type="button" class="btn-action btn-siap js-btn-siap" data-id="' + p.id + '" data-kode="' + DB.escapeHtml(p.kode) + '">Siap Diambil</button>';
+            } else if (p.status === 'Siap Diambil') {
+                aksiHtml += '<button type="button" class="btn-action btn-siap js-btn-selesai" data-id="' + p.id + '" data-kode="' + DB.escapeHtml(p.kode) + '" style="background:#15803d;color:#fff;">Selesai</button>';
             }
             aksiHtml += '</div>';
 
             tr.innerHTML = '<td>' + (res.offset + i + 1) + '</td>'
-                + '<td><strong style="font-family:monospace;letter-spacing:0.5px;">' + p.kode + '</strong></td>'
-                + '<td><strong>' + p.nama_pelanggan + '</strong></td>'
-                + '<td>' + window.WARTEG_DB.tanggalId(p.tanggal_ambil, false) + '</td>'
-                + '<td>' + window.WARTEG_DB.jamPendek(p.jam_ambil) + ' WIB</td>'
-                + '<td><span class="badge ' + window.WARTEG_DB.kelasStatusBayar(p.status_bayar) + '">' + window.WARTEG_DB.statusBayarLabel(p.status_bayar) + '</span></td>'
-                + '<td>' + window.WARTEG_DB.badgeStatus(p.status) + '</td>'
+                + '<td><strong style="font-family:monospace;letter-spacing:0.5px;">' + DB.escapeHtml(p.kode) + '</strong></td>'
+                + '<td><strong>' + DB.escapeHtml(p.nama_pelanggan) + '</strong></td>'
+                + '<td>' + DB.tanggalId(p.tanggal_ambil, false) + '</td>'
+                + '<td>' + DB.jamPendek(p.jam_ambil) + ' WIB</td>'
+                + '<td><span class="badge ' + DB.kelasStatusBayar(p.status_bayar) + '">' + DB.escapeHtml(DB.statusBayarLabel(p.status_bayar)) + '</span></td>'
+                + '<td>' + DB.badgeStatus(p.status) + '</td>'
                 + '<td class="kolom-aksi">' + aksiHtml + '</td>';
 
             tbody.appendChild(tr);
@@ -134,23 +154,30 @@ document.addEventListener('DOMContentLoaded', async function () {
                 if (!item) return;
 
                 var isi = document.getElementById('modalIsi');
-                var cleanWa = (item.no_wa || '').replace(/\D/g, '');
-                if (cleanWa.startsWith('0')) cleanWa = '62' + cleanWa.slice(1);
+                var cleanWa = DB.normalisasiWa(item.no_wa);
                 var waLink = cleanWa ? 'https://wa.me/' + cleanWa : '';
+                var lunas = (item.status_bayar === 'berhasil' || item.status_bayar === 'lunas');
+                var nominalBersih = item.nominal_bayar || item.total_harga;
 
                 var h = '<div style="background:#f8fafc;border:1px solid var(--garis);border-radius:8px;padding:14px;margin-bottom:16px;">'
                     + '<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:10px;font-size:13px;">'
-                    + '<div><span class="teks-redup">Kode Pesanan:</span><br><strong style="font-family:monospace;font-size:14px;">' + item.kode + '</strong></div>'
-                    + '<div><span class="teks-redup">Nama Pelanggan:</span><br><strong>' + item.nama_pelanggan + '</strong></div>'
-                    + '<div><span class="teks-redup">WhatsApp:</span><br>' + (item.no_wa ? item.no_wa : '<span class="teks-redup">-</span>') + '</div>'
-                    + '<div><span class="teks-redup">Jadwal Pengambilan:</span><br><strong>' + window.WARTEG_DB.tanggalId(item.tanggal_ambil) + '</strong> (' + window.WARTEG_DB.jamPendek(item.jam_ambil) + ' WIB)</div>'
-                    + '<div><span class="teks-redup">Status Pesanan:</span><br>' + window.WARTEG_DB.badgeStatus(item.status) + '</div>'
-                    + '<div><span class="teks-redup">Status Pembayaran:</span><br><span class="badge ' + window.WARTEG_DB.kelasStatusBayar(item.status_bayar) + '">' + window.WARTEG_DB.statusBayarLabel(item.status_bayar) + '</span></div>'
-                    + '</div>'
+                    + '<div><span class="teks-redup">Kode Pesanan:</span><br><strong style="font-family:monospace;font-size:14px;">' + DB.escapeHtml(item.kode) + '</strong></div>'
+                    + '<div><span class="teks-redup">Nama Pelanggan:</span><br><strong>' + DB.escapeHtml(item.nama_pelanggan) + '</strong></div>'
+                    + '<div><span class="teks-redup">WhatsApp:</span><br>' + (item.no_wa ? DB.escapeHtml(item.no_wa) : '<span class="teks-redup">-</span>') + '</div>'
+                    + '<div><span class="teks-redup">Jadwal Pengambilan:</span><br><strong>' + DB.tanggalId(item.tanggal_ambil) + '</strong> (' + DB.jamPendek(item.jam_ambil) + ' WIB)</div>'
+                    + '<div><span class="teks-redup">Status Pesanan:</span><br>' + DB.badgeStatus(item.status) + '</div>'
+                    + '<div><span class="teks-redup">Status Pembayaran:</span><br><span class="badge ' + DB.kelasStatusBayar(item.status_bayar) + '">' + DB.escapeHtml(DB.statusBayarLabel(item.status_bayar)) + '</span></div>'
                     + '</div>';
 
+                if (item.catatan) {
+                    h += '<div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--garis);font-size:12.5px;">'
+                        + '<span class="teks-redup">Catatan Khusus Pemesan:</span><br><em>' + DB.escapeHtml(item.catatan) + '</em>'
+                        + '</div>';
+                }
+                h += '</div>';
+
                 // Rincian Menu Dipesan
-                h += '<h3 style="font-size:14px;font-weight:700;margin:0 0 8px;color:var(--teks);">Rincian Pilihan Menu & Paket</h3>'
+                h += '<h3 style="font-size:14px;font-weight:700;margin:0 0 8px;color:var(--teks);">Rincian Pilihan Menu &amp; Paket</h3>'
                     + '<table style="width:100%;font-size:13px;border-collapse:collapse;margin-bottom:12px;">'
                     + '<thead><tr style="background:#f1f5f9;border-bottom:1px solid var(--garis);">'
                     + '<th style="text-align:left;padding:8px 10px;">Menu</th>'
@@ -160,20 +187,30 @@ document.addEventListener('DOMContentLoaded', async function () {
                     + '</tr></thead><tbody>';
 
                 (item.items || []).forEach(function (it) {
+                    var u = it.unit || 'box';
                     h += '<tr style="border-bottom:1px solid #f1f5f9;">'
-                        + '<td style="padding:8px 10px;"><strong>' + it.nama + '</strong></td>'
-                        + '<td style="text-align:center;padding:8px 10px;">' + it.jumlah + ' box</td>'
-                        + '<td style="text-align:right;padding:8px 10px;color:var(--redup);">' + it.harga + '</td>'
-                        + '<td style="text-align:right;padding:8px 10px;font-weight:600;">' + it.subtotal + '</td>'
+                        + '<td style="padding:8px 10px;"><strong>' + DB.escapeHtml(it.nama) + '</strong></td>'
+                        + '<td style="text-align:center;padding:8px 10px;">' + Number(it.jumlah || 0) + ' ' + DB.escapeHtml(u) + '</td>'
+                        + '<td style="text-align:right;padding:8px 10px;color:var(--redup);">' + DB.escapeHtml(it.harga) + '</td>'
+                        + '<td style="text-align:right;padding:8px 10px;font-weight:600;">' + DB.escapeHtml(it.subtotal) + '</td>'
                         + '</tr>';
                 });
 
-                h += '</tbody>'
-                    + '<tfoot>'
-                    + '<tr style="border-top:2px solid var(--garis);font-weight:700;background:#fff8ed;">'
-                    + '<td style="padding:10px;" colspan="2">Total Box: ' + item.total_box + ' box</td>'
-                    + '<td style="text-align:right;padding:10px;">Total Tagihan:</td>'
-                    + '<td style="text-align:right;padding:10px;color:var(--oranye);font-size:15px;">' + window.WARTEG_DB.rupiah(item.total_harga) + '</td>'
+                h += '</tbody><tfoot>';
+                if (item.diskon > 0) {
+                    h += '<tr style="border-top:1px solid var(--garis);font-size:12.5px;color:var(--redup);">'
+                        + '<td style="padding:6px 10px;" colspan="2">Subtotal Menu</td>'
+                        + '<td style="text-align:right;padding:6px 10px;" colspan="2">' + DB.rupiah(item.total_harga) + '</td>'
+                        + '</tr>'
+                        + '<tr style="font-size:12.5px;color:#16a34a;font-weight:700;">'
+                        + '<td style="padding:4px 10px;" colspan="2">🎁 Diskon Voucher (Kelipatan 50 Box)</td>'
+                        + '<td style="text-align:right;padding:4px 10px;" colspan="2">- ' + DB.rupiah(item.diskon) + '</td>'
+                        + '</tr>';
+                }
+                h += '<tr style="border-top:2px solid var(--garis);font-weight:700;background:#fff8ed;">'
+                    + '<td style="padding:10px;" colspan="2">Total Box Utama: ' + Number(item.total_box || 0) + ' box</td>'
+                    + '<td style="text-align:right;padding:10px;">Total Tagihan Bersih:</td>'
+                    + '<td style="text-align:right;padding:10px;color:var(--oranye);font-size:15px;">' + DB.rupiah(nominalBersih) + '</td>'
                     + '</tr>'
                     + '</tfoot></table>';
 
@@ -183,20 +220,29 @@ document.addEventListener('DOMContentLoaded', async function () {
 
                 if (waLink) {
                     h += '<a href="' + waLink + '" target="_blank" rel="noopener" class="btn btn-secondary btn-kecil" style="text-decoration:none;display:inline-flex;align-items:center;gap:6px;">'
-                        + '<svg width="15" height="15" fill="currentColor" viewBox="0 0 24 24"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.711 2.598 2.664-.699c.971.53 1.769.78 2.796.78 3.182 0 5.768-2.587 5.768-5.766.001-3.182-2.585-5.766-5.768-5.766zm9.969 5.766c0 5.488-4.48 9.969-9.969 9.969-1.748 0-3.377-.454-4.797-1.246l-5.234 1.339 1.378-5.074c-.902-1.488-1.416-3.23-1.416-5.088 0-5.488 4.48-9.969 9.969-9.969 5.489 0 9.969 4.481 9.969 9.969z"/></svg>'
                         + 'Chat WhatsApp</a>';
                 }
 
                 if (item.token_nota) {
-                    h += '<a href="../nota.html?token=' + encodeURIComponent(item.token_nota) + '" target="_blank" class="btn btn-secondary btn-kecil" style="text-decoration:none;">Buka Nota Digital</a>';
+                    var notaHref = DB.urlNota(item.kode, item.token_nota, '../');
+                    h += '<a href="' + notaHref + '" target="_blank" class="btn btn-secondary btn-kecil" style="text-decoration:none;">Buka Nota Digital</a>';
                 }
 
                 h += '</div><div style="display:flex;gap:8px;flex-wrap:wrap;">';
 
                 if (item.status === 'Menunggu Konfirmasi') {
-                    h += '<button type="button" class="btn btn-primary btn-kecil js-modal-masak" data-id="' + item.id + '" data-kode="' + item.kode + '">Mulai Masak</button>';
+                    if (lunas) {
+                        h += '<button type="button" class="btn btn-primary btn-kecil js-modal-masak" data-id="' + item.id + '">Mulai Masak</button>';
+                    } else {
+                        h += '<a href="verifikasi.html" class="btn btn-primary btn-kecil" style="text-decoration:none;">Verifikasi Pembayaran</a>';
+                    }
+                    if (!lunas) {
+                        h += '<button type="button" class="btn btn-danger btn-kecil js-modal-batal" data-id="' + item.id + '">Batalkan Pesanan</button>';
+                    }
                 } else if (item.status === 'Sedang Dimasak') {
-                    h += '<button type="button" class="btn btn-primary btn-kecil js-modal-siap" data-id="' + item.id + '" data-kode="' + item.kode + '">Siap Diambil</button>';
+                    h += '<button type="button" class="btn btn-primary btn-kecil js-modal-siap" data-id="' + item.id + '">Tandai Siap Diambil</button>';
+                } else if (item.status === 'Siap Diambil') {
+                    h += '<button type="button" class="btn btn-primary btn-kecil js-modal-selesai" data-id="' + item.id + '">Tandai Selesai (Sudah Diambil)</button>';
                 }
 
                 h += '<button type="button" class="btn btn-secondary btn-kecil js-modal-tutup-btn">Tutup</button>'
@@ -204,29 +250,34 @@ document.addEventListener('DOMContentLoaded', async function () {
 
                 isi.innerHTML = h;
 
-                // Bind Tombol Tutup di dalam modal
                 isi.querySelector('.js-modal-tutup-btn').onclick = tutupModal;
 
-                // Bind Tombol Ubah Status di dalam modal
                 var bMasak = isi.querySelector('.js-modal-masak');
                 if (bMasak) {
                     bMasak.onclick = async function () {
-                        if (confirm('Mulai memasak pesanan ' + item.kode + '?')) {
-                            await window.WARTEG_DB.ubahStatusKatering(item.id, 'Sedang Dimasak');
-                            tutupModal();
-                            muatDaftar();
-                        }
+                        var ok = await eksekusiUbahStatus(item.id, item.kode, 'Sedang Dimasak', 'Mulai memasak pesanan ' + item.kode + '?');
+                        if (ok) { tutupModal(); muatDaftar(); }
                     };
                 }
                 var bSiap = isi.querySelector('.js-modal-siap');
                 if (bSiap) {
                     bSiap.onclick = async function () {
-                        if (confirm('Tandai pesanan ' + item.kode + ' sebagai Siap Diambil dan buka WhatsApp pelanggan?')) {
-                            var h = await window.WARTEG_DB.ubahStatusKatering(item.id, 'Siap Diambil');
-                            tutupModal();
-                            if (h.wa_url) window.open(h.wa_url, '_blank');
-                            muatDaftar();
-                        }
+                        var ok = await eksekusiUbahStatus(item.id, item.kode, 'Siap Diambil', 'Tandai pesanan ' + item.kode + ' sebagai Siap Diambil dan buka WhatsApp pelanggan?');
+                        if (ok) { tutupModal(); muatDaftar(); }
+                    };
+                }
+                var bSelesai = isi.querySelector('.js-modal-selesai');
+                if (bSelesai) {
+                    bSelesai.onclick = async function () {
+                        var ok = await eksekusiUbahStatus(item.id, item.kode, 'Selesai', 'Tandai pesanan ' + item.kode + ' telah diambil pelanggan (Selesai)?');
+                        if (ok) { tutupModal(); muatDaftar(); }
+                    };
+                }
+                var bBatal = isi.querySelector('.js-modal-batal');
+                if (bBatal) {
+                    bBatal.onclick = async function () {
+                        var ok = await eksekusiUbahStatus(item.id, item.kode, 'Dibatalkan', 'Batalkan pesanan ' + item.kode + '? Kuota dapur pada tanggal tersebut akan dikembalikan.');
+                        if (ok) { tutupModal(); muatDaftar(); }
                     };
                 }
 
@@ -236,26 +287,31 @@ document.addEventListener('DOMContentLoaded', async function () {
             };
         });
 
-        // Event Mulai Masak di Baris Tabel
         document.querySelectorAll('.js-btn-masak').forEach(function (b) {
             b.onclick = async function () {
                 var id = this.getAttribute('data-id');
                 var kode = this.getAttribute('data-kode');
-                if (confirm('Mulai memasak pesanan ' + kode + '?')) {
-                    await window.WARTEG_DB.ubahStatusKatering(id, 'Sedang Dimasak');
+                if (await eksekusiUbahStatus(id, kode, 'Sedang Dimasak', 'Mulai memasak pesanan ' + kode + '?')) {
                     muatDaftar();
                 }
             };
         });
 
-        // Event Siap Diambil di Baris Tabel
         document.querySelectorAll('.js-btn-siap').forEach(function (b) {
             b.onclick = async function () {
                 var id = this.getAttribute('data-id');
                 var kode = this.getAttribute('data-kode');
-                if (confirm('Tandai pesanan ' + kode + ' sebagai Siap Diambil dan buka WhatsApp pelanggan?')) {
-                    var h = await window.WARTEG_DB.ubahStatusKatering(id, 'Siap Diambil');
-                    if (h.wa_url) window.open(h.wa_url, '_blank');
+                if (await eksekusiUbahStatus(id, kode, 'Siap Diambil', 'Tandai pesanan ' + kode + ' sebagai Siap Diambil dan buka WhatsApp pelanggan?')) {
+                    muatDaftar();
+                }
+            };
+        });
+
+        document.querySelectorAll('.js-btn-selesai').forEach(function (b) {
+            b.onclick = async function () {
+                var id = this.getAttribute('data-id');
+                var kode = this.getAttribute('data-kode');
+                if (await eksekusiUbahStatus(id, kode, 'Selesai', 'Tandai pesanan ' + kode + ' telah diambil pelanggan (Selesai)?')) {
                     muatDaftar();
                 }
             };

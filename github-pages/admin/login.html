@@ -15,8 +15,8 @@
         <h1>Warteg Pak Sanam</h1>
         <p class="teks-redup">Masuk untuk mengelola pesanan nasi box.</p>
         
-        <div class="alert alert-info" style="font-size:12px;margin-bottom:14px;background:#e0f2fe;color:#0369a1;padding:8px 12px;border-radius:6px;">
-            Demo Login: Username: <strong>admin</strong> | Password: <strong>admin123</strong>
+        <div class="alert alert-info" id="infoDemoLogin" style="font-size:12px;margin-bottom:14px;background:#e0f2fe;color:#0369a1;padding:8px 12px;border-radius:6px;display:none;">
+            Mode Demo Lokal: Username: <strong>admin</strong> | Password: <strong>admin123</strong>
         </div>
 
         <div class="alert alert-galat" id="galatLogin" style="display:none;margin-bottom:12px;"></div>
@@ -38,6 +38,10 @@
         var form = document.getElementById('formLogin');
         var galat = document.getElementById('galatLogin');
         var btn = document.getElementById('btnSubmit');
+        var infoDemo = document.getElementById('infoDemoLogin');
+        if (infoDemo && window.WARTEG_DB && !window.WARTEG_DB.isSupabase()) {
+            infoDemo.style.display = 'block';
+        }
 
         form.onsubmit = async function (e) {
             e.preventDefault();

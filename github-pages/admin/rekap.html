@@ -171,10 +171,10 @@ document.addEventListener('DOMContentLoaded', async function () {
                 var menuKeys = Object.keys(menuAgg);
                 if (menuKeys.length > 0) {
                     menuKeys.forEach(function (mName) {
-                        html += '<li><span>' + mName + '</span><strong>' + menuAgg[mName] + ' box</strong></li>';
+                        html += '<li><span>' + window.WARTEG_DB.escapeHtml(mName) + '</span><strong>' + menuAgg[mName] + ' item</strong></li>';
                     });
                 }
-                html += '<li class="total"><span>Total Menu Terjadwal</span><strong>' + kap.box + ' box</strong></li>';
+                html += '<li class="total"><span>Total Box Utama Terjadwal</span><strong>' + kap.box + ' box</strong></li>';
                 html += '</ul></div>';
 
                 // Daftar Pesanan
@@ -183,22 +183,22 @@ document.addEventListener('DOMContentLoaded', async function () {
                     + '<div class="rekap-pemesan">';
 
                 items.forEach(function (p) {
-                    var cleanWa = (p.no_wa || '').replace(/\D/g, '');
-                    if (cleanWa.startsWith('0')) cleanWa = '62' + cleanWa.slice(1);
+                    var cleanWa = window.WARTEG_DB.normalisasiWa(p.no_wa);
+                    var nominalBersih = p.nominal_bayar || p.total_harga;
 
                     html += '<div class="item-pemesan">'
                         + '<div class="baris">'
-                        + '<div><strong style="font-size:14px;">' + p.nama_pelanggan + '</strong> <span style="font-size:12px;color:var(--redup);">(' + p.kode + ')</span></div>'
+                        + '<div><strong style="font-size:14px;">' + window.WARTEG_DB.escapeHtml(p.nama_pelanggan) + '</strong> <span style="font-size:12px;color:var(--redup);">(' + window.WARTEG_DB.escapeHtml(p.kode) + ')</span></div>'
                         + window.WARTEG_DB.badgeStatus(p.status)
                         + '</div>'
                         + '<div class="teks-redup" style="font-size:12px;margin:3px 0 6px;">'
                         + 'Jam Ambil: <b>' + window.WARTEG_DB.jamPendek(p.jam_ambil) + ' WIB</b> · '
-                        + 'Total: <b>' + p.total_box + ' box</b> (' + window.WARTEG_DB.rupiah(p.total_harga) + ')'
+                        + 'Total: <b>' + Number(p.total_box || 0) + ' box</b> (' + window.WARTEG_DB.rupiah(nominalBersih) + (p.diskon > 0 ? ' · hemat ' + window.WARTEG_DB.rupiah(p.diskon) : '') + ')'
                         + '</div>';
 
                     if (p.ringkas) {
                         html += '<div style="font-size:12px;color:var(--teks);background:#f8fafc;padding:6px 10px;border-radius:6px;border:1px solid #f1f5f9;margin-bottom:8px;">'
-                            + '🍱 ' + p.ringkas
+                            + '🍱 ' + window.WARTEG_DB.escapeHtml(p.ringkas)
                             + '</div>';
                     }
 

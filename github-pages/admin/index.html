@@ -158,7 +158,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     document.getElementById('teksStokRingkas').textContent = 'Stok menu: ' + totalStokTerjual + ' dari ' + totalStok + ' box terpakai (' + persenStok + '%), sisa ' + sisaStok + ' box.';
 
     // Pesanan Terbaru (Limit 6)
-    var pemesanRes = await window.WARTEG_DB.getDaftarPemesan({ per: 6 });
+    var pemesanRes = await window.WARTEG_DB.getDaftarPemesan({ per: 6, urut: 'terbaru' });
     var tbody = document.getElementById('tbodyTerbaru');
     tbody.innerHTML = '';
     if (!pemesanRes.items || !pemesanRes.items.length) {
@@ -166,9 +166,9 @@ document.addEventListener('DOMContentLoaded', async function () {
     } else {
         pemesanRes.items.forEach(function (p) {
             var tr = document.createElement('tr');
-            tr.innerHTML = '<td><strong style="font-family:monospace;letter-spacing:0.5px;">' + p.kode + '</strong></td>'
-                + '<td><strong>' + p.nama_pelanggan + '</strong></td>'
-                + '<td>' + p.total_box + ' box</td>'
+            tr.innerHTML = '<td><strong style="font-family:monospace;letter-spacing:0.5px;">' + window.WARTEG_DB.escapeHtml(p.kode) + '</strong></td>'
+                + '<td><strong>' + window.WARTEG_DB.escapeHtml(p.nama_pelanggan) + '</strong></td>'
+                + '<td>' + Number(p.total_box || 0) + ' box</td>'
                 + '<td>' + window.WARTEG_DB.tanggalId(p.tanggal_ambil, false) + ', ' + window.WARTEG_DB.jamPendek(p.jam_ambil) + ' WIB</td>'
                 + '<td>' + window.WARTEG_DB.badgeStatus(p.status) + '</td>'
                 + '<td style="text-align:center;"><a href="pemesan.html?q=' + encodeURIComponent(p.kode) + '" class="btn-action btn-detail" style="text-decoration:none;font-size:12px;padding:4px 10px;">Detail →</a></td>';

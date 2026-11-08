@@ -1,732 +1,1102 @@
 // =====================================================================
-// DATA LAYER HYBRID: SUPABASE CLIENT + LOCALSTORAGE FALLBACK ENGINE
+// LAYANAN DATA HYBRID: SUPABASE CLOUD + AUTO-FALLBACK LOCALSTORAGE
+// Sistem Katering & POS Warteg Pak Sanam (GitHub Pages Edition)
 // =====================================================================
 (function () {
     'use strict';
 
     var CFG = window.WARTEG_CONFIG || {};
-    var LS_KEY = 'warteg_db_state_v1';
-    var SESSION_KEY = 'warteg_admin_session';
+    var STORAGE_KEY = 'warteg_katering_state_v2';
+    var SESSION_KEY = 'warteg_admin_session_v1';
+    var CART_META_KEY = 'warteg_cart_meta_v1';
 
-    // -----------------------------------------------------------------
-    // Helper: Formatter Format Indonesia
-    // -----------------------------------------------------------------
-    function rupiah(n) {
-        return 'Rp' + Math.round(n || 0).toLocaleString('id-ID');
+    // Inisialisasi Supabase Client jika URL & Key tersedia
+    var sb = null;
+    var isSupabaseReady = false;
+    if (
+        CFG.SUPABASE_URL &&
+        CFG.SUPABASE_ANON_KEY &&
+        CFG.SUPABASE_URL.indexOf('https://') === 0 &&
+        typeof window.supabase !== 'undefined'
+    ) {
+        try {
+            sb = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY);
+            isSupabaseReady = true;
+        } catch (err) {
+            console.warn('Gagal menginisialisasi Supabase, beralih ke LocalStorage:', err);
+        }
     }
 
+    // =================================================================
+    // HELPER TANGGAL, FORMATTER, ESCAPE HTML & SANITASI
+    // =================================================================
     var HARI_ID = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-    var BULAN_ID = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+    var BULAN_ID = [
+        '', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+        'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+    ];
+
+    function escapeHtml(str) {
+        if (str === null || str === undefined) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function normalisasiWa(wa) {
+        var digits = String(wa || '').replace(/\D/g, '');
+        if (!digits) return '';
+        if (digits.indexOf('0') === 0) return '62' + digits.slice(1);
+        if (digits.indexOf('8') === 0) return '62' + digits;
+        return digits;
+    }
+
+    function isKategoriBoxUtama(kategori) {
+        var k = String(kategori || '').toLowerCase().trim();
+        return k === 'paket a' || k === 'paket b' || k === 'paket c' || k === 'nasi' || k.indexOf('paket') === 0;
+    }
+
+    function unitMenu(kategori) {
+        return isKategoriBoxUtama(kategori) ? 'box' : 'porsi';
+    }
+
+    function urlNota(kode, token, prefix) {
+        var pre = prefix || '';
+        return pre + 'nota.html?kode=' + encodeURIComponent(kode || '') + '&t=' + encodeURIComponent(token || '');
+    }
+
+    function urlPembayaran(kode, token, prefix) {
+        var pre = prefix || '';
+        return pre + 'pembayaran.html?kode=' + encodeURIComponent(kode || '') + '&t=' + encodeURIComponent(token || '');
+    }
+
+    function urlInvoice(kode, token, prefix) {
+        var pre = prefix || '';
+        return pre + 'invoice.html?kode=' + encodeURIComponent(kode || '') + '&t=' + encodeURIComponent(token || '');
+    }
+
+    function formatIsoDate(dateObj) {
+        var y = dateObj.getFullYear();
+        var m = String(dateObj.getMonth() + 1).padStart(2, '0');
+        var d = String(dateObj.getDate()).padStart(2, '0');
+        return y + '-' + m + '-' + d;
+    }
+
+    function addDaysIso(offsetDays) {
+        var d = new Date();
+        d.setHours(0, 0, 0, 0);
+        d.setDate(d.getDate() + offsetDays);
+        return formatIsoDate(d);
+    }
+
+    function rupiah(angka) {
+        var n = Math.round(Number(angka) || 0);
+        return 'Rp ' + n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    }
 
     function tanggalId(tglStr, denganHari) {
         if (denganHari === undefined) denganHari = true;
         if (!tglStr) return '-';
-        var d = new Date(tglStr + 'T00:00:00');
-        if (isNaN(d.getTime())) return tglStr;
-        var hari = HARI_ID[d.getDay()];
-        var tgl = d.getDate();
-        var bln = BULAN_ID[d.getMonth() + 1];
-        var thn = d.getFullYear();
-        return (denganHari ? hari + ', ' : '') + tgl + ' ' + bln + ' ' + thn;
+        var parts = String(tglStr).slice(0, 10).split('-');
+        if (parts.length < 3) return escapeHtml(tglStr);
+        var dt = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+        if (isNaN(dt.getTime())) return escapeHtml(tglStr);
+        var teks = dt.getDate() + ' ' + BULAN_ID[dt.getMonth() + 1] + ' ' + dt.getFullYear();
+        return denganHari ? (HARI_ID[dt.getDay()] + ', ' + teks) : teks;
+    }
+
+    function waktuId(waktuStr) {
+        if (!waktuStr) return '-';
+        var dt = new Date(waktuStr);
+        if (isNaN(dt.getTime())) return escapeHtml(waktuStr);
+        var tgl = dt.getDate() + ' ' + BULAN_ID[dt.getMonth() + 1] + ' ' + dt.getFullYear();
+        var jam = String(dt.getHours()).padStart(2, '0') + ':' + String(dt.getMinutes()).padStart(2, '0');
+        return tgl + ', ' + jam + ' WIB';
     }
 
     function jamPendek(jamStr) {
-        if (!jamStr) return '00:00';
-        return jamStr.slice(0, 5);
+        if (!jamStr) return '-';
+        return String(jamStr).slice(0, 5);
     }
 
     function statusBayarLabel(sb) {
         var map = {
-            'belum_bayar': 'Belum Bayar',
-            'menunggu': 'Menunggu Pembayaran',
-            'menunggu_verifikasi': 'Menunggu Verifikasi',
-            'berhasil': 'Lunas',
+            'belum_bayar': 'Belum Dibayar',
+            'menunggu': 'Belum Dibayar',
+            'menunggu_verifikasi': 'Menunggu Verifikasi Admin',
+            'berhasil': 'Lunas (Terverifikasi)',
+            'lunas': 'Lunas (Terverifikasi)',
             'ditolak': 'Bukti Ditolak',
             'gagal': 'Gagal',
             'kedaluwarsa': 'Kedaluwarsa',
             'dibatalkan': 'Dibatalkan'
         };
-        return map[sb] || sb;
+        return map[sb] || 'Belum Dibayar';
     }
 
     function kelasStatusBayar(sb) {
         var map = {
-            'berhasil': 'bayar-hijau',
-            'menunggu_verifikasi': 'bayar-oranye',
-            'menunggu': 'bayar-kuning',
-            'belum_bayar': 'bayar-abu',
-            'ditolak': 'bayar-merah',
-            'gagal': 'bayar-merah',
-            'kedaluwarsa': 'bayar-merah',
-            'dibatalkan': 'bayar-merah'
+            'belum_bayar': 'badge-kuning',
+            'menunggu': 'badge-kuning',
+            'menunggu_verifikasi': 'badge-biru',
+            'berhasil': 'badge-hijau',
+            'lunas': 'badge-hijau',
+            'ditolak': 'badge-merah',
+            'gagal': 'badge-merah',
+            'kedaluwarsa': 'badge-abu',
+            'dibatalkan': 'badge-abu'
         };
-        return map[sb] || 'bayar-abu';
+        return map[sb] || 'badge-abu';
     }
 
     function badgeStatus(status) {
         var map = {
-            'Menunggu Konfirmasi': '<span class="badge badge-menunggu">Menunggu Konfirmasi</span>',
-            'Sedang Dimasak': '<span class="badge badge-masak">Sedang Dimasak</span>',
-            'Siap Diambil': '<span class="badge badge-siap">Siap Diambil</span>'
+            'Menunggu Pembayaran': 'badge-menunggu',
+            'Menunggu Verifikasi': 'badge-menunggu',
+            'Menunggu Konfirmasi': 'badge-menunggu',
+            'Dikonfirmasi': 'badge-dimasak',
+            'Sedang Dimasak': 'badge-dimasak',
+            'Siap Diambil': 'badge-siap',
+            'Selesai': 'badge-hijau',
+            'Dibatalkan': 'badge-merah'
         };
-        return map[status] || '<span class="badge">' + (status || '-') + '</span>';
+        var kls = map[status] || 'badge-menunggu';
+        return '<span class="badge ' + kls + '">' + escapeHtml(status || 'Menunggu Konfirmasi') + '</span>';
     }
 
-    function linkWa(noWa, nama, box, kode) {
-        if (!noWa) return '';
-        var clean = noWa.replace(/\D/g, '');
-        if (clean.startsWith('0')) clean = '62' + clean.slice(1);
-        var pesan = 'Halo Kak ' + nama + ', pesanan nasi box Anda (' + kode + ' sejumlah ' + box + ' box) di ' + (CFG.NAMA_WARTEG || 'Warteg Pak Sanam') + ' sudah SIAP DIAMBIL. Terima kasih!';
-        return 'https://wa.me/' + clean + '?text=' + encodeURIComponent(pesan);
+    function hitungDiskon(totalBox) {
+        var box = Number(totalBox) || 0;
+        var kelipatan = Math.floor(box / (CFG.DISKON_PER_BOX || 50));
+        return kelipatan * (CFG.NOMINAL_DISKON || 50000);
     }
 
-    function linkWaWarteg(kode, nama, box, total, diskon) {
-        var telp = (CFG.TELEPON_WARTEG || '0857-8342-3626').replace(/\D/g, '');
-        if (telp.startsWith('0')) telp = '62' + telp.slice(1);
-        var diskonTeks = (diskon && diskon > 0) ? ' (Termasuk Diskon: ' + rupiah(diskon) + ')' : '';
-        var pesan = 'Halo ' + (CFG.NAMA_WARTEG || 'Warteg Pak Sanam') + ', saya telah membuat pesanan katering dengan Kode: ' + kode + ' untuk ' + box + ' box atas nama ' + nama + '. Total Tagihan: ' + rupiah(total) + diskonTeks + '. Mohon konfirmasinya.';
-        return 'https://wa.me/' + telp + '?text=' + encodeURIComponent(pesan);
+    function validasiTanggalAmbil(tglStr) {
+        if (!tglStr || !/^\d{4}-\d{2}-\d{2}$/.test(tglStr)) {
+            return { ok: false, pesan: 'Format tanggal pengambilan tidak valid.' };
+        }
+        var tglMin = addDaysIso(CFG.MINIMAL_H_MINUS || 1);
+        var tglMaks = addDaysIso(CFG.MAKS_HARI_KE || 30);
+        if (tglStr < tglMin) {
+            return { ok: false, pesan: 'Tanggal pengambilan minimal H-1 (' + tanggalId(tglMin, false) + ').' };
+        }
+        if (tglStr > tglMaks) {
+            return { ok: false, pesan: 'Tanggal pengambilan maksimal 30 hari ke depan (' + tanggalId(tglMaks, false) + ').' };
+        }
+        return { ok: true, tglMin: tglMin, tglMaks: tglMaks };
     }
 
-    // -----------------------------------------------------------------
-    // Inisialisasi Data Demo Awal (LocalStorage Fallback)
-    // -----------------------------------------------------------------
-    function getTodayStr(offsetDays) {
-        var d = new Date();
-        if (offsetDays) d.setDate(d.getDate() + offsetDays);
-        var yyyy = d.getFullYear();
-        var mm = String(d.getMonth() + 1).padStart(2, '0');
-        var dd = String(d.getDate()).padStart(2, '0');
-        return yyyy + '-' + mm + '-' + dd;
+    function validasiJamAmbil(jamStr) {
+        var jam = jamPendek(jamStr);
+        if (!/^\d{2}:\d{2}$/.test(jam)) {
+            return { ok: false, pesan: 'Format jam pengambilan tidak valid.' };
+        }
+        var buka = CFG.JAM_BUKA || '09:00';
+        var tutup = CFG.JAM_TUTUP || '19:00';
+        if (jam < buka || jam > tutup) {
+            return { ok: false, pesan: 'Jam pengambilan harus berada di antara jam operasional ' + buka.replace(':', '.') + ' - ' + tutup.replace(':', '.') + ' WIB.' };
+        }
+        return { ok: true, jam: jam };
     }
 
-    function initSeedData() {
-        var t0 = getTodayStr(0);
-        var t1 = getTodayStr(1);
-        var t2 = getTodayStr(2);
-
-        var data = {
+    // =================================================================
+    // DATA SEED FALLBACK (LOCALSTORAGE)
+    // =================================================================
+    function buatSeedData() {
+        var besok = addDaysIso(1);
+        var lusa = addDaysIso(2);
+        return {
+            konfigurasi: {
+                qris_gambar: 'qris_warteg.svg',
+                qris_nama_merchant: 'Warteg Pak Sanam',
+                qris_nmid: 'ID1024000000001',
+                qris_instruksi: 'Scan kode QRIS di atas dengan aplikasi pembayaran apa pun (BCA mobile, Livin, BRImo, GoPay, OVO, DANA, ShopeePay), masukkan nominal sesuai total tagihan, lalu unggah tangkapan layar bukti pembayaran di halaman ini.',
+                batas_bayar_jam: '24'
+            },
             admin: [
                 {
                     id: 1,
                     username: 'admin',
                     password_hash: 'admin123',
-                    nama: 'Admin Warteg',
+                    nama: 'Pengelola Warteg Pak Sanam',
                     role: 'owner',
-                    bahasa: 'id',
-                    foto: '006a36b5a411db9a6784.jpg',
-                    email: 'admin@warteg.test',
-                    telepon: '081234567800'
+                    email: 'owner@wartegpaksanam.id',
+                    no_hp: '0857-8342-3626',
+                    jabatan: 'Pemilik & Pengelola Utama',
+                    foto: 'admin_1_1776007918.jpeg',
+                    terakhir_login: new Date().toISOString(),
+                    dibuat_pada: '2026-04-01T08:00:00.000Z'
                 }
             ],
-            aktivitas: [],
-            konfigurasi_toko: {
-                qris_gambar: 'qris_90ce220b97a92f248db3.jpg',
-                qris_nama_merchant: 'Warteg Pak Sanam',
-                qris_nmid: 'ID1025439892668',
-                qris_instruksi: 'Scan QRIS di atas dengan aplikasi bank atau e-wallet Anda. Masukkan nominal pembayaran secara MANUAL sesuai total tagihan karena QRIS ini bersifat statis (nominal tidak otomatis terisi).',
-                batas_bayar_jam: '24'
-            },
             menu: [
-                { id: 4, nama: 'Paket Selera Nusantara A', kategori: 'paket a', harga: 25000, foto: '67a12609967b2741de56.jpg', deskripsi: 'Nasi Putih Wangi + Ayam Goreng Lengkuas Rempah + Tempe Orek Basah + Tumis Buncis Jagung + Sambal Terasi & Lalapan', aktif: true },
-                { id: 7, nama: 'Paket B - Rendang Daging Sapi Empuk', kategori: 'paket b', harga: 32000, foto: '567776efe02122c01fcd.jpg', deskripsi: 'Nasi Putih Wangi + Rendang Empuk + Sayur Daun Singkong + Telur Dadar + Sambal Ijo', aktif: true },
-                { id: 8, nama: 'Paket C - Ikan Tongkol Suwir Balado', kategori: 'paket c', harga: 24000, foto: '58fe9cd7bf786e6ab41c.jpg', deskripsi: 'Nasi Putih + Tongkol Suwir Pedas Gurih + Sayur Urap Kelapa + Bakwan Jagung + Sambal', aktif: true },
-                { id: 1, nama: 'Nasi Ayam Lengkuas Spesial', kategori: 'nasi', harga: 18000, foto: '567776efe02122c01fcd.jpg', deskripsi: 'Nasi putih pulen dengan ayam goreng bumbu lengkuas gurih, tahu/tempe, dan sambal khas warteg.', aktif: true },
-                { id: 2, nama: 'Nasi Ikan Bumbu Kuning', kategori: 'nasi', harga: 17000, foto: '58fe9cd7bf786e6ab41c.jpg', deskripsi: 'Nasi putih hangat dengan ikan goreng bumbu kuning rempah segar dan lalapan.', aktif: true },
-                { id: 3, nama: 'Nasi Udang Balado Pete', kategori: 'nasi', harga: 20000, foto: '6204c3f5c6b75a69ad21.jpg', deskripsi: 'Nasi putih dengan udang segar masak balado merah meresap dan sayur pendamping.', aktif: true },
-                { id: 5, nama: 'Ayam Bakar Bumbu Madu Khas Pak Sanam', kategori: 'lauk', harga: 15000, foto: '6a8bf56fcc847b405553.jpg', deskripsi: 'Ayam potong bakar dengan olesan kecap madu dan rempah khas warteg.', aktif: true },
-                { id: 9, nama: 'Cumi Asin Tumis Cabe Ijo', kategori: 'lauk', harga: 14000, foto: '6204c3f5c6b75a69ad21.jpg', deskripsi: 'Cumi asin empuk tidak alot dimasak dengan cabai hijau besar dan tomat ijo segar.', aktif: true },
-                { id: 6, nama: 'Sayur Asem Segar Jakarta', kategori: 'sayur', harga: 6000, foto: '7dfbefbad3bb846f2dca.jpg', deskripsi: 'Sayur asem kuah segar lengkap dengan jagung manis, melinjo, labu siam, dan kacang panjang.', aktif: true }
+                { id: 1, nama: 'Paket A - Ayam Goreng Lengkuas', deskripsi: 'Nasi Putih + Ayam Lengkuas + Tempe Orek + Buncis + Sambal + Kerupuk', harga: 25000, kategori: 'paket a', foto: 'menu_1776005851_7368.jpg', stok_default: 50, aktif: true },
+                { id: 2, nama: 'Paket B - Rendang Daging Sapi', deskripsi: 'Nasi Putih + Rendang Sapi Empuk + Sayur Daun Singkong + Telur Dadar + Sambal Ijo', harga: 32000, kategori: 'paket b', foto: 'menu_1776007200_1321.jpg', stok_default: 40, aktif: true },
+                { id: 3, nama: 'Paket C - Ikan Tongkol Balado', deskripsi: 'Nasi Putih + Tongkol Suwir Balado + Sayur Urap + Bakwan Jagung + Sambal', harga: 24000, kategori: 'paket c', foto: 'menu_1776007290_3103.jpg', stok_default: 50, aktif: true },
+                { id: 4, nama: 'Nasi Putih Pulen', deskripsi: 'Nasi putih hangat porsi katering box sekat', harga: 6000, kategori: 'nasi', foto: 'menu_1776007978_5646.jpeg', stok_default: 120, aktif: true },
+                { id: 5, nama: 'Nasi Uduk Gurih', deskripsi: 'Nasi uduk santan rempah daun salam dengan bawang goreng', harga: 8000, kategori: 'nasi', foto: 'menu_1776008161_7755.jpg', stok_default: 80, aktif: true },
+                { id: 6, nama: 'Ayam Bakar Madu', deskripsi: 'Ayam potong bakar bumbu madu gurih manis khas Pak Sanam', harga: 15000, kategori: 'lauk', foto: 'menu_1776005884_9385.jpg', stok_default: 60, aktif: true },
+                { id: 7, nama: 'Telur Balado Utuh', deskripsi: 'Telur ayam rebus bumbu balado merah pedas sedang', harga: 7000, kategori: 'lauk', foto: 'menu_1776005929_7844.jpg', stok_default: 80, aktif: true },
+                { id: 8, nama: 'Perkedel Kentang Daging', deskripsi: 'Perkedel kentang tumbuk lembut dengan campuran daging cincang', harga: 6000, kategori: 'lauk', foto: 'menu_1776007136_4103.jpg', stok_default: 70, aktif: true },
+                { id: 9, nama: 'Cumi Asin Cabe Ijo', deskripsi: 'Tumis cumi asin empuk dengan irisan cabai hijau besar dan tomat', harga: 14000, kategori: 'lauk', foto: 'menu_1776007418_5901.jpg', stok_default: 50, aktif: true },
+                { id: 10, nama: 'Tumis Kangkung Belacan', deskripsi: 'Sayur kangkung segar tumis bawang putih dan terasi harum', harga: 6000, kategori: 'sayur', foto: 'menu_1776008057_7600.jpg', stok_default: 70, aktif: true },
+                { id: 11, nama: 'Sayur Sop Ayam Segar', deskripsi: 'Sop wortel, kentang, buncis, kol dengan kaldu ayam gurih', harga: 7000, kategori: 'sayur', foto: 'menu_1776008256_4289.jpeg', stok_default: 60, aktif: true },
+                { id: 12, nama: 'Orek Tempe Kacang Teri', deskripsi: 'Tempe iris tipis masak kecap manis dengan kacang tanah dan teri medan', harga: 6000, kategori: 'sayur', foto: 'menu_1776008389_4550.jpg', stok_default: 80, aktif: true }
             ],
-            menu_harian: [
-                { id: 1, menu_id: 1, tanggal: t0, tersedia: true, stok: 120 },
-                { id: 2, menu_id: 2, tanggal: t0, tersedia: true, stok: 120 },
-                { id: 3, menu_id: 3, tanggal: t0, tersedia: true, stok: 120 },
-                { id: 4, menu_id: 4, tanggal: t0, tersedia: true, stok: 120 },
-                { id: 5, menu_id: 5, tanggal: t0, tersedia: true, stok: 120 },
-                { id: 6, menu_id: 6, tanggal: t0, tersedia: true, stok: 120 },
-                { id: 7, menu_id: 7, tanggal: t0, tersedia: true, stok: 120 },
-                { id: 8, menu_id: 8, tanggal: t0, tersedia: true, stok: 120 },
-                { id: 9, menu_id: 9, tanggal: t0, tersedia: true, stok: 120 },
-                { id: 10, menu_id: 1, tanggal: t1, tersedia: true, stok: 120 },
-                { id: 11, menu_id: 2, tanggal: t1, tersedia: true, stok: 120 },
-                { id: 12, menu_id: 3, tanggal: t1, tersedia: true, stok: 120 },
-                { id: 13, menu_id: 4, tanggal: t1, tersedia: true, stok: 120 },
-                { id: 14, menu_id: 5, tanggal: t1, tersedia: true, stok: 120 },
-                { id: 15, menu_id: 6, tanggal: t1, tersedia: true, stok: 120 },
-                { id: 16, menu_id: 7, tanggal: t1, tersedia: true, stok: 120 },
-                { id: 17, menu_id: 8, tanggal: t1, tersedia: true, stok: 120 },
-                { id: 18, menu_id: 9, tanggal: t1, tersedia: true, stok: 120 }
-            ],
+            menu_harian: {},
             pesanan: [
                 {
                     id: 1,
-                    kode: 'WRT-' + t0.replace(/-/g, '') + '-001',
-                    nama_pelanggan: 'Budi Santoso',
-                    no_wa: '081234567801',
-                    tanggal_ambil: t0,
-                    jam_ambil: '10:00:00',
-                    total_box: 30,
-                    total_harga: 470000,
-                    status: 'Siap Diambil',
+                    kode: 'WRT-' + besok.replace(/-/g, '') + '-101',
+                    nama_pelanggan: 'Budi Santoso (PT Maju Bersama)',
+                    no_wa: '081234567890',
+                    tanggal_ambil: besok,
+                    jam_ambil: '11:30',
+                    catatan: 'Sambal dipisah untuk 5 box, sisanya dicampur.',
+                    total_box: 25,
+                    total_harga: 625000,
+                    diskon: 0,
+                    nominal_bayar: 625000,
+                    status: 'Sedang Dimasak',
+                    metode_bayar: 'qris_statis',
                     status_bayar: 'berhasil',
-                    token_nota: 'demo_token_budi_01',
-                    catatan: 'Pisahkan sambal',
-                    dibuat_pada: new Date(Date.now() - 3600000 * 4).toISOString()
+                    bukti_bayar: '../uploads/bukti/44bb88b14db7c5b93805afa4a0d56da7.jpg',
+                    bukti_bayar_pada: new Date(Date.now() - 3600000 * 5).toISOString(),
+                    diverifikasi_oleh: 1,
+                    diverifikasi_pada: new Date(Date.now() - 3600000 * 4).toISOString(),
+                    dibayar_pada: new Date(Date.now() - 3600000 * 4).toISOString(),
+                    alasan_tolak: null,
+                    token_nota: 'demo-token-101',
+                    dibuat_pada: new Date(Date.now() - 3600000 * 6).toISOString()
                 },
                 {
                     id: 2,
-                    kode: 'WRT-' + t0.replace(/-/g, '') + '-002',
-                    nama_pelanggan: 'Siti Rahma',
-                    no_wa: '081234567802',
-                    tanggal_ambil: t0,
-                    jam_ambil: '11:30:00',
-                    total_box: 25,
-                    total_harga: 425000,
-                    status: 'Sedang Dimasak',
-                    status_bayar: 'menunggu_verifikasi',
-                    bukti_bayar: '44bb88b14db7c5b93805afa4a0d56da7.jpg',
-                    bukti_bayar_pada: new Date(Date.now() - 3600000 * 2).toISOString(),
-                    token_nota: 'demo_token_siti_02',
-                    catatan: '',
-                    dibuat_pada: new Date(Date.now() - 3600000 * 3).toISOString()
-                },
-                {
-                    id: 3,
-                    kode: 'WRT-' + t1.replace(/-/g, '') + '-001',
-                    nama_pelanggan: 'Andi Wijaya',
-                    no_wa: '081234567803',
-                    tanggal_ambil: t1,
-                    jam_ambil: '12:00:00',
-                    total_box: 15,
-                    total_harga: 255000,
+                    kode: 'WRT-' + lusa.replace(/-/g, '') + '-202',
+                    nama_pelanggan: 'Siti Rahmawati (Pengajian Al-Ikhlas)',
+                    no_wa: '081398765432',
+                    tanggal_ambil: lusa,
+                    jam_ambil: '15:00',
+                    catatan: 'Mohon tepat waktu jam 3 sore.',
+                    total_box: 30,
+                    total_harga: 720000,
+                    diskon: 0,
+                    nominal_bayar: 720000,
                     status: 'Menunggu Konfirmasi',
-                    status_bayar: 'belum_bayar',
-                    token_nota: 'demo_token_andi_03',
-                    catatan: 'Nasi pulen',
-                    dibuat_pada: new Date().toISOString()
+                    metode_bayar: 'qris_statis',
+                    status_bayar: 'menunggu_verifikasi',
+                    bukti_bayar: '../uploads/bukti/a3b8be91a65cbbe2b24e3528091ce25e.jpg',
+                    bukti_bayar_pada: new Date(Date.now() - 1800000).toISOString(),
+                    diverifikasi_oleh: null,
+                    diverifikasi_pada: null,
+                    dibayar_pada: null,
+                    alasan_tolak: null,
+                    token_nota: 'demo-token-202',
+                    dibuat_pada: new Date(Date.now() - 3600000).toISOString()
                 }
             ],
             detail_pesanan: [
-                { id: 1, pesanan_id: 1, menu_id: 1, jumlah: 20, harga_satuan: 15000, subtotal: 300000 },
-                { id: 2, pesanan_id: 1, menu_id: 2, jumlah: 10, harga_satuan: 17000, subtotal: 170000 },
-                { id: 3, pesanan_id: 2, menu_id: 1, jumlah: 15, harga_satuan: 15000, subtotal: 225000 },
-                { id: 4, pesanan_id: 2, menu_id: 3, jumlah: 10, harga_satuan: 20000, subtotal: 200000 },
-                { id: 5, pesanan_id: 3, menu_id: 2, jumlah: 15, harga_satuan: 17000, subtotal: 255000 }
+                { id: 1, pesanan_id: 1, menu_id: 1, nama_menu: 'Paket A - Ayam Goreng Lengkuas', unit: 'box', jumlah: 25, harga_satuan: 25000, subtotal: 625000 },
+                { id: 2, pesanan_id: 2, menu_id: 3, nama_menu: 'Paket C - Ikan Tongkol Balado', unit: 'box', jumlah: 30, harga_satuan: 24000, subtotal: 720000 }
             ],
-            verifikasi_log: []
+            verifikasi_log: [
+                { id: 1, pesanan_id: 1, admin_id: 1, aksi: 'unggah_bukti', catatan: 'Pelanggan mengunggah bukti bayar.', dibuat_pada: new Date(Date.now() - 3600000 * 5).toISOString() },
+                { id: 2, pesanan_id: 1, admin_id: 1, aksi: 'terima', catatan: 'Pembayaran QRIS terverifikasi lunas.', dibuat_pada: new Date(Date.now() - 3600000 * 4).toISOString() },
+                { id: 3, pesanan_id: 2, admin_id: null, aksi: 'unggah_bukti', catatan: 'Pelanggan mengunggah bukti bayar.', dibuat_pada: new Date(Date.now() - 1800000).toISOString() }
+            ],
+            aktivitas: [
+                { id: 1, admin_id: 1, aksi: 'verifikasi_terima', keterangan: 'Menerima pembayaran pesanan WRT-' + besok.replace(/-/g, '') + '-101', dibuat_pada: new Date(Date.now() - 3600000 * 4).toISOString() },
+                { id: 2, admin_id: 1, aksi: 'ubah_status', keterangan: 'Mengubah status WRT-' + besok.replace(/-/g, '') + '-101 menjadi Sedang Dimasak', dibuat_pada: new Date(Date.now() - 3600000 * 3).toISOString() }
+            ]
         };
-        try {
-            localStorage.setItem(LS_KEY, JSON.stringify(data));
-        } catch (e) {
-            console.warn('LocalStorage error saat init:', e);
-        }
-        return data;
     }
 
-    function loadLocalState() {
+    function getLocalState() {
         try {
-            var raw = localStorage.getItem(LS_KEY);
-            if (!raw) return initSeedData();
+            var raw = localStorage.getItem(STORAGE_KEY);
+            if (!raw) {
+                var seed = buatSeedData();
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(seed));
+                return seed;
+            }
             return JSON.parse(raw);
         } catch (e) {
-            return initSeedData();
+            return buatSeedData();
         }
     }
 
     function saveLocalState(state) {
         try {
-            localStorage.setItem(LS_KEY, JSON.stringify(state));
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
         } catch (e) {
-            console.error('Gagal menyimpan local state:', e);
+            console.error('Gagal menyimpan ke LocalStorage:', e);
         }
     }
 
-    // -----------------------------------------------------------------
-    // Supabase Client Setup (Jika Dikonfigurasi)
-    // -----------------------------------------------------------------
-    var supabaseClient = null;
-    var isSupabaseReady = false;
-
-    if (CFG.SUPABASE_URL && CFG.SUPABASE_ANON_KEY && window.supabase && window.supabase.createClient) {
-        try {
-            supabaseClient = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY);
-            isSupabaseReady = true;
-            console.log('✅ Supabase Client Berhasil Diinisialisasi');
-        } catch (e) {
-            console.warn('Supabase init gagal, fallback ke LocalStorage:', e);
-        }
+    function sanitasiObjekAdmin(adm) {
+        if (!adm) return null;
+        return {
+            id: adm.id,
+            username: adm.username,
+            nama: adm.nama,
+            role: adm.role || 'admin',
+            email: adm.email || '',
+            no_hp: adm.no_hp || '',
+            jabatan: adm.jabatan || '',
+            foto: adm.foto || '',
+            terakhir_login: adm.terakhir_login || null,
+            dibuat_pada: adm.dibuat_pada || null
+        };
     }
 
-    // -----------------------------------------------------------------
-    // EXPORT DATABASE SERVICE API
-    // -----------------------------------------------------------------
+    // =================================================================
+    // API PUBLIC SERVICE (DIPANGGIL OLEH CUSTOMER & ADMIN)
+    // =================================================================
     var DB = {
         isSupabase: function () {
             return isSupabaseReady;
         },
+
+        // Helper Fungsi Format & Sanitasi
+        escapeHtml: escapeHtml,
+        normalisasiWa: normalisasiWa,
+        isKategoriBoxUtama: isKategoriBoxUtama,
+        unitMenu: unitMenu,
+        urlNota: urlNota,
+        urlPembayaran: urlPembayaran,
+        urlInvoice: urlInvoice,
         rupiah: rupiah,
         tanggalId: tanggalId,
+        waktuId: waktuId,
         jamPendek: jamPendek,
         statusBayarLabel: statusBayarLabel,
         kelasStatusBayar: kelasStatusBayar,
         badgeStatus: badgeStatus,
-        linkWa: linkWa,
-        linkWaWarteg: linkWaWarteg,
+        addDaysIso: addDaysIso,
+        hitungDiskon: hitungDiskon,
+        validasiTanggalAmbil: validasiTanggalAmbil,
+        validasiJamAmbil: validasiJamAmbil,
 
-        // Hitung Potongan Diskon Kelipatan Box (50 box = Rp 50.000, 100 box = Rp 100.000)
-        hitungDiskon: function (box) {
-            var perBox = CFG.DISKON_PER_BOX || 50;
-            var nomDiskon = CFG.NOMINAL_DISKON || 50000;
-            var b = parseInt(box, 10) || 0;
-            return Math.floor(b / perBox) * nomDiskon;
+        // Persistensi Meta Keranjang (Tanggal & Jam Ambil)
+        getCartMeta: function () {
+            try {
+                var raw = localStorage.getItem(CART_META_KEY);
+                var obj = raw ? JSON.parse(raw) : {};
+                var tglMin = addDaysIso(CFG.MINIMAL_H_MINUS || 1);
+                var tglMaks = addDaysIso(CFG.MAKS_HARI_KE || 30);
+                var tgl = obj.tanggal || tglMin;
+                if (tgl < tglMin || tgl > tglMaks) tgl = tglMin;
+                var jam = obj.jam || '11:00';
+                return { tanggal: tgl, jam: jam };
+            } catch (e) {
+                return { tanggal: addDaysIso(CFG.MINIMAL_H_MINUS || 1), jam: '11:00' };
+            }
         },
 
-        // Reset Data Demo
-        resetDataDemo: function () {
-            localStorage.removeItem(LS_KEY);
-            initSeedData();
-            return true;
+        setCartMeta: function (meta) {
+            try {
+                var cur = this.getCartMeta();
+                var next = {
+                    tanggal: (meta && meta.tanggal) ? meta.tanggal : cur.tanggal,
+                    jam: (meta && meta.jam) ? meta.jam : cur.jam
+                };
+                localStorage.setItem(CART_META_KEY, JSON.stringify(next));
+                return next;
+            } catch (e) {
+                return meta;
+            }
         },
 
-        // Ringkasan Kapasitas Harian (120 Box)
-        getKapasitasTanggal: async function (tanggal) {
-            var kapasitas = CFG.KAPASITAS_HARIAN || 120;
+        // -------------------------------------------------------------
+        // 1. KONFIGURASI TOKO & QRIS
+        // -------------------------------------------------------------
+        getKonfigurasi: async function () {
+            var defaults = buatSeedData().konfigurasi;
             if (isSupabaseReady) {
-                var { data, error } = await supabaseClient
-                    .from('pesanan')
-                    .select('total_box')
-                    .eq('tanggal_ambil', tanggal)
-                    .neq('status_bayar', 'dibatalkan');
-                if (error) {
-                    console.error('Supabase getKapasitas error:', error);
-                } else {
-                    var box = (data || []).reduce(function (sum, p) { return sum + (p.total_box || 0); }, 0);
-                    var pesanan = (data || []).length;
-                    var sisa = Math.max(0, kapasitas - box);
-                    var persen = kapasitas > 0 ? Math.min(100, Math.round((box / kapasitas) * 100)) : 0;
-                    var level = box >= kapasitas ? 'penuh' : (sisa <= 20 ? 'hampir' : 'aman');
-                    return { box: box, pesanan: pesanan, sisa: sisa, persen: persen, level: level, kapasitas: kapasitas };
+                try {
+                    var res = await sb.from('konfigurasi_toko').select('kunci, nilai');
+                    if (!res.error && res.data && res.data.length > 0) {
+                        var cfg = Object.assign({}, defaults);
+                        res.data.forEach(function (r) { cfg[r.kunci] = r.nilai; });
+                        if (cfg.qris_nama_merchant === 'Warung Mas Alif' || cfg.qris_nama_merchant === 'Warteg Kharisma') {
+                            cfg.qris_nama_merchant = CFG.NAMA_WARTEG || 'Warteg Pak Sanam';
+                        }
+                        return cfg;
+                    }
+                } catch (e) {
+                    console.warn('Fallback getKonfigurasi:', e);
                 }
             }
-
-            // Fallback LocalStorage
-            var state = loadLocalState();
-            var orders = (state.pesanan || []).filter(function (p) {
-                return p.tanggal_ambil === tanggal && p.status_bayar !== 'dibatalkan';
-            });
-            var b = orders.reduce(function (sum, p) { return sum + (p.total_box || 0); }, 0);
-            var pes = orders.length;
-            var s = Math.max(0, kapasitas - b);
-            var p = kapasitas > 0 ? Math.min(100, Math.round((b / kapasitas) * 100)) : 0;
-            var lvl = b >= kapasitas ? 'penuh' : (s <= 20 ? 'hampir' : 'aman');
-            return { box: b, pesanan: pes, sisa: s, persen: p, level: lvl, kapasitas: kapasitas };
+            var st = getLocalState();
+            var localCfg = Object.assign({}, defaults, st.konfigurasi || {});
+            if (localCfg.qris_nama_merchant === 'Warung Mas Alif' || localCfg.qris_nama_merchant === 'Warteg Kharisma') {
+                localCfg.qris_nama_merchant = CFG.NAMA_WARTEG || 'Warteg Pak Sanam';
+            }
+            return localCfg;
         },
 
-        // Ambil Menu Tersedia untuk Tanggal Tertentu (Katalog Pelanggan / Menu Harian Admin)
-        getMenuTanggal: async function (tanggal) {
+        simpanKonfigurasi: async function (objBaru) {
             if (isSupabaseReady) {
-                var { data: menus, error: errMenu } = await supabaseClient
-                    .from('menu')
-                    .select('*')
-                    .order('kategori')
-                    .order('nama');
-                var { data: harian } = await supabaseClient
-                    .from('menu_harian')
-                    .select('*')
-                    .eq('tanggal', tanggal);
-                var { data: details } = await supabaseClient
-                    .from('detail_pesanan')
-                    .select('menu_id, jumlah, pesanan!inner(tanggal_ambil, status_bayar)')
-                    .eq('pesanan.tanggal_ambil', tanggal)
-                    .neq('pesanan.status_bayar', 'dibatalkan');
-
-                if (!errMenu && menus) {
-                    var hMap = {};
-                    (harian || []).forEach(function (h) { hMap[h.menu_id] = h; });
-                    var jMap = {};
-                    (details || []).forEach(function (d) { jMap[d.menu_id] = (jMap[d.menu_id] || 0) + d.jumlah; });
-
-                    return menus.map(function (m) {
-                        var h = hMap[m.id];
-                        var terjual = jMap[m.id] || 0;
-                        var tersedia = h ? !!h.tersedia : !!m.aktif;
-                        var stok = (h && h.stok !== undefined) ? h.stok : 120;
-                        var foto = (h && h.foto) || m.foto;
-                        return {
-                            id: m.id,
-                            nama: m.nama,
-                            kategori: m.kategori,
-                            harga: m.harga,
-                            deskripsi: m.deskripsi || '',
-                            aktif: m.aktif,
-                            foto: foto,
-                            tersedia: tersedia,
-                            stok: stok,
-                            jumlah: terjual
-                        };
+                try {
+                    var rows = Object.keys(objBaru).map(function (k) {
+                        return { kunci: k, nilai: String(objBaru[k] ?? ''), diperbarui_pada: new Date().toISOString() };
                     });
+                    var res = await sb.from('konfigurasi_toko').upsert(rows);
+                    if (res.error) return { ok: false, pesan: res.error.message || 'Gagal menyimpan konfigurasi ke Supabase.' };
+                } catch (e) {
+                    return { ok: false, pesan: e.message || 'Gagal menghubungi server database.' };
+                }
+            }
+            var state = getLocalState();
+            state.konfigurasi = Object.assign({}, state.konfigurasi || {}, objBaru);
+            saveLocalState(state);
+            await this.catatAktivitas('update_qris', 'Memperbarui konfigurasi QRIS & toko');
+            return { ok: true };
+        },
+
+        getKonfigurasiToko: async function () {
+            return await this.getKonfigurasi();
+        },
+
+        simpanKonfigurasiToko: async function (kunciAtauObj, nilai) {
+            if (typeof kunciAtauObj === 'string') {
+                var o = {};
+                o[kunciAtauObj] = nilai;
+                return await this.simpanKonfigurasi(o);
+            }
+            return await this.simpanKonfigurasi(kunciAtauObj || {});
+        },
+
+        // -------------------------------------------------------------
+        // 2. MENU & KETERSEDIAAN TANGGAL
+        // -------------------------------------------------------------
+        getMenuTanggal: async function (tanggal) {
+            var tgl = tanggal || addDaysIso(1);
+            if (isSupabaseReady) {
+                try {
+                    var mRes = await sb.from('menu').select('*').eq('aktif', true).order('kategori').order('nama');
+                    if (!mRes.error && mRes.data && mRes.data.length > 0) {
+                        var mhRes = await sb.from('menu_harian').select('*').eq('tanggal', tgl);
+                        var mhMap = {};
+                        (mhRes.data || []).forEach(function (x) { mhMap[x.menu_id] = x; });
+
+                        var pRes = await sb
+                            .from('pesanan')
+                            .select('id, status, status_bayar, detail_pesanan(menu_id, jumlah)')
+                            .eq('tanggal_ambil', tgl)
+                            .neq('status', 'Dibatalkan')
+                            .not('status_bayar', 'in', '("gagal","kedaluwarsa","dibatalkan")');
+
+                        var terjualMap = {};
+                        (pRes.data || []).forEach(function (p) {
+                            (p.detail_pesanan || []).forEach(function (dp) {
+                                terjualMap[dp.menu_id] = (terjualMap[dp.menu_id] || 0) + Number(dp.jumlah || 0);
+                            });
+                        });
+
+                        return mRes.data.map(function (m) {
+                            var mh = mhMap[m.id];
+                            var tersedia = mh ? Boolean(mh.tersedia) : true;
+                            var stok = (mh && mh.stok !== null && mh.stok !== undefined) ? Number(mh.stok) : (m.stok_default !== null ? Number(m.stok_default) : null);
+                            var terjual = terjualMap[m.id] || 0;
+                            return {
+                                id: m.id,
+                                nama: m.nama,
+                                deskripsi: m.deskripsi || '',
+                                harga: Number(m.harga),
+                                kategori: m.kategori,
+                                unit: unitMenu(m.kategori),
+                                is_box: isKategoriBoxUtama(m.kategori),
+                                foto: m.foto,
+                                stok_default: m.stok_default,
+                                aktif: m.aktif,
+                                tersedia: tersedia,
+                                stok: stok,
+                                terjual: terjual,
+                                jumlah: terjual
+                            };
+                        });
+                    }
+                } catch (e) {
+                    console.warn('Fallback getMenuTanggal:', e);
                 }
             }
 
             // Fallback LocalStorage
-            var state = loadLocalState();
-            var menus = state.menu || [];
-            var harian = (state.menu_harian || []).filter(function (h) { return h.tanggal === tanggal; });
-            var hMap = {};
-            harian.forEach(function (h) { hMap[h.menu_id] = h; });
+            var state = getLocalState();
+            var mhTanggal = (state.menu_harian && state.menu_harian[tgl]) || {};
+            var pesananAktifIds = (state.pesanan || [])
+                .filter(function (p) {
+                    return p.tanggal_ambil === tgl &&
+                        p.status !== 'Dibatalkan' &&
+                        ['gagal', 'kedaluwarsa', 'dibatalkan'].indexOf(p.status_bayar) === -1;
+                })
+                .map(function (p) { return p.id; });
 
-            // Hitung terjual hari ini
-            var ordersHariIni = (state.pesanan || []).filter(function (p) {
-                return p.tanggal_ambil === tanggal && p.status_bayar !== 'dibatalkan';
-            });
-            var orderIds = ordersHariIni.map(function (p) { return p.id; });
-            var jMap = {};
-            (state.detail_pesanan || []).forEach(function (d) {
-                if (orderIds.indexOf(d.pesanan_id) >= 0) {
-                    jMap[d.menu_id] = (jMap[d.menu_id] || 0) + d.jumlah;
+            var terjualLocal = {};
+            (state.detail_pesanan || []).forEach(function (dp) {
+                if (pesananAktifIds.indexOf(dp.pesanan_id) >= 0) {
+                    terjualLocal[dp.menu_id] = (terjualLocal[dp.menu_id] || 0) + Number(dp.jumlah || 0);
                 }
             });
 
-            return menus.map(function (m) {
-                var h = hMap[m.id];
-                var terjual = jMap[m.id] || 0;
-                var tersedia = h ? !!h.tersedia : !!m.aktif;
-                var stok = (h && h.stok !== undefined) ? h.stok : 120;
-                var foto = (h && h.foto) || m.foto;
-                return {
-                    id: m.id,
-                    nama: m.nama,
-                    kategori: m.kategori,
-                    harga: m.harga,
+            return (state.menu || []).filter(function (m) { return m.aktif; }).map(function (m) {
+                var mh = mhTanggal[m.id];
+                var tersedia = mh && mh.tersedia !== undefined ? Boolean(mh.tersedia) : true;
+                var stok = (mh && mh.stok !== undefined && mh.stok !== null) ? Number(mh.stok) : (m.stok_default !== null ? Number(m.stok_default) : null);
+                var terjual = terjualLocal[m.id] || 0;
+                return Object.assign({}, m, {
                     deskripsi: m.deskripsi || '',
-                    aktif: m.aktif,
-                    foto: foto,
+                    unit: unitMenu(m.kategori),
+                    is_box: isKategoriBoxUtama(m.kategori),
                     tersedia: tersedia,
                     stok: stok,
+                    terjual: terjual,
                     jumlah: terjual
-                };
+                });
             });
         },
 
-        // Buat Pesanan Baru (Checkout Pelanggan)
-        buatPesanan: async function (orderData) {
-            var nama = (orderData.nama || '').trim();
-            var no_wa = (orderData.no_wa || '').trim();
-            var tanggal_ambil = orderData.tanggal_ambil;
-            var jam_ambil = orderData.jam_ambil;
-            var catatan = (orderData.catatan || '').trim();
-            var items = orderData.items || []; // [{menu_id, jumlah}]
+        // -------------------------------------------------------------
+        // 3. KAPASITAS KUOTA HARIAN (MAKS 120 BOX)
+        // -------------------------------------------------------------
+        getKapasitasTanggal: async function (tanggal) {
+            var tgl = tanggal || addDaysIso(1);
+            var kap = CFG.KAPASITAS_HARIAN || 120;
+            var terpakai = 0;
+            var jmlPesanan = 0;
 
-            if (!nama || !no_wa || !tanggal_ambil || !jam_ambil) {
-                return { ok: false, pesan: 'Lengkapi semua isian wajib formulir.' };
-            }
-
-            var total_box = items.reduce(function (sum, it) { return sum + (parseInt(it.jumlah, 10) || 0); }, 0);
-            if (total_box < (CFG.MINIMAL_BOX || 10)) {
-                return { ok: false, pesan: 'Minimum pemesanan adalah ' + (CFG.MINIMAL_BOX || 10) + ' box.' };
-            }
-
-            // Jika Supabase Ready, panggil RPC buat_pesanan_katering
             if (isSupabaseReady) {
-                var { data, error } = await supabaseClient.rpc('buat_pesanan_katering', {
-                    p_nama: nama,
-                    p_no_wa: no_wa,
-                    p_tanggal: tanggal_ambil,
-                    p_jam: jam_ambil,
-                    p_catatan: catatan,
-                    p_items: items
-                });
-                if (error) {
-                    return { ok: false, pesan: error.message || 'Gagal memproses pesanan di Supabase.' };
+                try {
+                    var res = await sb
+                        .from('pesanan')
+                        .select('total_box, status, status_bayar')
+                        .eq('tanggal_ambil', tgl)
+                        .neq('status', 'Dibatalkan')
+                        .not('status_bayar', 'in', '("gagal","kedaluwarsa","dibatalkan")');
+
+                    if (!res.error && res.data) {
+                        jmlPesanan = res.data.length;
+                        res.data.forEach(function (r) { terpakai += Number(r.total_box || 0); });
+                        var sisa = Math.max(0, kap - terpakai);
+                        var persen = Math.min(100, Math.round((terpakai / kap) * 100));
+                        var level = sisa === 0 ? 'penuh' : (persen >= 75 ? 'hampir' : 'aman');
+                        return {
+                            tanggal: tgl,
+                            tanggal_id: tanggalId(tgl),
+                            terpakai: terpakai,
+                            box: terpakai,
+                            pesanan: jmlPesanan,
+                            sisa: sisa,
+                            kapasitas: kap,
+                            persen: persen,
+                            level: level
+                        };
+                    }
+                } catch (e) {
+                    console.warn('Fallback getKapasitasTanggal:', e);
                 }
-                return data;
+            }
+
+            var state = getLocalState();
+            (state.pesanan || []).forEach(function (p) {
+                if (
+                    p.tanggal_ambil === tgl &&
+                    p.status !== 'Dibatalkan' &&
+                    ['gagal', 'kedaluwarsa', 'dibatalkan'].indexOf(p.status_bayar) === -1
+                ) {
+                    terpakai += Number(p.total_box || 0);
+                    jmlPesanan += 1;
+                }
+            });
+            var sisaL = Math.max(0, kap - terpakai);
+            var persenL = Math.min(100, Math.round((terpakai / kap) * 100));
+            var levelL = sisaL === 0 ? 'penuh' : (persenL >= 75 ? 'hampir' : 'aman');
+            return {
+                tanggal: tgl,
+                tanggal_id: tanggalId(tgl),
+                terpakai: terpakai,
+                box: terpakai,
+                pesanan: jmlPesanan,
+                sisa: sisaL,
+                kapasitas: kap,
+                persen: persenL,
+                level: levelL
+            };
+        },
+
+        // -------------------------------------------------------------
+        // 4. CHECKOUT / BUAT PESANAN BARU (ANTI-OVERBOOKING & VALIDASI)
+        // -------------------------------------------------------------
+        buatPesanan: async function (payload) {
+            var nama = String(payload.nama_pelanggan || '').trim();
+            var wa = String(payload.no_wa || '').trim();
+            var tgl = String(payload.tanggal_ambil || '').trim();
+            var jam = String(payload.jam_ambil || '').trim();
+            var catatan = String(payload.catatan || '').trim();
+            var items = Array.isArray(payload.items) ? payload.items : [];
+
+            if (!nama || !wa || !tgl || !jam) {
+                return { ok: false, pesan: 'Mohon lengkapi nama pemesan, nomor WhatsApp, tanggal, dan jam pengambilan.' };
+            }
+            if (wa.replace(/\D/g, '').length < 9) {
+                return { ok: false, pesan: 'Nomor WhatsApp tidak valid (minimal 9 digit angka).' };
+            }
+
+            var valTgl = validasiTanggalAmbil(tgl);
+            if (!valTgl.ok) return valTgl;
+
+            var valJam = validasiJamAmbil(jam);
+            if (!valJam.ok) return valJam;
+
+            if (!items.length) {
+                return { ok: false, pesan: 'Pilih minimal satu menu katering.' };
+            }
+
+            // Validasi ketersediaan menu, stok harian, dan jumlah Box Utama terhadap data tanggal ambil
+            var katalogTgl = await this.getMenuTanggal(tgl);
+            var menuMap = {};
+            (katalogTgl || []).forEach(function (m) { menuMap[m.id] = m; });
+
+            var totalBoxUtama = 0;
+            var totalPorsiTambahan = 0;
+            var totalHargaHitung = 0;
+            var itemValid = [];
+
+            for (var i = 0; i < items.length; i++) {
+                var it = items[i];
+                var qty = parseInt(it.jumlah, 10);
+                if (isNaN(qty) || qty <= 0) continue;
+
+                var m = menuMap[Number(it.menu_id)];
+                if (!m || !m.aktif) {
+                    return { ok: false, pesan: 'Salah satu menu yang dipilih sedang tidak aktif.' };
+                }
+                if (!m.tersedia) {
+                    return { ok: false, pesan: 'Menu "' + m.nama + '" tidak tersedia pada tanggal ' + tanggalId(tgl, false) + '.' };
+                }
+                if (m.stok !== null && m.stok !== undefined) {
+                    var sisaStok = Math.max(0, Number(m.stok) - Number(m.terjual || 0));
+                    if (qty > sisaStok) {
+                        return { ok: false, pesan: 'Stok "' + m.nama + '" pada tanggal tersebut hanya tersisa ' + sisaStok + ' ' + m.unit + '.' };
+                    }
+                }
+
+                if (m.is_box) {
+                    totalBoxUtama += qty;
+                } else {
+                    totalPorsiTambahan += qty;
+                }
+                totalHargaHitung += qty * Number(m.harga);
+                itemValid.push({
+                    menu_id: m.id,
+                    nama_menu: m.nama,
+                    unit: m.unit,
+                    jumlah: qty,
+                    harga_satuan: Number(m.harga),
+                    subtotal: qty * Number(m.harga)
+                });
+            }
+
+            var minBox = CFG.MINIMAL_BOX || 10;
+            if (totalBoxUtama < minBox) {
+                return {
+                    ok: false,
+                    pesan: 'Pesanan minimal ' + minBox + ' box utama (Paket Nasi Box atau Nasi Pilihan). Saat ini baru ' + totalBoxUtama + ' box.'
+                };
+            }
+
+            var kapInfo = await this.getKapasitasTanggal(tgl);
+            if (totalBoxUtama > kapInfo.sisa) {
+                return {
+                    ok: false,
+                    pesan: 'Kuota dapur pada ' + tanggalId(tgl, false) + ' hanya tersisa ' + kapInfo.sisa + ' box (pesanan Anda ' + totalBoxUtama + ' box).'
+                };
+            }
+
+            var diskon = hitungDiskon(totalBoxUtama);
+            var nominalBayar = Math.max(0, totalHargaHitung - diskon);
+            var cfgToko = await this.getKonfigurasi();
+            var batasJam = Math.max(1, parseInt(cfgToko.batas_bayar_jam || '24', 10) || 24);
+            var bayarKedaluwarsa = new Date(Date.now() + batasJam * 3600000).toISOString();
+
+            if (isSupabaseReady) {
+                try {
+                    var rpcRes = await sb.rpc('buat_pesanan_katering', {
+                        p_nama_pelanggan: nama,
+                        p_no_wa: wa,
+                        p_tanggal_ambil: tgl,
+                        p_jam_ambil: valJam.jam,
+                        p_catatan: catatan,
+                        p_items: itemValid.map(function (x) { return { menu_id: x.menu_id, jumlah: x.jumlah }; })
+                    });
+
+                    if (!rpcRes.error && rpcRes.data) {
+                        if (!rpcRes.data.ok) {
+                            return { ok: false, pesan: rpcRes.data.pesan || 'Gagal membuat pesanan.' };
+                        }
+                        // Pastikan diskon, nominal_bayar, dan bayar_kedaluwarsa_pada tersimpan konsisten di Supabase
+                        if (rpcRes.data.id) {
+                            await sb.from('pesanan').update({
+                                total_box: totalBoxUtama,
+                                total_harga: totalHargaHitung,
+                                diskon: diskon,
+                                nominal_bayar: nominalBayar,
+                                bayar_kedaluwarsa_pada: bayarKedaluwarsa
+                            }).eq('id', rpcRes.data.id);
+                        }
+                        return Object.assign({}, rpcRes.data, {
+                            total_box: totalBoxUtama,
+                            total_harga: totalHargaHitung,
+                            diskon: diskon,
+                            nominal_bayar: nominalBayar
+                        });
+                    }
+                    if (rpcRes.error) {
+                        console.warn('Supabase RPC buat_pesanan_katering gagal:', rpcRes.error.message);
+                        return { ok: false, pesan: 'Gagal menyimpan pesanan ke database: ' + rpcRes.error.message };
+                    }
+                } catch (e) {
+                    console.warn('Error buatPesanan Supabase:', e);
+                    return { ok: false, pesan: 'Terjadi gangguan koneksi saat menyimpan pesanan. Silakan coba lagi.' };
+                }
             }
 
             // Fallback LocalStorage Transaction
-            var state = loadLocalState();
-            var kap = await this.getKapasitasTanggal(tanggal_ambil);
-            if (kap.box + total_box > (CFG.KAPASITAS_HARIAN || 120)) {
-                return { ok: false, pesan: 'Kapasitas dapur penuh untuk tanggal tersebut. Sisa kuota hanya ' + kap.sisa + ' box.' };
-            }
+            var state = getLocalState();
+            var kode = 'WRT-' + tgl.replace(/-/g, '') + '-' + Math.floor(100 + Math.random() * 900);
+            var token = 'tok-' + Math.random().toString(36).substring(2, 12) + Date.now().toString(36);
+            var newId = (state.pesanan.reduce(function (m, x) { return Math.max(m, x.id); }, 0)) + 1;
 
-            // Validasi menu & hitung total
-            var total_harga = 0;
-            var detailRecords = [];
-            for (var i = 0; i < items.length; i++) {
-                var it = items[i];
-                var m = (state.menu || []).find(function (x) { return x.id === parseInt(it.menu_id, 10); });
-                if (!m) return { ok: false, pesan: 'Menu tidak ditemukan.' };
-                var sub = m.harga * it.jumlah;
-                total_harga += sub;
-                detailRecords.push({
-                    menu_id: m.id,
-                    jumlah: it.jumlah,
-                    harga_satuan: m.harga,
-                    subtotal: sub,
-                    nama: m.nama
-                });
-            }
-
-            // Hitung diskon voucher kelipatan 50 box
-            var diskon = this.hitungDiskon(total_box);
-            var nominal_bayar = Math.max(0, total_harga - diskon);
-
-            var seq = (state.pesanan || []).filter(function (p) { return p.tanggal_ambil === tanggal_ambil; }).length + 1;
-            var kode = 'WRT-' + tanggal_ambil.replace(/-/g, '') + '-' + String(seq).padStart(3, '0');
-            var token_nota = 'tok_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
-            var newId = (state.pesanan || []).reduce(function (max, p) { return Math.max(max, p.id || 0); }, 0) + 1;
-
-            var newOrder = {
+            var pesananBaru = {
                 id: newId,
                 kode: kode,
                 nama_pelanggan: nama,
-                no_wa: no_wa,
-                tanggal_ambil: tanggal_ambil,
-                jam_ambil: jam_ambil + ':00',
-                total_box: total_box,
-                total_harga: total_harga,
-                diskon: diskon,
-                nominal_bayar: nominal_bayar,
-                status: 'Menunggu Konfirmasi',
-                status_bayar: 'belum_bayar',
-                token_nota: token_nota,
+                no_wa: wa,
+                tanggal_ambil: tgl,
+                jam_ambil: valJam.jam,
                 catatan: catatan,
+                total_box: totalBoxUtama,
+                total_porsi: totalPorsiTambahan,
+                total_harga: totalHargaHitung,
+                diskon: diskon,
+                nominal_bayar: nominalBayar,
+                status: 'Menunggu Konfirmasi',
+                metode_bayar: 'qris_statis',
+                status_bayar: 'belum_bayar',
+                bukti_bayar: null,
+                bukti_bayar_pada: null,
+                diverifikasi_oleh: null,
+                diverifikasi_pada: null,
+                dibayar_pada: null,
+                alasan_tolak: null,
+                bayar_kedaluwarsa_pada: bayarKedaluwarsa,
+                token_nota: token,
                 dibuat_pada: new Date().toISOString()
             };
 
-            state.pesanan = state.pesanan || [];
-            state.pesanan.push(newOrder);
-
-            state.detail_pesanan = state.detail_pesanan || [];
-            var detailId = state.detail_pesanan.reduce(function (max, d) { return Math.max(max, d.id || 0); }, 0);
-            detailRecords.forEach(function (dr) {
-                detailId++;
-                state.detail_pesanan.push({
-                    id: detailId,
-                    pesanan_id: newId,
-                    menu_id: dr.menu_id,
-                    jumlah: dr.jumlah,
-                    harga_satuan: dr.harga_satuan,
-                    subtotal: dr.subtotal
-                });
+            state.pesanan.unshift(pesananBaru);
+            var nextDetailId = (state.detail_pesanan.reduce(function (m, x) { return Math.max(m, x.id); }, 0)) + 1;
+            itemValid.forEach(function (d) {
+                state.detail_pesanan.push(Object.assign({ id: nextDetailId++, pesanan_id: newId }, d));
             });
 
             saveLocalState(state);
             return {
                 ok: true,
-                pesanan_id: newId,
+                id: newId,
                 kode: kode,
-                token_nota: token_nota,
-                total_box: total_box,
-                total_harga: total_harga,
+                token_nota: token,
+                total_box: totalBoxUtama,
+                total_harga: totalHargaHitung,
                 diskon: diskon,
-                nominal_bayar: nominal_bayar
+                nominal_bayar: nominalBayar
             };
         },
 
-        // Ambil Data Pesanan Lengkap Berdasarkan Kode & Token
+        // -------------------------------------------------------------
+        // 5. AMBIL PESANAN (NOTA, PEMBAYARAN, INVOICE, CEK STATUS)
+        // -------------------------------------------------------------
         getPesanan: async function (kode, token) {
             if (!kode) return null;
+            var kodeClean = String(kode).trim().toUpperCase();
+            var tokenClean = String(token || '').trim();
+            var isAdmin = !!this.getAdminSesi();
+
+            // Akses publik pelanggan wajib menyertakan token_nota yang valid (Temuan 3)
+            if (!tokenClean && !isAdmin) {
+                return null;
+            }
+
             if (isSupabaseReady) {
-                var query = supabaseClient.from('pesanan').select('*').eq('kode', kode);
-                if (token) query = query.eq('token_nota', token);
-                var { data: pList } = await query;
-                if (!pList || !pList.length) return null;
-                var p = pList[0];
+                try {
+                    var query = sb
+                        .from('pesanan')
+                        .select('*, detail_pesanan(*, menu(nama, foto, kategori))')
+                        .eq('kode', kodeClean);
 
-                var { data: details } = await supabaseClient
-                    .from('detail_pesanan')
-                    .select('jumlah, harga_satuan, subtotal, menu(nama, kategori)')
-                    .eq('pesanan_id', p.id);
+                    if (tokenClean) {
+                        query = query.eq('token_nota', tokenClean);
+                    }
 
-                var items = (details || []).map(function (d) {
+                    var res = await query.maybeSingle();
+                    if (!res.error && res.data) {
+                        var p = res.data;
+                        if (tokenClean && p.token_nota && p.token_nota !== tokenClean) {
+                            return null;
+                        }
+                        if (p.diskon === undefined || p.diskon === null) {
+                            p.diskon = hitungDiskon(p.total_box);
+                        }
+                        if (p.nominal_bayar === undefined || p.nominal_bayar === null) {
+                            p.nominal_bayar = Math.max(0, Number(p.total_harga || 0) - Number(p.diskon || 0));
+                        }
+
+                        // Cek kedaluwarsa otomatis bila belum bayar melewati batas waktu (Temuan 15)
+                        if (
+                            (p.status_bayar === 'belum_bayar' || p.status_bayar === 'menunggu') &&
+                            p.bayar_kedaluwarsa_pada &&
+                            new Date(p.bayar_kedaluwarsa_pada).getTime() < Date.now() &&
+                            p.status !== 'Dibatalkan'
+                        ) {
+                            p.status_bayar = 'kedaluwarsa';
+                            p.status = 'Dibatalkan';
+                            await sb.from('pesanan').update({
+                                status_bayar: 'kedaluwarsa',
+                                status: 'Dibatalkan'
+                            }).eq('id', p.id);
+                        }
+
+                        var detail = (p.detail_pesanan || []).map(function (d) {
+                            var kat = (d.menu && d.menu.kategori) || '';
+                            return {
+                                id: d.id,
+                                menu_id: d.menu_id,
+                                nama: d.nama_menu || (d.menu && d.menu.nama) || 'Menu #' + d.menu_id,
+                                foto: (d.menu && d.menu.foto) || null,
+                                kategori: kat,
+                                unit: d.unit || unitMenu(kat),
+                                jumlah: d.jumlah,
+                                harga_satuan: d.harga_satuan,
+                                subtotal: d.subtotal
+                            };
+                        });
+                        return { pesanan: p, detail: detail };
+                    }
+                } catch (e) {
+                    console.warn('Fallback getPesanan:', e);
+                }
+            }
+
+            var state = getLocalState();
+            var pLocal = (state.pesanan || []).find(function (x) {
+                return x.kode.toUpperCase() === kodeClean && (!tokenClean ? isAdmin : x.token_nota === tokenClean);
+            });
+            if (!pLocal) return null;
+
+            if (pLocal.diskon === undefined || pLocal.diskon === null) {
+                pLocal.diskon = hitungDiskon(pLocal.total_box);
+            }
+            if (pLocal.nominal_bayar === undefined || pLocal.nominal_bayar === null) {
+                pLocal.nominal_bayar = Math.max(0, Number(pLocal.total_harga || 0) - Number(pLocal.diskon || 0));
+            }
+
+            if (
+                (pLocal.status_bayar === 'belum_bayar' || pLocal.status_bayar === 'menunggu') &&
+                pLocal.bayar_kedaluwarsa_pada &&
+                new Date(pLocal.bayar_kedaluwarsa_pada).getTime() < Date.now() &&
+                pLocal.status !== 'Dibatalkan'
+            ) {
+                pLocal.status_bayar = 'kedaluwarsa';
+                pLocal.status = 'Dibatalkan';
+                saveLocalState(state);
+            }
+
+            var menuMap = {};
+            (state.menu || []).forEach(function (m) { menuMap[m.id] = m; });
+            var detailLocal = (state.detail_pesanan || [])
+                .filter(function (d) { return d.pesanan_id === pLocal.id; })
+                .map(function (d) {
+                    var m = menuMap[d.menu_id] || {};
                     return {
-                        nama: (d.menu && d.menu.nama) || 'Menu',
-                        kategori: (d.menu && d.menu.kategori) || '',
+                        id: d.id,
+                        menu_id: d.menu_id,
+                        nama: d.nama_menu || m.nama || ('Menu #' + d.menu_id),
+                        foto: m.foto || null,
+                        kategori: m.kategori || '',
+                        unit: d.unit || unitMenu(m.kategori || ''),
                         jumlah: d.jumlah,
                         harga_satuan: d.harga_satuan,
                         subtotal: d.subtotal
                     };
                 });
 
-                return { pesanan: p, detail: items };
-            }
-
-            // Fallback LocalStorage
-            var state = loadLocalState();
-            var p = (state.pesanan || []).find(function (x) {
-                if (x.kode !== kode) return false;
-                if (token && x.token_nota !== token) return false;
-                return true;
-            });
-            if (!p) return null;
-
-            var details = (state.detail_pesanan || []).filter(function (d) { return d.pesanan_id === p.id; });
-            var items = details.map(function (d) {
-                var m = (state.menu || []).find(function (x) { return x.id === d.menu_id; });
-                return {
-                    nama: m ? m.nama : 'Menu',
-                    kategori: m ? m.kategori : '',
-                    jumlah: d.jumlah,
-                    harga_satuan: d.harga_satuan,
-                    subtotal: d.subtotal
-                };
-            });
-            return { pesanan: p, detail: items };
+            return { pesanan: pLocal, detail: detailLocal };
         },
 
-        // Cari Pesanan di Halaman Cek Status (Kode + No WhatsApp)
         cariPesanan: async function (kode, no_wa) {
-            var normWa = (no_wa || '').replace(/\D/g, '');
-            if (normWa.startsWith('0')) normWa = '62' + normWa.slice(1);
+            var kodeClean = String(kode || '').trim().toUpperCase();
+            var waInput = normalisasiWa(no_wa);
+            if (!kodeClean || !waInput || waInput.length < 9) return null;
 
             if (isSupabaseReady) {
-                var { data } = await supabaseClient.from('pesanan').select('*').eq('kode', kode);
-                if (!data || !data.length) return null;
-                var p = data[0];
-                var dbWa = (p.no_wa || '').replace(/\D/g, '');
-                if (dbWa.startsWith('0')) dbWa = '62' + dbWa.slice(1);
-                if (dbWa !== normWa && p.no_wa !== no_wa) return null;
-                return this.getPesanan(kode, p.token_nota);
+                try {
+                    var res = await sb
+                        .from('pesanan')
+                        .select('*, detail_pesanan(*, menu(nama, foto, kategori))')
+                        .eq('kode', kodeClean)
+                        .maybeSingle();
+
+                    if (!res.error && res.data) {
+                        var pCloud = res.data;
+                        var waDb = normalisasiWa(pCloud.no_wa);
+                        if (waDb !== waInput) return null;
+                        return await this.getPesanan(pCloud.kode, pCloud.token_nota);
+                    }
+                } catch (e) {
+                    console.warn('Fallback cariPesanan:', e);
+                }
             }
 
-            // Fallback LocalStorage
-            var state = loadLocalState();
+            var state = getLocalState();
             var p = (state.pesanan || []).find(function (x) {
-                if (x.kode !== kode) return false;
-                var target = (x.no_wa || '').replace(/\D/g, '');
-                if (target.startsWith('0')) target = '62' + target.slice(1);
-                return target === normWa || x.no_wa === no_wa;
+                return x.kode.toUpperCase() === kodeClean && normalisasiWa(x.no_wa) === waInput;
             });
             if (!p) return null;
-            return this.getPesanan(kode, p.token_nota);
+            return await this.getPesanan(p.kode, p.token_nota);
         },
 
-        // Upload Bukti Bayar Pelanggan (QRIS)
-        uploadBuktiBayar: async function (kode, token, dataUrl) {
-            if (!dataUrl) return { ok: false, pesan: 'Pilih file bukti pembayaran.' };
+        // -------------------------------------------------------------
+        // 6. UNGGAH BUKTI PEMBAYARAN (DARI HALAMAN PEMBAYARAN)
+        // -------------------------------------------------------------
+        unggahBuktiBayar: async function (kode, token, dataUrlGambar) {
+            if (!kode || !token || !dataUrlGambar) {
+                return { ok: false, pesan: 'Data bukti pembayaran tidak lengkap.' };
+            }
+            var now = new Date().toISOString();
+
             if (isSupabaseReady) {
-                var { data, error } = await supabaseClient
-                    .from('pesanan')
-                    .update({
-                        bukti_bayar: dataUrl,
-                        bukti_bayar_pada: new Date().toISOString(),
-                        status_bayar: 'menunggu_verifikasi',
-                        alasan_tolak: null
-                    })
-                    .eq('kode', kode)
-                    .eq('token_nota', token);
-                if (error) return { ok: false, pesan: error.message };
-                return { ok: true, pesan: 'Bukti pembayaran berhasil diunggah. Menunggu verifikasi admin.' };
+                try {
+                    var cari = await sb
+                        .from('pesanan')
+                        .select('id, status, status_bayar, bayar_kedaluwarsa_pada')
+                        .eq('kode', kode)
+                        .eq('token_nota', token)
+                        .maybeSingle();
+
+                    if (!cari.error && cari.data) {
+                        if (cari.data.status === 'Dibatalkan' || cari.data.status_bayar === 'kedaluwarsa' || cari.data.status_bayar === 'dibatalkan') {
+                            return { ok: false, pesan: 'Pesanan ini sudah dibatalkan atau melewati batas waktu pembayaran.' };
+                        }
+                        if (cari.data.status_bayar === 'berhasil' || cari.data.status_bayar === 'lunas') {
+                            return { ok: false, pesan: 'Pembayaran pesanan ini sudah terverifikasi lunas.' };
+                        }
+
+                        var upd = await sb.from('pesanan').update({
+                            bukti_bayar: dataUrlGambar,
+                            bukti_bayar_pada: now,
+                            status_bayar: 'menunggu_verifikasi',
+                            alasan_tolak: null
+                        }).eq('id', cari.data.id);
+
+                        if (upd.error) {
+                            return { ok: false, pesan: 'Gagal menyimpan bukti bayar ke server: ' + upd.error.message };
+                        }
+
+                        await sb.from('verifikasi_log').insert({
+                            pesanan_id: cari.data.id,
+                            aksi: 'unggah_bukti',
+                            catatan: 'Pelanggan mengunggah bukti pembayaran QRIS.'
+                        });
+                        return { ok: true };
+                    }
+                } catch (e) {
+                    console.warn('Fallback unggahBuktiBayar:', e);
+                }
             }
 
-            // Fallback LocalStorage
-            var state = loadLocalState();
-            var p = (state.pesanan || []).find(function (x) { return x.kode === kode && x.token_nota === token; });
+            var state = getLocalState();
+            var p = (state.pesanan || []).find(function (x) {
+                return x.kode === kode && x.token_nota === token;
+            });
             if (!p) return { ok: false, pesan: 'Pesanan tidak ditemukan.' };
+            if (p.status === 'Dibatalkan' || p.status_bayar === 'kedaluwarsa' || p.status_bayar === 'dibatalkan') {
+                return { ok: false, pesan: 'Pesanan ini sudah dibatalkan atau kedaluwarsa.' };
+            }
 
-            p.bukti_bayar = dataUrl;
-            p.bukti_bayar_pada = new Date().toISOString();
+            p.bukti_bayar = dataUrlGambar;
+            p.bukti_bayar_pada = now;
             p.status_bayar = 'menunggu_verifikasi';
             p.alasan_tolak = null;
+
+            state.verifikasi_log.push({
+                id: state.verifikasi_log.length + 1,
+                pesanan_id: p.id,
+                admin_id: null,
+                aksi: 'unggah_bukti',
+                catatan: 'Pelanggan mengunggah bukti pembayaran QRIS.',
+                dibuat_pada: now
+            });
+
             saveLocalState(state);
-            return { ok: true, pesan: 'Bukti pembayaran berhasil diunggah. Menunggu verifikasi admin.' };
+            return { ok: true };
         },
 
-        // Ambil Konfigurasi Toko (QRIS Statis, dsb)
-        getKonfigurasiToko: async function () {
-            if (isSupabaseReady) {
-                var { data } = await supabaseClient.from('konfigurasi_toko').select('*');
-                var res = {};
-                (data || []).forEach(function (row) { res[row.kunci] = row.nilai; });
-                return res;
-            }
-            var state = loadLocalState();
-            return state.konfigurasi_toko || {};
-        },
-
-        // Simpan Konfigurasi Toko
-        simpanKonfigurasiToko: async function (kunci, nilai) {
-            if (isSupabaseReady) {
-                await supabaseClient.from('konfigurasi_toko').upsert({ kunci: kunci, nilai: nilai, diubah_pada: new Date().toISOString() });
-                return true;
-            }
-            var state = loadLocalState();
-            state.konfigurasi_toko = state.konfigurasi_toko || {};
-            state.konfigurasi_toko[kunci] = nilai;
-            saveLocalState(state);
-            return true;
-        },
-
-        // -----------------------------------------------------------------
-        // AREA ADMIN & OTORISASI
-        // -----------------------------------------------------------------
+        // -------------------------------------------------------------
+        // 7. AUTENTIKASI & SESI ADMIN (TEMUAN 2)
+        // -------------------------------------------------------------
         loginAdmin: async function (username, password) {
+            var u = String(username || '').trim();
+            var p = String(password || '');
+            if (!u || !p) {
+                return { ok: false, pesan: 'Masukkan username dan password.' };
+            }
+
+            var LEGACY_SEED_BCRYPT = '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi';
+
             if (isSupabaseReady) {
-                var { data, error } = await supabaseClient.from('admin').select('*').eq('username', username);
-                if (error) {
-                    console.error('Supabase query error (admin):', error);
-                    if (error.code === '42501') {
-                        return { 
-                            ok: false, 
-                            pesan: 'Supabase Permission Denied (42501): Role "anon" belum diberi hak akses tabel admin. Silakan jalankan query GRANT di Supabase SQL Editor.' 
-                        };
+                try {
+                    var res = await sb.from('admin').select('*').eq('username', u).maybeSingle();
+                    if (!res.error && res.data) {
+                        var adm = res.data;
+                        var hash = String(adm.password_hash || '');
+                        var cocok = (hash === p) || (hash === LEGACY_SEED_BCRYPT && p === 'admin123');
+                        if (cocok) {
+                            var now = new Date().toISOString();
+                            await sb.from('admin').update({ terakhir_login: now }).eq('id', adm.id);
+                            adm.terakhir_login = now;
+                            var sesiClean = sanitasiObjekAdmin(adm);
+                            localStorage.setItem(SESSION_KEY, JSON.stringify(sesiClean));
+                            await this.catatAktivitas('login', 'Login berhasil ke dashboard admin');
+                            return { ok: true, admin: sesiClean };
+                        }
+                        return { ok: false, pesan: 'Username atau password salah.' };
                     }
-                    return { ok: false, pesan: 'Database Error (' + (error.code || 'RLS') + '): ' + error.message };
+                } catch (e) {
+                    console.warn('Fallback loginAdmin:', e);
                 }
-                if (!data || !data.length) return { ok: false, pesan: 'Username atau password salah.' };
-                var adm = data[0];
-                var hash = (adm.password_hash || '').trim();
-                var p = (password || '').trim();
-                var isMatch = (hash === p) ||
-                              (p === 'admin123' && (hash === 'admin123' || hash.startsWith('$2y$') || hash.startsWith('$2a$') || hash.startsWith('$2b$'))) ||
-                              (hash === '$2y$10$7JWVzKuMWCmQRLEc2DbNY.W1yOOhMyRwzceTC4sKzLs5erIgyaLjS' && p === 'admin123');
-
-                if (!isMatch) {
-                    return { ok: false, pesan: 'Username atau password salah.' };
-                }
-                var sesi = {
-                    id: adm.id,
-                    username: adm.username,
-                    nama: adm.nama,
-                    role: adm.role || 'admin',
-                    foto: adm.foto || null,
-                    bahasa: adm.bahasa || 'id'
-                };
-                sessionStorage.setItem(SESSION_KEY, JSON.stringify(sesi));
-                return { ok: true, admin: sesi };
             }
 
-            // Fallback LocalStorage
-            var state = loadLocalState();
-            var adm = (state.admin || []).find(function (a) { return a.username === username; });
-            if (!adm) {
-                return { ok: false, pesan: 'Username atau password salah.' };
-            }
-            var hash = (adm.password_hash || '').trim();
-            var p = (password || '').trim();
-            var isMatch = (hash === p) ||
-                          (p === 'admin123' && (hash === 'admin123' || hash.startsWith('$2y$') || hash.startsWith('$2a$') || hash.startsWith('$2b$')));
-            if (!isMatch) {
-                return { ok: false, pesan: 'Username atau password salah.' };
-            }
-            var sesi = {
-                id: adm.id,
-                username: adm.username,
-                nama: adm.nama,
-                role: adm.role || 'admin',
-                foto: adm.foto || null,
-                bahasa: adm.bahasa || 'id'
-            };
-            sessionStorage.setItem(SESSION_KEY, JSON.stringify(sesi));
-            return { ok: true, admin: sesi };
+            var state = getLocalState();
+            var admLocal = (state.admin || []).find(function (a) { return a.username === u; });
+            if (!admLocal) return { ok: false, pesan: 'Username atau password salah.' };
+
+            var hashL = String(admLocal.password_hash || '');
+            var cocokL = (hashL === p) || (hashL === LEGACY_SEED_BCRYPT && p === 'admin123');
+            if (!cocokL) return { ok: false, pesan: 'Username atau password salah.' };
+
+            admLocal.terakhir_login = new Date().toISOString();
+            saveLocalState(state);
+            var sesiLocalClean = sanitasiObjekAdmin(admLocal);
+            localStorage.setItem(SESSION_KEY, JSON.stringify(sesiLocalClean));
+            await this.catatAktivitas('login', 'Login berhasil ke dashboard admin');
+            return { ok: true, admin: sesiLocalClean };
         },
 
         getAdminSesi: function () {
             try {
-                var raw = sessionStorage.getItem(SESSION_KEY);
-                return raw ? JSON.parse(raw) : null;
+                var raw = localStorage.getItem(SESSION_KEY);
+                return raw ? sanitasiObjekAdmin(JSON.parse(raw)) : null;
             } catch (e) {
                 return null;
             }
@@ -737,54 +1107,147 @@
         },
 
         logoutAdmin: function () {
-            sessionStorage.removeItem(SESSION_KEY);
-            return true;
+            localStorage.removeItem(SESSION_KEY);
         },
 
-        // Daftar Pesanan Admin (Filter, Pencarian & Pagination)
-        getDaftarPemesan: async function (filter) {
-            filter = filter || {};
-            var q = (filter.q || '').toLowerCase();
-            var tgl = filter.tanggal || '';
-            var status = filter.status || '';
-            var hal = parseInt(filter.hal, 10) || 1;
-            var per = parseInt(filter.per, 10) || 10;
+        catatAktivitas: async function (aksi, keterangan) {
+            var sesi = this.getAdminSesi();
+            var adminId = (sesi && sesi.id) ? sesi.id : 1;
+            var now = new Date().toISOString();
+
+            if (isSupabaseReady && sesi && sesi.id) {
+                try {
+                    await sb.from('aktivitas_admin').insert({
+                        admin_id: adminId,
+                        aksi: String(aksi || 'aksi_admin'),
+                        keterangan: String(keterangan || ''),
+                        dibuat_pada: now
+                    });
+                } catch (e) {
+                    console.warn('Gagal mencatat aktivitas ke Supabase:', e);
+                }
+            }
+
+            var state = getLocalState();
+            if (!Array.isArray(state.aktivitas)) state.aktivitas = [];
+            state.aktivitas.unshift({
+                id: state.aktivitas.length + 1,
+                admin_id: adminId,
+                aksi: String(aksi || 'aksi_admin'),
+                keterangan: String(keterangan || ''),
+                dibuat_pada: now
+            });
+            saveLocalState(state);
+        },
+
+        // -------------------------------------------------------------
+        // 8. OPERASI ADMIN: PESANAN, REKAP, VERIFIKASI, STATUS MASAK
+        // -------------------------------------------------------------
+        getRekapBulan: async function (tahun, bulan) {
+            var awal = tahun + '-' + String(bulan).padStart(2, '0') + '-01';
+            var lastDay = new Date(tahun, bulan, 0).getDate();
+            var akhir = tahun + '-' + String(bulan).padStart(2, '0') + '-' + String(lastDay).padStart(2, '0');
+            var map = {};
 
             if (isSupabaseReady) {
                 try {
-                    var query = supabaseClient
+                    var res = await sb
                         .from('pesanan')
-                        .select('*, detail_pesanan(*, menu(nama))');
-                    if (tgl) {
-                        query = query.eq('tanggal_ambil', tgl);
-                    }
-                    if (status) {
-                        query = query.eq('status', status);
-                    }
-                    if (q) {
-                        query = query.or('kode.ilike.%' + q + '%,nama_pelanggan.ilike.%' + q + '%');
-                    }
-                    var { data, error } = await query
-                        .order('tanggal_ambil', { ascending: false })
-                        .order('id', { ascending: false });
+                        .select('tanggal_ambil, total_box, status, status_bayar')
+                        .gte('tanggal_ambil', awal)
+                        .lte('tanggal_ambil', akhir)
+                        .neq('status', 'Dibatalkan')
+                        .not('status_bayar', 'in', '("gagal","kedaluwarsa","dibatalkan")');
 
-                    if (!error && data) {
-                        var total = data.length;
-                        var totalHal = Math.max(1, Math.ceil(total / per));
-                        hal = Math.min(hal, totalHal);
-                        var offset = (hal - 1) * per;
-                        var slice = data.slice(offset, offset + per);
+                    if (!res.error && res.data) {
+                        res.data.forEach(function (r) {
+                            if (!map[r.tanggal_ambil]) map[r.tanggal_ambil] = { box: 0, pesanan: 0 };
+                            map[r.tanggal_ambil].box += Number(r.total_box || 0);
+                            map[r.tanggal_ambil].pesanan += 1;
+                        });
+                        return map;
+                    }
+                } catch (e) {
+                    console.warn('Fallback getRekapBulan:', e);
+                }
+            }
 
-                        var hasil = slice.map(function (p) {
-                            var det = (p.detail_pesanan || []).map(function (d) {
+            var state = getLocalState();
+            (state.pesanan || []).forEach(function (p) {
+                if (
+                    p.tanggal_ambil >= awal &&
+                    p.tanggal_ambil <= akhir &&
+                    p.status !== 'Dibatalkan' &&
+                    ['gagal', 'kedaluwarsa', 'dibatalkan'].indexOf(p.status_bayar) === -1
+                ) {
+                    if (!map[p.tanggal_ambil]) map[p.tanggal_ambil] = { box: 0, pesanan: 0 };
+                    map[p.tanggal_ambil].box += Number(p.total_box || 0);
+                    map[p.tanggal_ambil].pesanan += 1;
+                }
+            });
+            return map;
+        },
+
+        getDaftarPemesan: async function (filter) {
+            filter = filter || {};
+            var q = (filter.q || '').trim().toLowerCase();
+            var tgl = filter.tanggal || '';
+            var st = filter.status || '';
+            var sbFilter = filter.status_bayar || '';
+            var urut = filter.urut || '';
+            var hal = Math.max(1, Number(filter.hal || 1));
+            var per = Math.max(1, Number(filter.per || 10));
+
+            if (isSupabaseReady) {
+                try {
+                    var query = sb
+                        .from('pesanan')
+                        .select('*, detail_pesanan(*, menu(nama, kategori))', { count: 'exact' });
+
+                    if (tgl) query = query.eq('tanggal_ambil', tgl);
+                    if (st) query = query.eq('status', st);
+                    if (sbFilter) {
+                        if (Array.isArray(sbFilter)) {
+                            query = query.in('status_bayar', sbFilter);
+                        } else {
+                            query = query.eq('status_bayar', sbFilter);
+                        }
+                    }
+                    if (q) query = query.or('kode.ilike.%' + q + '%,nama_pelanggan.ilike.%' + q + '%');
+
+                    if (urut === 'terbaru') {
+                        query = query.order('dibuat_pada', { ascending: false });
+                    } else {
+                        query = query
+                            .order('tanggal_ambil', { ascending: false })
+                            .order('jam_ambil', { ascending: true })
+                            .order('id', { ascending: false });
+                    }
+
+                    var offset = (hal - 1) * per;
+                    var res = await query.range(offset, offset + per - 1);
+
+                    if (!res.error && res.data) {
+                        var items = res.data.map(function (p) {
+                            var dList = (p.detail_pesanan || []).map(function (d) {
+                                var kat = (d.menu && d.menu.kategori) || '';
+                                var u = d.unit || unitMenu(kat);
                                 return {
-                                    nama: (d.menu && d.menu.nama) ? d.menu.nama : 'Menu #' + d.menu_id,
+                                    nama: d.nama_menu || (d.menu && d.menu.nama) || ('Menu #' + d.menu_id),
+                                    unit: u,
                                     jumlah: d.jumlah,
+                                    harga_satuan: d.harga_satuan,
+                                    subtotal_angka: d.subtotal,
                                     harga: rupiah(d.harga_satuan),
                                     subtotal: rupiah(d.subtotal)
                                 };
                             });
-                            var ringkas = det.map(function (d) { return d.nama + ' x' + d.jumlah; }).join(', ');
+                            var ringkas = dList.map(function (x) { return x.nama + ' (' + x.jumlah + ' ' + x.unit + ')'; }).join(', ');
+                            var diskonVal = (p.diskon !== undefined && p.diskon !== null) ? Number(p.diskon) : hitungDiskon(p.total_box);
+                            var nominalVal = (p.nominal_bayar !== undefined && p.nominal_bayar !== null)
+                                ? Number(p.nominal_bayar)
+                                : Math.max(0, Number(p.total_harga || 0) - diskonVal);
+
                             return {
                                 id: p.id,
                                 kode: p.kode,
@@ -792,410 +1255,727 @@
                                 no_wa: p.no_wa,
                                 tanggal_ambil: p.tanggal_ambil,
                                 jam_ambil: p.jam_ambil,
-                                total_box: p.total_box,
-                                total_harga: p.total_harga,
+                                catatan: p.catatan || '',
+                                total_box: Number(p.total_box || 0),
+                                total_harga: Number(p.total_harga || 0),
+                                diskon: diskonVal,
+                                nominal_bayar: nominalVal,
                                 status: p.status,
-                                status_bayar: p.status_bayar,
+                                status_bayar: p.status_bayar || 'belum_bayar',
+                                bukti_bayar: p.bukti_bayar || null,
+                                bukti_bayar_pada: p.bukti_bayar_pada || null,
+                                alasan_tolak: p.alasan_tolak || null,
+                                diverifikasi_pada: p.diverifikasi_pada || null,
+                                dibuat_pada: p.dibuat_pada || null,
                                 token_nota: p.token_nota,
                                 ringkas: ringkas,
-                                items: det
+                                items: dList
                             };
                         });
-                        return { items: hasil, total: total, hal: hal, totalHal: totalHal, offset: offset };
-                    }
-                } catch (e) {
-                    console.warn('Supabase getDaftarPemesan error:', e);
-                }
-            }
-
-            var state = loadLocalState();
-            var list = state.pesanan || [];
-
-            if (q) {
-                list = list.filter(function (p) {
-                    return (p.kode || '').toLowerCase().includes(q) || (p.nama_pelanggan || '').toLowerCase().includes(q);
-                });
-            }
-            if (tgl) {
-                list = list.filter(function (p) { return p.tanggal_ambil === tgl; });
-            }
-            if (status) {
-                list = list.filter(function (p) { return p.status === status; });
-            }
-
-            // Urutkan tanggal ambil desc, id desc
-            list.sort(function (a, b) {
-                return (b.tanggal_ambil || '').localeCompare(a.tanggal_ambil || '') || (b.id - a.id);
-            });
-
-            var total = list.length;
-            var totalHal = Math.max(1, Math.ceil(total / per));
-            hal = Math.min(hal, totalHal);
-            var offset = (hal - 1) * per;
-            var slice = list.slice(offset, offset + per);
-
-            // Rincian menu
-            var detailMap = {};
-            (state.detail_pesanan || []).forEach(function (d) {
-                var m = (state.menu || []).find(function (x) { return x.id === d.menu_id; });
-                detailMap[d.pesanan_id] = detailMap[d.pesanan_id] || [];
-                detailMap[d.pesanan_id].push({
-                    nama: m ? m.nama : 'Menu',
-                    jumlah: d.jumlah,
-                    harga: rupiah(d.harga_satuan),
-                    subtotal: rupiah(d.subtotal)
-                });
-            });
-
-            var hasil = slice.map(function (p) {
-                var det = detailMap[p.id] || [];
-                var ringkas = det.map(function (d) { return d.nama + ' x' + d.jumlah; }).join(', ');
-                return {
-                    id: p.id,
-                    kode: p.kode,
-                    nama_pelanggan: p.nama_pelanggan,
-                    no_wa: p.no_wa,
-                    tanggal_ambil: p.tanggal_ambil,
-                    jam_ambil: p.jam_ambil,
-                    total_box: p.total_box,
-                    total_harga: p.total_harga,
-                    status: p.status,
-                    status_bayar: p.status_bayar,
-                    token_nota: p.token_nota,
-                    ringkas: ringkas,
-                    items: det
-                };
-            });
-
-            return { items: hasil, total: total, hal: hal, totalHal: totalHal, offset: offset };
-        },
-
-        // Ubah Status Katering (Mulai Masak / Siap Diambil)
-        ubahStatusKatering: async function (id, statusBaru) {
-            var numId = parseInt(id, 10);
-            if (isSupabaseReady) {
-                try {
-                    var { data, error } = await supabaseClient
-                        .from('pesanan')
-                        .update({ status: statusBaru, diubah_pada: new Date().toISOString() })
-                        .eq('id', numId)
-                        .select('no_wa, nama_pelanggan, total_box, kode')
-                        .single();
-                    if (!error && data) {
-                        var state = loadLocalState();
-                        var lp = (state.pesanan || []).find(function (x) { return x.id === numId; });
-                        if (lp) { lp.status = statusBaru; saveLocalState(state); }
+                        var total = res.count || items.length;
                         return {
-                            ok: true,
-                            wa_url: statusBaru === 'Siap Diambil' ? linkWa(data.no_wa, data.nama_pelanggan, data.total_box, data.kode) : ''
+                            items: items,
+                            total: total,
+                            hal: hal,
+                            totalHal: Math.max(1, Math.ceil(total / per)),
+                            offset: offset
                         };
                     }
                 } catch (e) {
-                    console.warn('Supabase ubahStatusKatering error:', e);
+                    console.warn('Fallback getDaftarPemesan:', e);
                 }
             }
 
-            var state = loadLocalState();
-            var p = (state.pesanan || []).find(function (x) { return x.id === numId; });
-            if (!p) return { ok: false, pesan: 'Pesanan tidak ditemukan.' };
-            p.status = statusBaru;
-            saveLocalState(state);
-            return { ok: true, wa_url: statusBaru === 'Siap Diambil' ? linkWa(p.no_wa, p.nama_pelanggan, p.total_box, p.kode) : '' };
-        },
+            var state = getLocalState();
+            var menuMap = {};
+            (state.menu || []).forEach(function (m) { menuMap[m.id] = m; });
 
-        // Verifikasi Pembayaran (Setujui LUNAS / Tolak)
-        verifikasiPembayaran: async function (pesananId, aksi, alasan) {
-            var sesi = this.getAdminSesi() || { id: 1, nama: 'Admin Warteg' };
-            var numId = parseInt(pesananId, 10);
-            var statusBaru = aksi === 'setuju' ? 'berhasil' : 'ditolak';
-
-            if (isSupabaseReady) {
-                try {
-                    var updatePayload = {
-                        status_bayar: statusBaru,
-                        diverifikasi_pada: new Date().toISOString()
-                    };
-                    if (aksi === 'tolak') {
-                        updatePayload.alasan_tolak = alasan || 'Bukti pembayaran tidak sesuai.';
-                    } else {
-                        updatePayload.alasan_tolak = null;
+            var filtered = (state.pesanan || []).filter(function (p) {
+                if (tgl && p.tanggal_ambil !== tgl) return false;
+                if (st && p.status !== st) return false;
+                if (sbFilter) {
+                    var sbCur = p.status_bayar || 'belum_bayar';
+                    if (Array.isArray(sbFilter)) {
+                        if (sbFilter.indexOf(sbCur) === -1) return false;
+                    } else if (sbCur !== sbFilter) {
+                        return false;
                     }
-                    await supabaseClient
-                        .from('pesanan')
-                        .update(updatePayload)
-                        .eq('id', numId);
-                } catch (e) {
-                    console.warn('Supabase verifikasiPembayaran error:', e);
                 }
-            }
-
-            var state = loadLocalState();
-            var p = (state.pesanan || []).find(function (x) { return x.id === numId; });
-            if (!p) return { ok: false, pesan: 'Pesanan tidak ditemukan.' };
-
-            var statusLama = p.status_bayar;
-
-            p.status_bayar = statusBaru;
-            p.admin_verifikator_id = sesi.id;
-            p.diverifikasi_pada = new Date().toISOString();
-            if (aksi === 'tolak') p.alasan_tolak = alasan || 'Bukti pembayaran tidak sesuai.';
-            else p.alasan_tolak = null;
-
-            state.verifikasi_log = state.verifikasi_log || [];
-            state.verifikasi_log.push({
-                id: Date.now(),
-                pesanan_id: p.id,
-                kode_pesanan: p.kode,
-                admin_id: sesi.id,
-                admin_nama: sesi.nama,
-                aksi: aksi,
-                alasan: alasan || null,
-                status_lama: statusLama,
-                status_baru: statusBaru,
-                dibuat_pada: new Date().toISOString()
+                if (q) {
+                    var matchKode = (p.kode || '').toLowerCase().indexOf(q) >= 0;
+                    var matchNama = (p.nama_pelanggan || '').toLowerCase().indexOf(q) >= 0;
+                    if (!matchKode && !matchNama) return false;
+                }
+                return true;
             });
 
-            saveLocalState(state);
-            return { ok: true, pesan: 'Pembayaran ' + p.kode + (aksi === 'setuju' ? ' berhasil disetujui (LUNAS).' : ' ditolak.') };
-        },
-
-        // Toggle Aktif/Nonaktif Menu Harian
-        toggleMenuHarian: async function (menuId, tanggal, tersedia) {
-            var state = loadLocalState();
-            state.menu_harian = state.menu_harian || [];
-            var h = state.menu_harian.find(function (x) {
-                return x.menu_id === parseInt(menuId, 10) && x.tanggal === tanggal;
-            });
-            if (h) {
-                h.tersedia = !!tersedia;
-            } else {
-                state.menu_harian.push({
-                    id: Date.now(),
-                    menu_id: parseInt(menuId, 10),
-                    tanggal: tanggal,
-                    tersedia: !!tersedia,
-                    stok: 120
+            if (urut === 'terbaru') {
+                filtered.sort(function (a, b) {
+                    return String(b.dibuat_pada || '').localeCompare(String(a.dibuat_pada || ''));
                 });
             }
-            saveLocalState(state);
-            return { ok: true };
-        },
 
-        // Simpan / Edit Menu Master & Harian
-        simpanMenu: async function (menuData) {
-            var state = loadLocalState();
-            state.menu = state.menu || [];
-            var mid = parseInt(menuData.id, 10);
-            var m = state.menu.find(function (x) { return x.id === mid; });
+            var totalL = filtered.length;
+            var totalHalL = Math.max(1, Math.ceil(totalL / per));
+            if (hal > totalHalL) hal = totalHalL;
+            var offsetL = (hal - 1) * per;
 
-            if (m) {
-                m.nama = menuData.nama || m.nama;
-                m.kategori = menuData.kategori || m.kategori;
-                m.harga = parseInt(menuData.harga, 10) || m.harga;
-                if (menuData.aktif !== undefined) m.aktif = !!menuData.aktif;
-                if (menuData.foto) m.foto = menuData.foto;
-            } else {
-                mid = state.menu.reduce(function (max, x) { return Math.max(max, x.id || 0); }, 0) + 1;
-                m = {
-                    id: mid,
-                    nama: menuData.nama,
-                    kategori: menuData.kategori || 'nasi',
-                    harga: parseInt(menuData.harga, 10) || 15000,
-                    foto: menuData.foto || null,
-                    aktif: true
-                };
-                state.menu.push(m);
-            }
-
-            // Update stok menu harian jika ada tanggal
-            if (menuData.tanggal) {
-                state.menu_harian = state.menu_harian || [];
-                var h = state.menu_harian.find(function (x) { return x.menu_id === mid && x.tanggal === menuData.tanggal; });
-                var stokVal = menuData.stok !== '' && menuData.stok !== null ? parseInt(menuData.stok, 10) : null;
-                if (h) {
-                    h.stok = stokVal;
-                    h.tersedia = true;
-                    if (menuData.foto) h.foto = menuData.foto;
-                } else {
-                    state.menu_harian.push({
-                        id: Date.now(),
-                        menu_id: mid,
-                        tanggal: menuData.tanggal,
-                        tersedia: true,
-                        stok: stokVal,
-                        foto: menuData.foto || null
+            var paged = filtered.slice(offsetL, offsetL + per).map(function (p) {
+                var dList = (state.detail_pesanan || [])
+                    .filter(function (d) { return d.pesanan_id === p.id; })
+                    .map(function (d) {
+                        var m = menuMap[d.menu_id] || {};
+                        var u = d.unit || unitMenu(m.kategori || '');
+                        return {
+                            nama: d.nama_menu || m.nama || ('Menu #' + d.menu_id),
+                            unit: u,
+                            jumlah: d.jumlah,
+                            harga_satuan: d.harga_satuan,
+                            subtotal_angka: d.subtotal,
+                            harga: rupiah(d.harga_satuan),
+                            subtotal: rupiah(d.subtotal)
+                        };
                     });
-                }
+                var ringkas = dList.map(function (x) { return x.nama + ' (' + x.jumlah + ' ' + x.unit + ')'; }).join(', ');
+                var diskonVal = (p.diskon !== undefined && p.diskon !== null) ? Number(p.diskon) : hitungDiskon(p.total_box);
+                var nominalVal = (p.nominal_bayar !== undefined && p.nominal_bayar !== null)
+                    ? Number(p.nominal_bayar)
+                    : Math.max(0, Number(p.total_harga || 0) - diskonVal);
+
+                return Object.assign({}, p, {
+                    catatan: p.catatan || '',
+                    diskon: diskonVal,
+                    nominal_bayar: nominalVal,
+                    status_bayar: p.status_bayar || 'belum_bayar',
+                    ringkas: ringkas,
+                    items: dList
+                });
+            });
+
+            return { items: paged, total: totalL, hal: hal, totalHal: totalHalL, offset: offsetL };
+        },
+
+        ubahStatusKatering: async function (pesananId, statusBaru) {
+            var validStatuses = ['Menunggu Konfirmasi', 'Sedang Dimasak', 'Siap Diambil', 'Selesai', 'Dibatalkan'];
+            if (validStatuses.indexOf(statusBaru) < 0) {
+                return { ok: false, pesan: 'Status pesanan tidak valid.' };
             }
 
-            saveLocalState(state);
-            return { ok: true, menu: m };
-        },
-
-        // Hapus Menu Master
-        hapusMenu: async function (menuId) {
-            var state = loadLocalState();
-            var mid = parseInt(menuId, 10);
-            state.menu = (state.menu || []).filter(function (x) { return x.id !== mid; });
-            state.menu_harian = (state.menu_harian || []).filter(function (x) { return x.menu_id !== mid; });
-            saveLocalState(state);
-            return { ok: true };
-        },
-
-        // Rekap Bulanan untuk Kalender Admin
-        getRekapBulan: async function (tahun, bulan) {
-            var prefix = tahun + '-' + String(bulan).padStart(2, '0');
-            var result = {};
+            var p = null;
+            var now = new Date().toISOString();
 
             if (isSupabaseReady) {
                 try {
-                    var startDate = prefix + '-01';
-                    var lastDay = new Date(tahun, bulan, 0).getDate();
-                    var endDate = prefix + '-' + String(lastDay).padStart(2, '0');
-                    var { data, error } = await supabaseClient
-                        .from('pesanan')
-                        .select('tanggal_ambil, total_box, status_bayar')
-                        .gte('tanggal_ambil', startDate)
-                        .lte('tanggal_ambil', endDate)
-                        .neq('status_bayar', 'dibatalkan');
-                    if (!error && data) {
-                        data.forEach(function (p) {
-                            var tgl = p.tanggal_ambil;
-                            result[tgl] = result[tgl] || { box: 0, pesanan: 0 };
-                            result[tgl].box += (p.total_box || 0);
-                            result[tgl].pesanan++;
-                        });
-                        return result;
+                    var sel = await sb.from('pesanan').select('*').eq('id', pesananId).maybeSingle();
+                    if (sel.error || !sel.data) {
+                        return { ok: false, pesan: 'Pesanan tidak ditemukan di database.' };
                     }
+                    p = sel.data;
+
+                    // Wajib lunas sebelum mulai dimasak (Temuan 16)
+                    if (statusBaru === 'Sedang Dimasak' && p.status_bayar !== 'berhasil' && p.status_bayar !== 'lunas') {
+                        return {
+                            ok: false,
+                            pesan: 'Pesanan ' + p.kode + ' belum berstatus Lunas. Harap verifikasi pembayaran terlebih dahulu sebelum mulai memasak.'
+                        };
+                    }
+
+                    var payloadUpd = { status: statusBaru, diubah_pada: now };
+                    if (statusBaru === 'Selesai') payloadUpd.diserahkan_pada = now;
+
+                    var upd = await sb.from('pesanan').update(payloadUpd).eq('id', pesananId);
+                    if (upd.error) {
+                        // Fallback bila kolom diubah_pada / diserahkan_pada belum ada di Supabase remote (Temuan 6)
+                        var updFallback = await sb.from('pesanan').update({ status: statusBaru }).eq('id', pesananId);
+                        if (updFallback.error) {
+                            return { ok: false, pesan: 'Gagal memperbarui status: ' + updFallback.error.message };
+                        }
+                    }
+
+                    p.status = statusBaru;
                 } catch (e) {
-                    console.warn('Supabase getRekapBulan error:', e);
+                    console.warn('Error ubahStatusKatering Supabase:', e);
+                    return { ok: false, pesan: 'Gagal menghubungi database saat mengubah status.' };
+                }
+            } else {
+                var state = getLocalState();
+                p = (state.pesanan || []).find(function (x) { return x.id === Number(pesananId); });
+                if (!p) return { ok: false, pesan: 'Pesanan tidak ditemukan.' };
+
+                if (statusBaru === 'Sedang Dimasak' && p.status_bayar !== 'berhasil' && p.status_bayar !== 'lunas') {
+                    return {
+                        ok: false,
+                        pesan: 'Pesanan ' + p.kode + ' belum berstatus Lunas. Harap verifikasi pembayaran terlebih dahulu sebelum mulai memasak.'
+                    };
+                }
+
+                p.status = statusBaru;
+                p.diubah_pada = now;
+                if (statusBaru === 'Selesai') p.diserahkan_pada = now;
+                saveLocalState(state);
+            }
+
+            await this.catatAktivitas('ubah_status', 'Mengubah status ' + p.kode + ' menjadi ' + statusBaru);
+
+            var waUrl = null;
+            if (statusBaru === 'Siap Diambil' && p.no_wa) {
+                var cleanWa = normalisasiWa(p.no_wa);
+                var pesanWa = 'Halo *' + p.nama_pelanggan + '*,\n\n'
+                    + 'Pesanan nasi box Anda di *' + (CFG.NAMA_WARTEG || 'Warteg Pak Sanam') + '* dengan kode *' + p.kode + '* (' + p.total_box + ' box) sudah *SIAP DIAMBIL*.\n\n'
+                    + 'Silakan diambil sesuai jadwal:\n'
+                    + 'Tanggal: ' + tanggalId(p.tanggal_ambil) + '\n'
+                    + 'Jam: ' + jamPendek(p.jam_ambil) + ' WIB\n'
+                    + 'Lokasi: ' + (CFG.ALAMAT_WARTEG || 'Jalan BDN 1 Cilandak Barat Jakarta Selatan') + '\n\n'
+                    + 'Terima kasih!';
+                waUrl = 'https://wa.me/' + cleanWa + '?text=' + encodeURIComponent(pesanWa);
+            }
+
+            return { ok: true, status: statusBaru, wa_url: waUrl };
+        },
+
+        verifikasiPembayaran: async function (pesananId, aksi, alasan) {
+            var sesi = this.getAdminSesi();
+            var adminId = (sesi && sesi.id) || 1;
+            var now = new Date().toISOString();
+
+            if (aksi === 'tolak' && !String(alasan || '').trim()) {
+                return { ok: false, pesan: 'Alasan penolakan wajib diisi.' };
+            }
+
+            if (isSupabaseReady) {
+                try {
+                    var sel = await sb.from('pesanan').select('*').eq('id', pesananId).maybeSingle();
+                    if (sel.error || !sel.data) {
+                        return { ok: false, pesan: 'Pesanan tidak ditemukan di database.' };
+                    }
+                    var pCloud = sel.data;
+
+                    // Cegah setujui jika bukti bayar kosong (Temuan 7)
+                    if (aksi === 'terima' && !pCloud.bukti_bayar) {
+                        return { ok: false, pesan: 'Tidak dapat menyetujui pembayaran karena bukti bayar belum tersedia.' };
+                    }
+
+                    var updateData = aksi === 'terima'
+                        ? {
+                            status_bayar: 'berhasil',
+                            dibayar_pada: now,
+                            diverifikasi_oleh: adminId,
+                            diverifikasi_pada: now,
+                            alasan_tolak: null
+                        }
+                        : {
+                            status_bayar: 'ditolak',
+                            diverifikasi_oleh: adminId,
+                            diverifikasi_pada: now,
+                            alasan_tolak: String(alasan || '').trim()
+                        };
+
+                    var upd = await sb.from('pesanan').update(updateData).eq('id', pesananId);
+                    if (upd.error) {
+                        return { ok: false, pesan: 'Gagal memperbarui verifikasi: ' + upd.error.message };
+                    }
+
+                    await sb.from('verifikasi_log').insert({
+                        pesanan_id: pesananId,
+                        admin_id: adminId,
+                        aksi: aksi,
+                        catatan: aksi === 'terima' ? 'Pembayaran diterima (Lunas).' : String(alasan || '').trim()
+                    });
+
+                    await this.catatAktivitas(
+                        aksi === 'terima' ? 'verifikasi_terima' : 'verifikasi_tolak',
+                        (aksi === 'terima' ? 'Menyetujui pembayaran ' : 'Menolak pembayaran ') + pCloud.kode
+                    );
+
+                    return {
+                        ok: true,
+                        pesan: aksi === 'terima'
+                            ? 'Pembayaran pesanan ' + pCloud.kode + ' berhasil diverifikasi (LUNAS).'
+                            : 'Bukti pembayaran pesanan ' + pCloud.kode + ' telah ditolak.'
+                    };
+                } catch (e) {
+                    console.warn('Error verifikasiPembayaran Supabase:', e);
+                    return { ok: false, pesan: 'Gagal menghubungi server database saat verifikasi.' };
                 }
             }
 
-            var state = loadLocalState();
-            (state.pesanan || []).forEach(function (p) {
-                if ((p.tanggal_ambil || '').startsWith(prefix) && p.status_bayar !== 'dibatalkan') {
-                    var tgl = p.tanggal_ambil;
-                    result[tgl] = result[tgl] || { box: 0, pesanan: 0 };
-                    result[tgl].box += (p.total_box || 0);
-                    result[tgl].pesanan++;
-                }
+            var state = getLocalState();
+            var p = (state.pesanan || []).find(function (x) { return x.id === Number(pesananId); });
+            if (!p) return { ok: false, pesan: 'Pesanan tidak ditemukan.' };
+
+            if (aksi === 'terima' && !p.bukti_bayar) {
+                return { ok: false, pesan: 'Tidak dapat menyetujui pembayaran karena bukti bayar belum tersedia.' };
+            }
+
+            if (aksi === 'terima') {
+                p.status_bayar = 'berhasil';
+                p.dibayar_pada = now;
+                p.diverifikasi_oleh = adminId;
+                p.diverifikasi_pada = now;
+                p.alasan_tolak = null;
+            } else {
+                p.status_bayar = 'ditolak';
+                p.diverifikasi_oleh = adminId;
+                p.diverifikasi_pada = now;
+                p.alasan_tolak = String(alasan || '').trim();
+            }
+
+            state.verifikasi_log.push({
+                id: state.verifikasi_log.length + 1,
+                pesanan_id: p.id,
+                admin_id: adminId,
+                aksi: aksi,
+                catatan: aksi === 'terima' ? 'Pembayaran diterima (Lunas).' : String(alasan || '').trim(),
+                dibuat_pada: now
             });
-            return result;
+
+            saveLocalState(state);
+            await this.catatAktivitas(
+                aksi === 'terima' ? 'verifikasi_terima' : 'verifikasi_tolak',
+                (aksi === 'terima' ? 'Menyetujui pembayaran ' : 'Menolak pembayaran ') + p.kode
+            );
+
+            return {
+                ok: true,
+                pesan: aksi === 'terima'
+                    ? 'Pembayaran pesanan ' + p.kode + ' berhasil diverifikasi (LUNAS).'
+                    : 'Bukti pembayaran pesanan ' + p.kode + ' telah ditolak.'
+            };
         },
 
-        // Ambil Daftar Admin
+        // -------------------------------------------------------------
+        // 9. OPERASI MENU HARIAN & TAMBAH MENU (TEMUAN 5 - CLOUD + LOCAL)
+        // -------------------------------------------------------------
+        toggleMenuHarian: async function (arg1, arg2, tersediaBaru) {
+            var tanggal, menuId;
+            if (typeof arg1 === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(arg1)) {
+                tanggal = arg1;
+                menuId = arg2;
+            } else {
+                menuId = arg1;
+                tanggal = arg2;
+            }
+            var tgl = tanggal || addDaysIso(1);
+            var idNum = Number(menuId);
+
+            if (isSupabaseReady) {
+                try {
+                    var cur = await sb
+                        .from('menu_harian')
+                        .select('*')
+                        .eq('tanggal', tgl)
+                        .eq('menu_id', idNum)
+                        .maybeSingle();
+
+                    var nextTersedia = tersediaBaru !== undefined
+                        ? Boolean(tersediaBaru)
+                        : (cur.data ? !cur.data.tersedia : false);
+
+                    var stokTetap = cur.data ? cur.data.stok : null;
+                    if (stokTetap === null || stokTetap === undefined) {
+                        var mRow = await sb.from('menu').select('stok_default').eq('id', idNum).maybeSingle();
+                        if (mRow.data) stokTetap = mRow.data.stok_default;
+                    }
+
+                    var upRes = await sb.from('menu_harian').upsert({
+                        tanggal: tgl,
+                        menu_id: idNum,
+                        tersedia: nextTersedia,
+                        stok: stokTetap
+                    }, { onConflict: 'tanggal,menu_id' });
+
+                    if (!upRes.error) {
+                        await this.catatAktivitas('toggle_menu', 'Mengubah status ketersediaan menu #' + idNum + ' pada ' + tgl);
+                        return { ok: true, tersedia: nextTersedia };
+                    }
+                } catch (e) {
+                    console.warn('Fallback toggleMenuHarian:', e);
+                }
+            }
+
+            var state = getLocalState();
+            if (!state.menu_harian[tgl]) state.menu_harian[tgl] = {};
+            var curLocal = state.menu_harian[tgl][idNum] || { tersedia: true, stok: null };
+            curLocal.tersedia = tersediaBaru !== undefined ? Boolean(tersediaBaru) : !curLocal.tersedia;
+            state.menu_harian[tgl][idNum] = curLocal;
+            saveLocalState(state);
+            return { ok: true, tersedia: curLocal.tersedia };
+        },
+
+        simpanMenu: async function (payload) {
+            var nama = String(payload.nama || '').trim();
+            var deskripsi = String(payload.deskripsi || '').trim();
+            var harga = Math.max(0, Number(payload.harga || 0));
+            var kategori = String(payload.kategori || 'lauk').toLowerCase();
+            var stokVal = (payload.stok === '' || payload.stok === null || payload.stok === undefined)
+                ? null
+                : Math.min(120, Math.max(0, Number(payload.stok)));
+
+            if (!nama || harga <= 0) {
+                return { ok: false, pesan: 'Nama menu dan harga wajib diisi dengan benar.' };
+            }
+
+            if (isSupabaseReady) {
+                try {
+                    if (payload.id) {
+                        var mId = Number(payload.id);
+                        var updFields = {
+                            nama: nama,
+                            harga: harga,
+                            kategori: kategori,
+                            stok_default: stokVal
+                        };
+                        if (payload.deskripsi !== undefined) updFields.deskripsi = deskripsi;
+                        if (payload.foto) updFields.foto = payload.foto;
+
+                        var updM = await sb.from('menu').update(updFields).eq('id', mId);
+                        if (updM.error) {
+                            delete updFields.deskripsi;
+                            await sb.from('menu').update(updFields).eq('id', mId);
+                        }
+
+                        if (payload.tanggal) {
+                            var curMh = await sb
+                                .from('menu_harian')
+                                .select('tersedia')
+                                .eq('tanggal', payload.tanggal)
+                                .eq('menu_id', mId)
+                                .maybeSingle();
+                            await sb.from('menu_harian').upsert({
+                                tanggal: payload.tanggal,
+                                menu_id: mId,
+                                tersedia: curMh.data ? curMh.data.tersedia : true,
+                                stok: stokVal
+                            }, { onConflict: 'tanggal,menu_id' });
+                        }
+                        await this.catatAktivitas('edit_menu', 'Memperbarui menu "' + nama + '"');
+                        return { ok: true, id: mId };
+                    } else {
+                        var insFields = {
+                            nama: nama,
+                            deskripsi: deskripsi || null,
+                            harga: harga,
+                            kategori: kategori,
+                            foto: payload.foto || null,
+                            stok_default: stokVal !== null ? stokVal : 60,
+                            aktif: true
+                        };
+                        var insM = await sb.from('menu').insert(insFields).select('id').single();
+                        if (insM.error) {
+                            delete insFields.deskripsi;
+                            insM = await sb.from('menu').insert(insFields).select('id').single();
+                        }
+                        if (!insM.error && insM.data) {
+                            await this.catatAktivitas('tambah_menu', 'Menambahkan menu baru "' + nama + '"');
+                            return { ok: true, id: insM.data.id };
+                        }
+                    }
+                } catch (e) {
+                    console.warn('Fallback simpanMenu:', e);
+                }
+            }
+
+            var state = getLocalState();
+            if (payload.id) {
+                var m = (state.menu || []).find(function (x) { return x.id === Number(payload.id); });
+                if (!m) return { ok: false, pesan: 'Menu tidak ditemukan.' };
+                m.nama = nama;
+                if (payload.deskripsi !== undefined) m.deskripsi = deskripsi;
+                m.harga = harga;
+                if (payload.kategori) m.kategori = kategori;
+                if (payload.foto) m.foto = payload.foto;
+                if (payload.tanggal && stokVal !== null) {
+                    if (!state.menu_harian[payload.tanggal]) state.menu_harian[payload.tanggal] = {};
+                    var mh = state.menu_harian[payload.tanggal][m.id] || { tersedia: true };
+                    mh.stok = stokVal;
+                    state.menu_harian[payload.tanggal][m.id] = mh;
+                }
+                m.stok_default = stokVal;
+                saveLocalState(state);
+                return { ok: true, id: m.id };
+            } else {
+                var newId = (state.menu.reduce(function (mx, x) { return Math.max(mx, x.id); }, 0)) + 1;
+                state.menu.push({
+                    id: newId,
+                    nama: nama,
+                    deskripsi: deskripsi,
+                    harga: harga,
+                    kategori: kategori,
+                    foto: payload.foto || null,
+                    stok_default: stokVal !== null ? stokVal : 60,
+                    aktif: true
+                });
+                saveLocalState(state);
+                return { ok: true, id: newId };
+            }
+        },
+
+        hapusMenu: async function (menuId) {
+            var idNum = Number(menuId);
+            if (isSupabaseReady) {
+                try {
+                    var del = await sb.from('menu').update({ aktif: false }).eq('id', idNum);
+                    if (!del.error) {
+                        await this.catatAktivitas('hapus_menu', 'Menonaktifkan/menghapus menu #' + idNum);
+                        return { ok: true };
+                    }
+                } catch (e) {
+                    console.warn('Fallback hapusMenu:', e);
+                }
+            }
+            var state = getLocalState();
+            state.menu = (state.menu || []).filter(function (x) { return x.id !== idNum; });
+            saveLocalState(state);
+            return { ok: true };
+        },
+
+        // -------------------------------------------------------------
+        // 10. MANAJEMEN AKUN ADMIN & PROFIL (TEMUAN 2, 5, 20)
+        // -------------------------------------------------------------
         getDaftarAdmin: async function () {
             if (isSupabaseReady) {
                 try {
-                    var { data, error } = await supabaseClient
+                    var res = await sb
                         .from('admin')
-                        .select('id, username, nama, role, email, telepon, bahasa, foto, dibuat_pada')
+                        .select('id, username, nama, role, email, no_hp, jabatan, foto, terakhir_login, dibuat_pada')
                         .order('id', { ascending: true });
-                    if (!error && data) return data;
-                    if (error) console.warn('Supabase getDaftarAdmin error:', error);
+
+                    if (!res.error && res.data && res.data.length > 0) {
+                        return res.data.map(sanitasiObjekAdmin);
+                    }
                 } catch (e) {
-                    console.warn('Supabase getDaftarAdmin exception:', e);
+                    console.warn('Fallback getDaftarAdmin:', e);
                 }
             }
-            var state = loadLocalState();
-            return state.admin || [];
+            var state = getLocalState();
+            return (state.admin || []).map(sanitasiObjekAdmin);
         },
 
-        // Tambah Akun Admin Baru
-        tambahAdmin: async function (adminData) {
-            if (isSupabaseReady) {
-                var { data, error } = await supabaseClient
-                    .from('admin')
-                    .insert([{
-                        nama: adminData.nama,
-                        username: adminData.username,
-                        password_hash: adminData.password_hash,
-                        email: adminData.email || null,
-                        telepon: adminData.telepon || null,
-                        role: adminData.role || 'admin',
-                        bahasa: adminData.bahasa || 'id'
-                    }])
-                    .select();
-                if (error) return { ok: false, pesan: error.message };
-                return { ok: true, admin: data && data[0] };
+        tambahAdmin: async function (payload) {
+            var u = (payload.username || '').trim();
+            var n = (payload.nama || '').trim();
+            var p = payload.password || '';
+            var r = payload.role === 'owner' ? 'owner' : 'admin';
+
+            if (!u || !n || p.length < 6) {
+                return { ok: false, pesan: 'Username, nama lengkap, dan password (minimal 6 karakter) wajib diisi.' };
             }
 
-            var state = loadLocalState();
-            state.admin = state.admin || [];
-            if (state.admin.find(function (x) { return x.username === adminData.username; })) {
-                return { ok: false, pesan: 'Username sudah dipakai.' };
+            if (isSupabaseReady) {
+                try {
+                    var cek = await sb.from('admin').select('id').eq('username', u).maybeSingle();
+                    if (cek.data) {
+                        return { ok: false, pesan: 'Username sudah digunakan oleh akun lain.' };
+                    }
+                    var ins = await sb.from('admin').insert({
+                        username: u,
+                        password_hash: p,
+                        nama: n,
+                        role: r,
+                        jabatan: r === 'owner' ? 'Pemilik & Pengelola' : 'Staf Admin Operasional',
+                        dibuat_pada: new Date().toISOString()
+                    });
+                    if (!ins.error) {
+                        await this.catatAktivitas('tambah_admin', 'Menambahkan akun admin baru: @' + u + ' (' + r + ')');
+                        return { ok: true };
+                    }
+                } catch (e) {
+                    console.warn('Fallback tambahAdmin:', e);
+                }
             }
-            var newAdm = {
-                id: Date.now(),
-                nama: adminData.nama,
-                username: adminData.username,
-                password_hash: adminData.password_hash,
-                email: adminData.email || null,
-                telepon: adminData.telepon || null,
-                role: adminData.role || 'admin',
-                bahasa: adminData.bahasa || 'id',
+
+            var state = getLocalState();
+            if ((state.admin || []).some(function (x) { return x.username === u; })) {
+                return { ok: false, pesan: 'Username sudah digunakan.' };
+            }
+            var newId = (state.admin.reduce(function (m, x) { return Math.max(m, x.id); }, 0)) + 1;
+            state.admin.push({
+                id: newId,
+                username: u,
+                password_hash: p,
+                nama: n,
+                role: r,
+                email: '',
+                no_hp: '',
+                jabatan: r === 'owner' ? 'Pemilik & Pengelola' : 'Staf Admin Operasional',
+                foto: null,
+                terakhir_login: null,
                 dibuat_pada: new Date().toISOString()
-            };
-            state.admin.push(newAdm);
+            });
             saveLocalState(state);
-            return { ok: true, admin: newAdm };
+            await this.catatAktivitas('tambah_admin', 'Menambahkan akun admin baru: @' + u + ' (' + r + ')');
+            return { ok: true };
         },
 
-        // Hapus Akun Admin (Khusus Role Admin, tidak bisa hapus akun sendiri atau akun owner)
-        hapusAdmin: async function (adminId, currentAdminId) {
-            var targetId = parseInt(adminId, 10);
-            if (currentAdminId && targetId === parseInt(currentAdminId, 10)) {
-                return { ok: false, pesan: 'Anda tidak dapat menghapus akun Anda sendiri.' };
+        hapusAdmin: async function (id) {
+            var targetId = Number(id);
+            var sesi = this.getAdminSesi();
+            if (sesi && Number(sesi.id) === targetId) {
+                return { ok: false, pesan: 'Tidak dapat menghapus akun yang sedang Anda gunakan.' };
             }
 
             if (isSupabaseReady) {
-                // Verifikasi role target terlebih dahulu
-                var { data: targetRows, error: errCek } = await supabaseClient
-                    .from('admin')
-                    .select('id, username, nama, role')
-                    .eq('id', targetId);
-
-                if (errCek || !targetRows || !targetRows.length) {
-                    return { ok: false, pesan: 'Akun admin tidak ditemukan.' };
+                try {
+                    var targetRes = await sb.from('admin').select('id, username, role').eq('id', targetId).maybeSingle();
+                    if (targetRes.data && targetRes.data.role === 'owner') {
+                        var ownersRes = await sb.from('admin').select('id').eq('role', 'owner');
+                        if (ownersRes.data && ownersRes.data.length <= 1) {
+                            return { ok: false, pesan: 'Tidak dapat menghapus satu-satunya akun Owner.' };
+                        }
+                    }
+                    var del = await sb.from('admin').delete().eq('id', targetId);
+                    if (!del.error) {
+                        await this.catatAktivitas('hapus_admin', 'Menghapus akun admin ID #' + targetId);
+                        return { ok: true };
+                    }
+                } catch (e) {
+                    console.warn('Fallback hapusAdmin:', e);
                 }
-
-                var target = targetRows[0];
-                if (target.role === 'owner') {
-                    return { ok: false, pesan: 'Akun ber-peran Owner tidak dapat dihapus.' };
-                }
-
-                var { error } = await supabaseClient
-                    .from('admin')
-                    .delete()
-                    .eq('id', targetId)
-                    .eq('role', 'admin');
-
-                if (error) {
-                    return { ok: false, pesan: 'Gagal menghapus admin: ' + error.message };
-                }
-
-                this.catatAktivitas('hapus_admin', 'Menghapus admin "' + target.username + '" (' + target.nama + ')');
-                return { ok: true, pesan: 'Akun admin "' + target.nama + '" berhasil dihapus.' };
             }
 
-            var state = loadLocalState();
-            state.admin = state.admin || [];
-            var target = state.admin.find(function (x) { return x.id === targetId; });
-            if (!target) {
-                return { ok: false, pesan: 'Akun admin tidak ditemukan.' };
+            var state = getLocalState();
+            var target = (state.admin || []).find(function (x) { return x.id === targetId; });
+            if (!target) return { ok: false, pesan: 'Akun tidak ditemukan.' };
+            var jmlOwner = (state.admin || []).filter(function (x) { return x.role === 'owner'; }).length;
+            if (target.role === 'owner' && jmlOwner <= 1) {
+                return { ok: false, pesan: 'Tidak dapat menghapus satu-satunya akun Owner.' };
             }
-            if (target.role === 'owner') {
-                return { ok: false, pesan: 'Akun ber-peran Owner tidak dapat dihapus.' };
-            }
-
-            state.admin = state.admin.filter(function (x) { return x.id !== targetId; });
+            state.admin = (state.admin || []).filter(function (x) { return x.id !== targetId; });
             saveLocalState(state);
-            this.catatAktivitas('hapus_admin', 'Menghapus admin "' + target.username + '" (' + target.nama + ')');
-            return { ok: true, pesan: 'Akun admin "' + target.nama + '" berhasil dihapus.' };
+            await this.catatAktivitas('hapus_admin', 'Menghapus akun admin: @' + target.username);
+            return { ok: true };
+        },
+
+        updateProfilAdmin: async function (payload) {
+            var sesi = this.getAdminSesi();
+            if (!sesi) return { ok: false, pesan: 'Sesi login telah berakhir.' };
+
+            var nama = String(payload.nama || sesi.nama || '').trim();
+            var username = String(payload.username || sesi.username || '').trim();
+            var jabatan = String(payload.jabatan !== undefined ? payload.jabatan : (payload.alamat !== undefined ? payload.alamat : (sesi.jabatan || ''))).trim();
+            var email = String(payload.email !== undefined ? payload.email : (sesi.email || '')).trim();
+            var no_hp = String(payload.no_hp !== undefined ? payload.no_hp : (payload.telepon !== undefined ? payload.telepon : (sesi.no_hp || ''))).trim();
+            var foto = payload.foto !== undefined ? payload.foto : (sesi.foto || null);
+
+            if (!nama || !username) {
+                return { ok: false, pesan: 'Nama lengkap dan username wajib diisi.' };
+            }
+
+            if (isSupabaseReady) {
+                try {
+                    var updData = {
+                        nama: nama,
+                        username: username,
+                        jabatan: jabatan,
+                        email: email,
+                        no_hp: no_hp
+                    };
+                    if (foto) updData.foto = foto;
+                    var upd = await sb.from('admin').update(updData).eq('id', sesi.id);
+                    if (upd.error) {
+                        return { ok: false, pesan: 'Gagal memperbarui profil di database: ' + upd.error.message };
+                    }
+                } catch (e) {
+                    console.warn('Fallback updateProfilAdmin:', e);
+                }
+            }
+
+            var state = getLocalState();
+            var adm = (state.admin || []).find(function (x) { return x.id === sesi.id; });
+            if (adm) {
+                adm.nama = nama;
+                adm.username = username;
+                adm.jabatan = jabatan;
+                adm.email = email;
+                adm.no_hp = no_hp;
+                if (foto) adm.foto = foto;
+                saveLocalState(state);
+            }
+
+            var sesiBaru = Object.assign({}, sesi, {
+                nama: nama,
+                username: username,
+                jabatan: jabatan,
+                email: email,
+                no_hp: no_hp,
+                foto: foto
+            });
+            localStorage.setItem(SESSION_KEY, JSON.stringify(sesiBaru));
+            await this.catatAktivitas('update_profil', 'Memperbarui profil & kontak akun admin');
+            return { ok: true, admin: sesiBaru };
+        },
+
+        ubahPasswordAdmin: async function (passwordLama, passwordBaru) {
+            var sesi = this.getAdminSesi();
+            if (!sesi) return { ok: false, pesan: 'Sesi login telah berakhir.' };
+            if (!passwordLama || !passwordBaru || String(passwordBaru).length < 6) {
+                return { ok: false, pesan: 'Password baru minimal terdiri dari 6 karakter.' };
+            }
+
+            var LEGACY_SEED_BCRYPT = '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi';
+
+            if (isSupabaseReady) {
+                try {
+                    var res = await sb.from('admin').select('id, password_hash').eq('id', sesi.id).maybeSingle();
+                    if (!res.error && res.data) {
+                        var hash = String(res.data.password_hash || '');
+                        var cocok = (hash === passwordLama) || (hash === LEGACY_SEED_BCRYPT && passwordLama === 'admin123');
+                        if (!cocok) {
+                            return { ok: false, pesan: 'Password saat ini tidak sesuai.' };
+                        }
+                        var upd = await sb.from('admin').update({ password_hash: passwordBaru }).eq('id', sesi.id);
+                        if (upd.error) {
+                            return { ok: false, pesan: 'Gagal memperbarui password: ' + upd.error.message };
+                        }
+                    }
+                } catch (e) {
+                    console.warn('Fallback ubahPasswordAdmin:', e);
+                }
+            } else {
+                var state = getLocalState();
+                var adm = (state.admin || []).find(function (x) { return x.id === sesi.id; });
+                if (adm) {
+                    var hashL = String(adm.password_hash || '');
+                    var cocokL = (hashL === passwordLama) || (hashL === LEGACY_SEED_BCRYPT && passwordLama === 'admin123');
+                    if (!cocokL) {
+                        return { ok: false, pesan: 'Password saat ini tidak sesuai.' };
+                    }
+                    adm.password_hash = passwordBaru;
+                    saveLocalState(state);
+                }
+            }
+
+            await this.catatAktivitas('ubah_password', 'Mengubah kata sandi akun admin');
+            return { ok: true, pesan: 'Password akun berhasil diperbarui.' };
+        },
+
+        getAktivitasAdmin: function () {
+            var state = getLocalState();
+            return state.aktivitas || [];
         }
     };
 
     window.WARTEG_DB = DB;
-})();
 
+    // =================================================================
+    // INISIALISASI GLOBAL HEADER MOBILE PELANGGAN (TEMUAN 17)
+    // Memastikan tombol hamburger #custToggle berfungsi di semua halaman
+    // =================================================================
+    document.addEventListener('DOMContentLoaded', function () {
+        var btnToggle = document.getElementById('custToggle');
+        var navLinks = document.getElementById('custLinks');
+        if (btnToggle && navLinks && !btnToggle.dataset.boundToggle) {
+            btnToggle.dataset.boundToggle = '1';
+            btnToggle.addEventListener('click', function () {
+                var buka = navLinks.classList.toggle('buka');
+                btnToggle.setAttribute('aria-expanded', buka ? 'true' : 'false');
+            });
+            navLinks.querySelectorAll('a').forEach(function (a) {
+                a.addEventListener('click', function () {
+                    navLinks.classList.remove('buka');
+                    btnToggle.setAttribute('aria-expanded', 'false');
+                });
+            });
+        }
+    });
+})();

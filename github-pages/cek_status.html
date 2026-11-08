@@ -160,29 +160,30 @@
 
             var p = data.pesanan;
             var sb = p.status_bayar || 'belum_bayar';
-            var urlNota = 'nota.html?kode=' + encodeURIComponent(p.kode) + '&t=' + encodeURIComponent(p.token_nota || '');
-            var urlBayar = 'pembayaran.html?kode=' + encodeURIComponent(p.kode) + '&t=' + encodeURIComponent(p.token_nota || '');
+            var DB = window.WARTEG_DB;
+            var urlNota = DB.urlNota(p.kode, p.token_nota);
+            var urlBayar = DB.urlPembayaran(p.kode, p.token_nota);
 
             var html = '<div class="nota-kartu" style="border:1.5px solid var(--c-garis);border-radius:12px;background:#fff;padding:24px;box-shadow:var(--bayangan);">'
                 + '<div class="nota-atas" style="border-bottom:1px solid var(--c-garis);padding-bottom:14px;margin-bottom:16px;">'
                 + '<h3 style="margin:0 0 6px;font-size:18px;">Informasi Status Pesanan</h3>'
-                + '<div class="kode" style="font-family:var(--font-mono);font-size:16px;font-weight:700;color:var(--c-primer);">' + p.kode + '</div>'
+                + '<div class="kode" style="font-family:var(--font-mono);font-size:16px;font-weight:700;color:var(--c-primer);">' + DB.escapeHtml(p.kode) + '</div>'
                 + '</div>'
                 + '<div class="nota-isi">'
                 + '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">'
-                + '<span class="badge ' + window.WARTEG_DB.kelasStatusBayar(sb) + '">Pembayaran: ' + window.WARTEG_DB.statusBayarLabel(sb) + '</span>'
-                + window.WARTEG_DB.badgeStatus(p.status)
+                + '<span class="badge ' + DB.kelasStatusBayar(sb) + '">Pembayaran: ' + DB.escapeHtml(DB.statusBayarLabel(sb)) + '</span>'
+                + DB.badgeStatus(p.status)
                 + '</div>'
                 + '<div class="nota-info" style="margin-bottom:18px;display:grid;gap:8px;background:var(--c-bg);padding:14px;border-radius:8px;">'
-                + '<div class="item" style="display:flex;justify-content:space-between;"><span style="color:var(--c-redup);">Nama Pemesan</span><strong>' + p.nama_pelanggan + '</strong></div>'
-                + '<div class="item" style="display:flex;justify-content:space-between;"><span style="color:var(--c-redup);">Jadwal Pengambilan</span><strong>' + window.WARTEG_DB.tanggalId(p.tanggal_ambil) + ', ' + window.WARTEG_DB.jamPendek(p.jam_ambil) + ' WIB</strong></div>'
-                + '<div class="item" style="display:flex;justify-content:space-between;"><span style="color:var(--c-redup);">Jumlah Pesanan</span><strong>' + p.total_box + ' box</strong></div>'
-                + '<div class="item" style="display:flex;justify-content:space-between;"><span style="color:var(--c-redup);">Total Tagihan</span><strong style="color:var(--c-primer);font-size:16px;">' + window.WARTEG_DB.rupiah(p.nominal_bayar || p.total_harga) + '</strong></div>'
+                + '<div class="item" style="display:flex;justify-content:space-between;"><span style="color:var(--c-redup);">Nama Pemesan</span><strong>' + DB.escapeHtml(p.nama_pelanggan) + '</strong></div>'
+                + '<div class="item" style="display:flex;justify-content:space-between;"><span style="color:var(--c-redup);">Jadwal Pengambilan</span><strong>' + DB.tanggalId(p.tanggal_ambil) + ', ' + DB.jamPendek(p.jam_ambil) + ' WIB</strong></div>'
+                + '<div class="item" style="display:flex;justify-content:space-between;"><span style="color:var(--c-redup);">Jumlah Pesanan</span><strong>' + Number(p.total_box || 0) + ' box</strong></div>'
+                + '<div class="item" style="display:flex;justify-content:space-between;"><span style="color:var(--c-redup);">Total Tagihan</span><strong style="color:var(--c-primer);font-size:16px;">' + DB.rupiah(p.nominal_bayar || p.total_harga) + '</strong></div>'
                 + '</div>'
                 + '<div style="display:flex;gap:10px;flex-wrap:wrap">'
                 + '<a href="' + urlNota + '" class="btn btn-primer btn-kecil">Lihat Nota Lengkap</a>';
 
-            if (['belum_bayar', 'menunggu', 'ditolak'].indexOf(sb) >= 0) {
+            if (['belum_bayar', 'menunggu', 'ditolak'].indexOf(sb) >= 0 && p.status !== 'Dibatalkan') {
                 html += '<a href="' + urlBayar + '" class="btn btn-garis btn-kecil">Lanjutkan Pembayaran</a>';
             }
 
