@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Dashboard - Warung Mas Alif</title>
+    <title>Dashboard - Warteg Pak Sanam</title>
     <link rel="stylesheet" href="../assets/css/admin.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../assets/js/config.js"></script>
@@ -32,7 +32,7 @@
         <div class="kartu-stat" id="kartuPersenStok"><span>Stok terpakai</span><strong id="statPersenStok">-</strong></div>
     </section>
 
-    <section class="grid-dua">
+    <section class="grid-dashboard">
         <div class="kolom-kiri">
             <div class="content-card">
                 <div class="card-header">
@@ -54,17 +54,27 @@
         </div>
 
         <div class="content-card">
-            <div class="card-header">
-                <h2>Pesanan terbaru</h2>
-                <a class="btn btn-secondary btn-kecil" href="pemesan.html">Lihat Daftar Pemesan</a>
+            <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+                <div>
+                    <h2 style="margin:0;">Pesanan terbaru</h2>
+                    <span class="teks-redup" style="font-size:12.5px;">Daftar pesanan katering masuk terkini</span>
+                </div>
+                <a class="btn btn-secondary btn-kecil" href="pemesan.html">Buka Semua Pesanan →</a>
             </div>
             <div class="table-wrapper">
                 <table>
                     <thead>
-                        <tr><th>Kode</th><th>Pelanggan</th><th>Box</th><th>Pengambilan</th><th>Status</th></tr>
+                        <tr>
+                            <th>Kode</th>
+                            <th>Pelanggan</th>
+                            <th>Total Box</th>
+                            <th>Jadwal Ambil</th>
+                            <th>Status</th>
+                            <th style="text-align:center;">Aksi</th>
+                        </tr>
                     </thead>
                     <tbody id="tbodyTerbaru">
-                        <tr><td colspan="5" class="kosong">Memuat pesanan...</td></tr>
+                        <tr><td colspan="6" class="kosong">Memuat pesanan...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -152,15 +162,16 @@ document.addEventListener('DOMContentLoaded', async function () {
     var tbody = document.getElementById('tbodyTerbaru');
     tbody.innerHTML = '';
     if (!pemesanRes.items || !pemesanRes.items.length) {
-        tbody.innerHTML = '<tr><td colspan="5" class="kosong">Belum ada pesanan masuk.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="kosong">Belum ada pesanan masuk.</td></tr>';
     } else {
         pemesanRes.items.forEach(function (p) {
             var tr = document.createElement('tr');
-            tr.innerHTML = '<td><strong>' + p.kode + '</strong></td>'
-                + '<td>' + p.nama_pelanggan + '</td>'
+            tr.innerHTML = '<td><strong style="font-family:monospace;letter-spacing:0.5px;">' + p.kode + '</strong></td>'
+                + '<td><strong>' + p.nama_pelanggan + '</strong></td>'
                 + '<td>' + p.total_box + ' box</td>'
-                + '<td>' + window.WARTEG_DB.tanggalId(p.tanggal_ambil, false) + ', ' + window.WARTEG_DB.jamPendek(p.jam_ambil) + '</td>'
-                + '<td>' + window.WARTEG_DB.badgeStatus(p.status) + '</td>';
+                + '<td>' + window.WARTEG_DB.tanggalId(p.tanggal_ambil, false) + ', ' + window.WARTEG_DB.jamPendek(p.jam_ambil) + ' WIB</td>'
+                + '<td>' + window.WARTEG_DB.badgeStatus(p.status) + '</td>'
+                + '<td style="text-align:center;"><a href="pemesan.html?q=' + encodeURIComponent(p.kode) + '" class="btn-action btn-detail" style="text-decoration:none;font-size:12px;padding:4px 10px;">Detail →</a></td>';
             tbody.appendChild(tr);
         });
     }

@@ -125,6 +125,7 @@ code { background: #f1f5f9; padding: 1px 6px; border-radius: 4px; font-size: .92
 .card-body { padding: 20px 22px; }
 
 .grid-dua { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.grid-dashboard { display: grid; grid-template-columns: 1fr 1.65fr; gap: 20px; align-items: start; }
 .kolom-kiri { display: grid; gap: 20px; }
 
 .grid-kartu {
@@ -468,6 +469,7 @@ body.lightbox-terbuka { overflow: hidden; }
 /* ---------------- Responsif ---------------- */
 @media (max-width: 1024px) {
   .grid-dua { grid-template-columns: 1fr; }
+  .grid-dashboard { grid-template-columns: 1fr; }
   .grid-kalender { grid-template-columns: 1fr; }
   .verif-grid { grid-template-columns: 1fr; }
 }
