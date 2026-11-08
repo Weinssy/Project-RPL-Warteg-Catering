@@ -212,6 +212,12 @@ CREATE POLICY "public_all_aktivitas_admin" ON aktivitas_admin FOR ALL USING (tru
 -- =====================================================================
 -- FUNGSI RPC TRANSAKSI CHECKOUT (ANTI-OVERBOOKING 120 BOX/HARI + VALIDASI)
 -- =====================================================================
+-- Hapus versi fungsi lama jika ada perubahan nama parameter input (mencegah error 42P13)
+DROP FUNCTION IF EXISTS buat_pesanan_katering(TEXT, TEXT, DATE, TIME WITHOUT TIME ZONE, TEXT, JSONB);
+DROP FUNCTION IF EXISTS buat_pesanan_katering(TEXT, TEXT, DATE, TIME, TEXT, JSONB);
+DROP FUNCTION IF EXISTS public.buat_pesanan_katering(TEXT, TEXT, DATE, TIME WITHOUT TIME ZONE, TEXT, JSONB);
+DROP FUNCTION IF EXISTS public.buat_pesanan_katering(TEXT, TEXT, DATE, TIME, TEXT, JSONB);
+
 CREATE OR REPLACE FUNCTION buat_pesanan_katering(
     p_nama_pelanggan TEXT,
     p_no_wa TEXT,
