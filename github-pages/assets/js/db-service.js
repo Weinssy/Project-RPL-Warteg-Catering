@@ -1472,15 +1472,26 @@
 
                     var upd = await sb.from('pesanan').update(updateData).eq('id', pesananId);
                     if (upd.error) {
-                        return { ok: false, pesan: 'Gagal memperbarui verifikasi: ' + upd.error.message };
+                        // Fallback jika kolom diverifikasi_oleh / diverifikasi_pada belum ada di schema cache Supabase
+                        var fallbackData = aksi === 'terima'
+                            ? { status_bayar: 'berhasil', dibayar_pada: now }
+                            : { status_bayar: 'ditolak' };
+                        var updFallback = await sb.from('pesanan').update(fallbackData).eq('id', pesananId);
+                        if (updFallback.error) {
+                            return { ok: false, pesan: 'Gagal memperbarui verifikasi: ' + updFallback.error.message };
+                        }
                     }
 
-                    await sb.from('verifikasi_log').insert({
-                        pesanan_id: pesananId,
-                        admin_id: adminId,
-                        aksi: aksi,
-                        catatan: aksi === 'terima' ? 'Pembayaran diterima (Lunas).' : String(alasan || '').trim()
-                    });
+                    try {
+                        await sb.from('verifikasi_log').insert({
+                            pesanan_id: pesananId,
+                            admin_id: adminId,
+                            aksi: aksi,
+                            catatan: aksi === 'terima' ? 'Pembayaran diterima (Lunas).' : String(alasan || '').trim()
+                        });
+                    } catch (eLog) {
+                        console.warn('Gagal mencatat verifikasi_log:', eLog);
+                    }
 
                     await this.catatAktivitas(
                         aksi === 'terima' ? 'verifikasi_terima' : 'verifikasi_tolak',

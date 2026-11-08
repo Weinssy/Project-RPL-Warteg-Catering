@@ -458,3 +458,6 @@ BEGIN
         ('Orek Tempe Kacang Teri', 'Tempe iris tipis masak kecap manis dengan kacang tanah dan teri medan', 6000, 'sayur', 'menu_1776008389_4550.jpg', 80, true);
     END IF;
 END $$;
+
+-- 4. Reload Schema Cache PostgREST Supabase secara instan
+NOTIFY pgrst, 'reload schema';
