@@ -141,6 +141,21 @@ ALTER TABLE pesanan ADD CONSTRAINT pesanan_status_check CHECK (
     )
 );
 
+ALTER TABLE pesanan DROP CONSTRAINT IF EXISTS pesanan_status_bayar_check;
+ALTER TABLE pesanan ADD CONSTRAINT pesanan_status_bayar_check CHECK (
+    status_bayar IN (
+        'belum_bayar',
+        'menunggu',
+        'menunggu_verifikasi',
+        'berhasil',
+        'ditolak',
+        'gagal',
+        'kedaluwarsa',
+        'dibatalkan',
+        'lunas'
+    )
+);
+
 CREATE INDEX IF NOT EXISTS idx_pesanan_tanggal ON pesanan (tanggal_ambil);
 CREATE INDEX IF NOT EXISTS idx_pesanan_status ON pesanan (status);
 CREATE INDEX IF NOT EXISTS idx_pesanan_status_bayar ON pesanan (status_bayar);

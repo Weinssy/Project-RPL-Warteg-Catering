@@ -1466,7 +1466,11 @@
                         // Fallback bila kolom diubah_pada / diserahkan_pada belum ada di Supabase remote (Temuan 6)
                         var updFallback = await sb.from('pesanan').update({ status: statusBaru }).eq('id', pesananId);
                         if (updFallback.error) {
-                            return { ok: false, pesan: 'Gagal memperbarui status: ' + updFallback.error.message };
+                            var errMsg = updFallback.error.message || '';
+                            if (errMsg.indexOf('pesanan_status_check') >= 0) {
+                                errMsg = 'Status "' + statusBaru + '" belum diizinkan oleh check constraint database Supabase. Harap jalankan pembaruan constraint pesanan_status_check di Supabase SQL Editor.';
+                            }
+                            return { ok: false, pesan: 'Gagal memperbarui status: ' + errMsg };
                         }
                     }
 
