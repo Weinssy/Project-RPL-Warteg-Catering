@@ -21,6 +21,7 @@ ALTER TABLE menu ADD COLUMN IF NOT EXISTS deskripsi TEXT NULL;
 ALTER TABLE menu ADD COLUMN IF NOT EXISTS stok_default INTEGER NULL;
 ALTER TABLE menu ADD COLUMN IF NOT EXISTS aktif BOOLEAN NOT NULL DEFAULT TRUE;
 ALTER TABLE menu ADD COLUMN IF NOT EXISTS foto TEXT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_menu_nama_unique ON menu (nama);
 
 -- 2. TABEL MENU HARIAN (Ketersediaan & Stok Per Tanggal)
 CREATE TABLE IF NOT EXISTS menu_harian (
@@ -455,6 +456,12 @@ VALUES (
 ON CONFLICT (username) DO NOTHING;
 
 -- 3. Seed Katalog Menu Baru Sesuai Produk Satuan (Foto Bersih & Mudah Diedit)
+ALTER TABLE menu ADD COLUMN IF NOT EXISTS deskripsi TEXT NULL;
+ALTER TABLE menu ADD COLUMN IF NOT EXISTS stok_default INTEGER NULL;
+ALTER TABLE menu ADD COLUMN IF NOT EXISTS aktif BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE menu ADD COLUMN IF NOT EXISTS foto TEXT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_menu_nama_unique ON menu (nama);
+
 INSERT INTO menu (nama, deskripsi, harga, kategori, foto, stok_default, aktif) VALUES
 ('Paket Ayam Goreng Sambal', 'Nasi Putih + Ayam Goreng Sambal + Tempe & Tahu + Lalapan Segar', 23000, 'paket a', 'ayam_goreng_sambal.jpg', 50, true),
 ('Paket Ayam Bakar Sambal', 'Nasi Putih + Ayam Bakar Madu Sambal + Tempe & Tahu + Lalapan Segar', 23000, 'paket b', 'ayam_bakar_sambal.jpg', 50, true),
