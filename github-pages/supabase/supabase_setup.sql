@@ -454,25 +454,27 @@ VALUES (
 )
 ON CONFLICT (username) DO NOTHING;
 
--- 3. Seed Katalog Menu Default (Jika tabel menu masih kosong)
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM menu LIMIT 1) THEN
-        INSERT INTO menu (nama, deskripsi, harga, kategori, foto, stok_default, aktif) VALUES
-        ('Paket A - Ayam Goreng Lengkuas', 'Nasi Putih + Ayam Lengkuas + Tempe Orek + Buncis + Sambal + Kerupuk', 25000, 'paket a', 'menu_1776005851_7368.jpg', 50, true),
-        ('Paket B - Rendang Daging Sapi', 'Nasi Putih + Rendang Sapi Empuk + Sayur Daun Singkong + Telur Dadar + Sambal Ijo', 32000, 'paket b', 'menu_1776007200_1321.jpg', 40, true),
-        ('Paket C - Ikan Tongkol Balado', 'Nasi Putih + Tongkol Suwir Balado + Sayur Urap + Bakwan Jagung + Sambal', 24000, 'paket c', 'menu_1776007290_3103.jpg', 50, true),
-        ('Nasi Putih Pulen', 'Nasi putih hangat porsi katering box sekat', 6000, 'nasi', 'menu_1776007978_5646.jpeg', 120, true),
-        ('Nasi Uduk Gurih', 'Nasi uduk santan rempah daun salam dengan bawang goreng', 8000, 'nasi', 'menu_1776008161_7755.jpg', 80, true),
-        ('Ayam Bakar Madu', 'Ayam potong bakar bumbu madu gurih manis khas Pak Sanam', 15000, 'lauk', 'menu_1776005884_9385.jpg', 60, true),
-        ('Telur Balado Utuh', 'Telur ayam rebus bumbu balado merah pedas sedang', 7000, 'lauk', 'menu_1776005929_7844.jpg', 80, true),
-        ('Perkedel Kentang Daging', 'Perkedel kentang tumbuk lembut dengan campuran daging cincang', 6000, 'lauk', 'menu_1776007136_4103.jpg', 70, true),
-        ('Cumi Asin Cabe Ijo', 'Tumis cumi asin empuk dengan irisan cabai hijau besar dan tomat', 14000, 'lauk', 'menu_1776007418_5901.jpg', 50, true),
-        ('Tumis Kangkung Belacan', 'Sayur kangkung segar tumis bawang putih dan terasi harum', 6000, 'sayur', 'menu_1776008057_7600.jpg', 70, true),
-        ('Sayur Sop Ayam Segar', 'Sop wortel, kentang, buncis, kol dengan kaldu ayam gurih', 7000, 'sayur', 'menu_1776008256_4289.jpeg', 60, true),
-        ('Orek Tempe Kacang Teri', 'Tempe iris tipis masak kecap manis dengan kacang tanah dan teri medan', 6000, 'sayur', 'menu_1776008389_4550.jpg', 80, true);
-    END IF;
-END $$;
+-- 3. Seed Katalog Menu Baru Sesuai Produk Satuan (Foto Bersih & Mudah Diedit)
+INSERT INTO menu (nama, deskripsi, harga, kategori, foto, stok_default, aktif) VALUES
+('Paket Ayam Goreng Sambal', 'Nasi Putih + Ayam Goreng Sambal + Tempe & Tahu + Lalapan Segar', 23000, 'paket a', 'ayam_goreng_sambal.jpg', 50, true),
+('Paket Ayam Bakar Sambal', 'Nasi Putih + Ayam Bakar Madu Sambal + Tempe & Tahu + Lalapan Segar', 23000, 'paket b', 'ayam_bakar_sambal.jpg', 50, true),
+('Paket Bebek Goreng Sambal', 'Nasi Putih + Bebek Goreng Krispi Sambal + Tempe & Tahu + Lalapan Segar', 30000, 'paket c', 'bebek_goreng_sambal.jpg', 40, true),
+('Ayam Goreng (Lauk Saja)', 'Ayam goreng gurih renyah bumbu kuning meresap dengan lalapan timun', 18000, 'lauk', 'ayam_goreng.jpg', 60, true),
+('Ayam Bakar (Lauk Saja)', 'Ayam bakar madu manis gurih aroma bakaran dengan lalapan timun', 18000, 'lauk', 'ayam_bakar.jpg', 60, true),
+('Tempe & Tahu Goreng', 'Potongan tahu dan tempe goreng renyah bumbu ketumbar khas rumahan', 2000, 'lauk', 'tahu_tempe.jpg', 100, true),
+('Kol Goreng Crispy', 'Kol goreng manis gurih renyah pelengkap nikmat ayam dan bebek', 5000, 'sayur', 'kol_goreng.jpg', 80, true),
+('Es Teh / Teh Hangat', 'Teh seduh manis harum melati segar dingin atau hangat', 4000, 'sayur', 'es_teh.jpg', 120, true),
+('Es Jeruk / Jeruk Hangat', 'Jeruk peras murni segar kaya vitamin C dingin atau hangat', 5000, 'sayur', 'es_jeruk.jpg', 100, true),
+('Es Teler Premium', 'Es teler manis segar isi alpukat, kelapa muda, nangka, jeli & susu kental manis', 10000, 'sayur', 'es_teler.jpg', 50, true),
+('Nasi Putih Pulen', 'Nasi putih hangat porsi katering box sekat', 6000, 'nasi', 'ayam_goreng_sambal.jpg', 120, true),
+('Nasi Uduk Gurih', 'Nasi uduk santan rempah daun salam dengan taburan bawang goreng', 8000, 'nasi', 'ayam_bakar_sambal.jpg', 80, true)
+ON CONFLICT (nama) DO UPDATE SET
+    deskripsi = EXCLUDED.deskripsi,
+    harga = EXCLUDED.harga,
+    kategori = EXCLUDED.kategori,
+    foto = EXCLUDED.foto,
+    stok_default = EXCLUDED.stok_default,
+    aktif = EXCLUDED.aktif;
 
 -- 4. Pastikan kolom audit dan relasi aktivitas admin mendukung log upaya login gagal
 ALTER TABLE IF EXISTS aktivitas_admin ALTER COLUMN admin_id DROP NOT NULL;

@@ -6,7 +6,7 @@
     'use strict';
 
     var CFG = window.WARTEG_CONFIG || {};
-    var STORAGE_KEY = 'warteg_katering_state_v2';
+    var STORAGE_KEY = 'warteg_katering_state_v3';
     var SESSION_KEY = 'warteg_admin_session_v1';
     var CART_META_KEY = 'warteg_cart_meta_v1';
     var LOCKOUT_KEY = 'warteg_admin_lockout_v1';
@@ -236,18 +236,18 @@
                 }
             ],
             menu: [
-                { id: 1, nama: 'Paket A - Ayam Goreng Lengkuas', deskripsi: 'Nasi Putih + Ayam Lengkuas + Tempe Orek + Buncis + Sambal + Kerupuk', harga: 25000, kategori: 'paket a', foto: 'menu_1776005851_7368.jpg', stok_default: 50, aktif: true },
-                { id: 2, nama: 'Paket B - Rendang Daging Sapi', deskripsi: 'Nasi Putih + Rendang Sapi Empuk + Sayur Daun Singkong + Telur Dadar + Sambal Ijo', harga: 32000, kategori: 'paket b', foto: 'menu_1776007200_1321.jpg', stok_default: 40, aktif: true },
-                { id: 3, nama: 'Paket C - Ikan Tongkol Balado', deskripsi: 'Nasi Putih + Tongkol Suwir Balado + Sayur Urap + Bakwan Jagung + Sambal', harga: 24000, kategori: 'paket c', foto: 'menu_1776007290_3103.jpg', stok_default: 50, aktif: true },
-                { id: 4, nama: 'Nasi Putih Pulen', deskripsi: 'Nasi putih hangat porsi katering box sekat', harga: 6000, kategori: 'nasi', foto: 'menu_1776007978_5646.jpeg', stok_default: 120, aktif: true },
-                { id: 5, nama: 'Nasi Uduk Gurih', deskripsi: 'Nasi uduk santan rempah daun salam dengan bawang goreng', harga: 8000, kategori: 'nasi', foto: 'menu_1776008161_7755.jpg', stok_default: 80, aktif: true },
-                { id: 6, nama: 'Ayam Bakar Madu', deskripsi: 'Ayam potong bakar bumbu madu gurih manis khas Pak Sanam', harga: 15000, kategori: 'lauk', foto: 'menu_1776005884_9385.jpg', stok_default: 60, aktif: true },
-                { id: 7, nama: 'Telur Balado Utuh', deskripsi: 'Telur ayam rebus bumbu balado merah pedas sedang', harga: 7000, kategori: 'lauk', foto: 'menu_1776005929_7844.jpg', stok_default: 80, aktif: true },
-                { id: 8, nama: 'Perkedel Kentang Daging', deskripsi: 'Perkedel kentang tumbuk lembut dengan campuran daging cincang', harga: 6000, kategori: 'lauk', foto: 'menu_1776007136_4103.jpg', stok_default: 70, aktif: true },
-                { id: 9, nama: 'Cumi Asin Cabe Ijo', deskripsi: 'Tumis cumi asin empuk dengan irisan cabai hijau besar dan tomat', harga: 14000, kategori: 'lauk', foto: 'menu_1776007418_5901.jpg', stok_default: 50, aktif: true },
-                { id: 10, nama: 'Tumis Kangkung Belacan', deskripsi: 'Sayur kangkung segar tumis bawang putih dan terasi harum', harga: 6000, kategori: 'sayur', foto: 'menu_1776008057_7600.jpg', stok_default: 70, aktif: true },
-                { id: 11, nama: 'Sayur Sop Ayam Segar', deskripsi: 'Sop wortel, kentang, buncis, kol dengan kaldu ayam gurih', harga: 7000, kategori: 'sayur', foto: 'menu_1776008256_4289.jpeg', stok_default: 60, aktif: true },
-                { id: 12, nama: 'Orek Tempe Kacang Teri', deskripsi: 'Tempe iris tipis masak kecap manis dengan kacang tanah dan teri medan', harga: 6000, kategori: 'sayur', foto: 'menu_1776008389_4550.jpg', stok_default: 80, aktif: true }
+                { id: 1, nama: 'Paket Ayam Goreng Sambal', deskripsi: 'Nasi Putih + Ayam Goreng Sambal + Tempe & Tahu + Lalapan Segar', harga: 23000, kategori: 'paket a', foto: 'ayam_goreng_sambal.jpg', stok_default: 50, aktif: true },
+                { id: 2, nama: 'Paket Ayam Bakar Sambal', deskripsi: 'Nasi Putih + Ayam Bakar Madu Sambal + Tempe & Tahu + Lalapan Segar', harga: 23000, kategori: 'paket b', foto: 'ayam_bakar_sambal.jpg', stok_default: 50, aktif: true },
+                { id: 3, nama: 'Paket Bebek Goreng Sambal', deskripsi: 'Nasi Putih + Bebek Goreng Krispi Sambal + Tempe & Tahu + Lalapan Segar', harga: 30000, kategori: 'paket c', foto: 'bebek_goreng_sambal.jpg', stok_default: 40, aktif: true },
+                { id: 4, nama: 'Ayam Goreng (Lauk Saja)', deskripsi: 'Ayam goreng gurih renyah bumbu kuning meresap dengan lalapan timun', harga: 18000, kategori: 'lauk', foto: 'ayam_goreng.jpg', stok_default: 60, aktif: true },
+                { id: 5, nama: 'Ayam Bakar (Lauk Saja)', deskripsi: 'Ayam bakar madu manis gurih aroma bakaran dengan lalapan timun', harga: 18000, kategori: 'lauk', foto: 'ayam_bakar.jpg', stok_default: 60, aktif: true },
+                { id: 6, nama: 'Tempe & Tahu Goreng', deskripsi: 'Potongan tahu dan tempe goreng renyah bumbu ketumbar khas rumahan', harga: 2000, kategori: 'lauk', foto: 'tahu_tempe.jpg', stok_default: 100, aktif: true },
+                { id: 7, nama: 'Kol Goreng Crispy', deskripsi: 'Kol goreng manis gurih renyah pelengkap nikmat ayam dan bebek', harga: 5000, kategori: 'sayur', foto: 'kol_goreng.jpg', stok_default: 80, aktif: true },
+                { id: 8, nama: 'Es Teh / Teh Hangat', deskripsi: 'Teh seduh manis harum melati segar dingin atau hangat', harga: 4000, kategori: 'sayur', foto: 'es_teh.jpg', stok_default: 120, aktif: true },
+                { id: 9, nama: 'Es Jeruk / Jeruk Hangat', deskripsi: 'Jeruk peras murni segar kaya vitamin C dingin atau hangat', harga: 5000, kategori: 'sayur', foto: 'es_jeruk.jpg', stok_default: 100, aktif: true },
+                { id: 10, nama: 'Es Teler Premium', deskripsi: 'Es teler manis segar isi alpukat, kelapa muda, nangka, jeli & susu kental manis', harga: 10000, kategori: 'sayur', foto: 'es_teler.jpg', stok_default: 50, aktif: true },
+                { id: 11, nama: 'Nasi Putih Pulen', deskripsi: 'Nasi putih hangat porsi katering box sekat', harga: 6000, kategori: 'nasi', foto: 'ayam_goreng_sambal.jpg', stok_default: 120, aktif: true },
+                { id: 12, nama: 'Nasi Uduk Gurih', deskripsi: 'Nasi uduk santan rempah daun salam dengan taburan bawang goreng', harga: 8000, kategori: 'nasi', foto: 'ayam_bakar_sambal.jpg', stok_default: 80, aktif: true }
             ],
             menu_harian: {},
             pesanan: [
@@ -1513,22 +1513,22 @@
                     var pesanWa = '';
                     if (statusBaru === 'Sedang Dimasak') {
                         pesanWa = 'Halo *' + p.nama_pelanggan + '*,\n\n'
-                            + 'Pesanan nasi box Anda di *' + (CFG.NAMA_WARTEG || 'Warteg Pak Sanam') + '* dengan kode *' + p.kode + '* (' + p.total_box + ' box) saat ini *SEDANG DIMASAK* di dapur kami! 🍳🔥\n\n'
+                            + 'Pesanan nasi box Anda di *' + (CFG.NAMA_WARTEG || 'Warteg Pak Sanam') + '* dengan kode *' + p.kode + '* (' + p.total_box + ' box) saat ini *SEDANG DIMASAK* di dapur kami.\n\n'
                             + 'Jadwal Pengambilan:\n'
-                            + '📅 Tanggal: ' + tanggalId(p.tanggal_ambil) + '\n'
-                            + '⏰ Jam: ' + jamPendek(p.jam_ambil) + ' WIB\n'
-                            + '📍 Lokasi: ' + (CFG.ALAMAT_WARTEG || 'Jalan BDN 1 Cilandak Barat Jakarta Selatan') + '\n\n'
+                            + '- Tanggal: ' + tanggalId(p.tanggal_ambil) + '\n'
+                            + '- Jam: ' + jamPendek(p.jam_ambil) + ' WIB\n'
+                            + '- Lokasi: ' + (CFG.ALAMAT_WARTEG || 'Jalan BDN 1 Cilandak Barat Jakarta Selatan') + '\n\n'
                             + 'Tautan Nota Digital:\n' + notaFullUrl + '\n\n'
-                            + 'Kami akan mengabari kembali saat pesanan sudah siap diambil. Terima kasih!';
+                            + 'Kami akan mengabari kembali saat pesanan sudah siap diambil. Terima kasih.';
                     } else if (statusBaru === 'Siap Diambil') {
                         pesanWa = 'Halo *' + p.nama_pelanggan + '*,\n\n'
-                            + 'Pesanan nasi box Anda di *' + (CFG.NAMA_WARTEG || 'Warteg Pak Sanam') + '* dengan kode *' + p.kode + '* (' + p.total_box + ' box) sudah *SIAP DIAMBIL*! 🍱✨\n\n'
+                            + 'Pesanan nasi box Anda di *' + (CFG.NAMA_WARTEG || 'Warteg Pak Sanam') + '* dengan kode *' + p.kode + '* (' + p.total_box + ' box) sudah *SIAP DIAMBIL*.\n\n'
                             + 'Silakan diambil sesuai jadwal:\n'
-                            + '📅 Tanggal: ' + tanggalId(p.tanggal_ambil) + '\n'
-                            + '⏰ Jam: ' + jamPendek(p.jam_ambil) + ' WIB\n'
-                            + '📍 Lokasi: ' + (CFG.ALAMAT_WARTEG || 'Jalan BDN 1 Cilandak Barat Jakarta Selatan') + '\n\n'
+                            + '- Tanggal: ' + tanggalId(p.tanggal_ambil) + '\n'
+                            + '- Jam: ' + jamPendek(p.jam_ambil) + ' WIB\n'
+                            + '- Lokasi: ' + (CFG.ALAMAT_WARTEG || 'Jalan BDN 1 Cilandak Barat Jakarta Selatan') + '\n\n'
                             + 'Tautan Nota Digital:\n' + notaFullUrl + '\n\n'
-                            + 'Harap tunjukkan nota ini saat pengambilan di warteg. Terima kasih!';
+                            + 'Harap tunjukkan nota ini saat pengambilan di warteg. Terima kasih.';
                     }
                     waUrl = 'https://wa.me/' + cleanWa + '?text=' + encodeURIComponent(pesanWa);
                 }

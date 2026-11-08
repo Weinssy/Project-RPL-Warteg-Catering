@@ -369,7 +369,15 @@
 
         var deskripsiText = m.deskripsi || 'Dimasak segar dengan bumbu rempah pilihan khas Warteg Pak Sanam.';
 
+        var fotoHtml = '';
+        if (m.foto) {
+            fotoHtml = '<div class="menu-thumb-item">'
+                + '<img src="uploads/menu/' + DB.escapeHtml(m.foto) + '" alt="' + DB.escapeHtml(m.nama) + '" loading="lazy" onerror="this.parentElement.style.display=\'none\'">'
+                + '</div>';
+        }
+
         return '<article class="kartu-menu' + terpilihClass + habisClass + '" data-id="' + m.id + '">'
+            + fotoHtml
             + '<div class="isi">'
             + '<div class="menu-info-kiri">'
             + '<div class="nama">' + DB.escapeHtml(m.nama) + '</div>'

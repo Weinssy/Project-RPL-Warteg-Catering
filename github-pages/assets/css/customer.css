@@ -2997,3 +2997,132 @@ body.cust {
   min-width: 40px;
   min-height: 40px;
 }
+
+/* =====================================================================
+   KATALOG MENU & FOTO PRODUK THUMBNAIL (PELANGGAN)
+   ===================================================================== */
+.menu-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.kartu-menu {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  border-radius: 14px;
+  background: #ffffff;
+  border: 1px solid var(--c-garis);
+  box-shadow: 0 1px 4px rgba(35, 24, 21, .03);
+  transition: all .2s ease;
+}
+
+.kartu-menu:hover {
+  border-color: #cbbdb2;
+  box-shadow: 0 4px 14px rgba(35, 24, 21, .06);
+}
+
+.kartu-menu.terpilih {
+  border-color: var(--c-primer);
+  background: #fffdfb;
+  box-shadow: 0 0 0 1.5px rgba(158, 55, 0, .18);
+}
+
+.kartu-menu.habis {
+  opacity: 0.6;
+  background: #f8fafc;
+}
+
+.kartu-menu .menu-thumb-item {
+  width: 80px;
+  height: 80px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--c-surface);
+  border: 1px solid var(--c-garis);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.kartu-menu .menu-thumb-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.kartu-menu .isi {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.kartu-menu .menu-info-kiri {
+  flex: 1;
+  min-width: 0;
+}
+
+.kartu-menu .nama {
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--c-teks);
+  line-height: 1.3;
+}
+
+.kartu-menu .menu-deskripsi {
+  font-size: 12.5px;
+  color: var(--c-redup);
+  line-height: 1.45;
+  margin-top: 3px;
+}
+
+.kartu-menu .menu-harga-baris {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+.kartu-menu .harga {
+  font-size: 14.5px;
+  font-weight: 800;
+  color: var(--c-primer);
+}
+
+.kartu-menu .harga small {
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--c-primer);
+}
+
+@media (max-width: 640px) {
+  .kartu-menu {
+    gap: 12px;
+    padding: 12px 14px;
+  }
+  .kartu-menu .menu-thumb-item {
+    width: 64px;
+    height: 64px;
+    border-radius: 10px;
+  }
+  .kartu-menu .isi {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .kartu-menu .kontrol {
+    width: 100%;
+    display: flex;
+    justify-content: flex-end;
+  }
+}
