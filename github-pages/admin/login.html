@@ -19,6 +19,15 @@
             Mode Demo Lokal: Username: <strong>admin</strong> | Password: <strong>admin123</strong>
         </div>
 
+        <div class="alert alert-peringatan" id="peringatanExpired" style="display:none;margin-bottom:12px;background:#fffbeb;border:1px solid #fde68a;color:#92400e;padding:10px 12px;border-radius:6px;font-size:13px;">
+            ⚠️ Sesi Anda telah kedaluwarsa demi keamanan (batas 8 jam). Silakan masuk kembali.
+        </div>
+
+        <div class="alert alert-galat" id="lockoutBanner" style="display:none;margin-bottom:14px;background:#fef2f2;border:1px solid #f87171;color:#b91c1c;padding:12px;border-radius:8px;font-size:13px;line-height:1.5;">
+            🔒 <strong>Akses Login Dikunci Sementara</strong><br>
+            Terlalu banyak percobaan gagal (5x). Demi keamanan warteg, silakan tunggu <strong id="countdownTeks">--:--</strong> sebelum mencoba kembali.
+        </div>
+
         <div class="alert alert-galat" id="galatLogin" style="display:none;margin-bottom:12px;"></div>
 
         <label class="form-label" for="username">Username</label>
@@ -38,17 +47,73 @@
         var form = document.getElementById('formLogin');
         var galat = document.getElementById('galatLogin');
         var btn = document.getElementById('btnSubmit');
+        var userInput = document.getElementById('username');
+        var passInput = document.getElementById('password');
         var infoDemo = document.getElementById('infoDemoLogin');
+        var bannerExpired = document.getElementById('peringatanExpired');
+        var bannerLock = document.getElementById('lockoutBanner');
+        var countdownTeks = document.getElementById('countdownTeks');
+        var timerLock = null;
+
+        var urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('expired') === '1') {
+            bannerExpired.style.display = 'block';
+        }
+
         if (infoDemo && window.WARTEG_DB && !window.WARTEG_DB.isSupabase()) {
             infoDemo.style.display = 'block';
         }
+
+        function formatMenitDetik(detik) {
+            var m = Math.floor(detik / 60);
+            var s = detik % 60;
+            return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+        }
+
+        function periksaDanKunciForm() {
+            if (!window.WARTEG_DB || !window.WARTEG_DB.cekStatusLockout) return;
+            var st = window.WARTEG_DB.cekStatusLockout();
+
+            if (st.terkunci && st.sisaDetik > 0) {
+                bannerLock.style.display = 'block';
+                countdownTeks.textContent = formatMenitDetik(st.sisaDetik);
+                userInput.disabled = true;
+                passInput.disabled = true;
+                btn.disabled = true;
+
+                if (timerLock) clearInterval(timerLock);
+                var sisa = st.sisaDetik;
+                timerLock = setInterval(function () {
+                    sisa--;
+                    if (sisa <= 0) {
+                        clearInterval(timerLock);
+                        timerLock = null;
+                        bannerLock.style.display = 'none';
+                        userInput.disabled = false;
+                        passInput.disabled = false;
+                        btn.disabled = false;
+                        userInput.focus();
+                    } else {
+                        countdownTeks.textContent = formatMenitDetik(sisa);
+                    }
+                }, 1000);
+            } else {
+                if (timerLock) clearInterval(timerLock);
+                bannerLock.style.display = 'none';
+                userInput.disabled = false;
+                passInput.disabled = false;
+                btn.disabled = false;
+            }
+        }
+
+        periksaDanKunciForm();
 
         form.onsubmit = async function (e) {
             e.preventDefault();
             galat.style.display = 'none';
 
-            var u = (document.getElementById('username').value || '').trim();
-            var p = (document.getElementById('password').value || '');
+            var u = (userInput.value || '').trim();
+            var p = (passInput.value || '');
 
             btn.disabled = true;
             btn.textContent = 'Memeriksa...';
@@ -58,6 +123,11 @@
             btn.textContent = 'Masuk';
 
             if (!res || !res.ok) {
+                if (res && res.terkunci) {
+                    galat.style.display = 'none';
+                    periksaDanKunciForm();
+                    return;
+                }
                 galat.textContent = (res && res.pesan) || 'Username atau password salah.';
                 galat.style.display = 'block';
                 return;

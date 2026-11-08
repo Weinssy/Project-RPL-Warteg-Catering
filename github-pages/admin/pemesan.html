@@ -255,7 +255,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                 var bMasak = isi.querySelector('.js-modal-masak');
                 if (bMasak) {
                     bMasak.onclick = async function () {
-                        var ok = await eksekusiUbahStatus(item.id, item.kode, 'Sedang Dimasak', 'Mulai memasak pesanan ' + item.kode + '?');
+                        var ok = await eksekusiUbahStatus(item.id, item.kode, 'Sedang Dimasak', 'Mulai memasak pesanan ' + item.kode + ' dan buka WhatsApp pelanggan?');
                         if (ok) { tutupModal(); muatDaftar(); }
                     };
                 }
@@ -291,7 +291,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             b.onclick = async function () {
                 var id = this.getAttribute('data-id');
                 var kode = this.getAttribute('data-kode');
-                if (await eksekusiUbahStatus(id, kode, 'Sedang Dimasak', 'Mulai memasak pesanan ' + kode + '?')) {
+                if (await eksekusiUbahStatus(id, kode, 'Sedang Dimasak', 'Mulai memasak pesanan ' + kode + ' dan buka WhatsApp pelanggan?')) {
                     muatDaftar();
                 }
             };

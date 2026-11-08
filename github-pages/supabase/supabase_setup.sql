@@ -459,5 +459,8 @@ BEGIN
     END IF;
 END $$;
 
--- 4. Reload Schema Cache PostgREST Supabase secara instan
+-- 4. Pastikan kolom audit dan relasi aktivitas admin mendukung log upaya login gagal
+ALTER TABLE IF EXISTS aktivitas_admin ALTER COLUMN admin_id DROP NOT NULL;
+
+-- 5. Reload Schema Cache PostgREST Supabase secara instan
 NOTIFY pgrst, 'reload schema';

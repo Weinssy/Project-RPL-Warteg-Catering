@@ -9,6 +9,11 @@
     var STORAGE_KEY = 'warteg_katering_state_v2';
     var SESSION_KEY = 'warteg_admin_session_v1';
     var CART_META_KEY = 'warteg_cart_meta_v1';
+    var LOCKOUT_KEY = 'warteg_admin_lockout_v1';
+    var FAILED_ATTEMPTS_KEY = 'warteg_admin_failed_attempts_v1';
+    var MAX_FAILED_ATTEMPTS = 5;
+    var LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 menit
+    var SESSION_DURATION_MS = 8 * 60 * 60 * 1000; // 8 jam batas aktif sesi admin
 
     // Inisialisasi Supabase Client jika URL & Key tersedia
     var sb = null;
@@ -1043,14 +1048,73 @@
         },
 
         // -------------------------------------------------------------
-        // 7. AUTENTIKASI & SESI ADMIN (TEMUAN 2)
+        // 7. AUTENTIKASI, BRUTE-FORCE LOCKOUT & SESI ADMIN
         // -------------------------------------------------------------
+        cekStatusLockout: function () {
+            try {
+                var rawLock = localStorage.getItem(LOCKOUT_KEY);
+                var attempts = parseInt(localStorage.getItem(FAILED_ATTEMPTS_KEY) || '0', 10);
+                if (rawLock) {
+                    var lockTime = parseInt(rawLock, 10);
+                    var now = Date.now();
+                    if (lockTime > now) {
+                        var sisaDetik = Math.ceil((lockTime - now) / 1000);
+                        return { terkunci: true, sisaDetik: sisaDetik, attempts: attempts };
+                    } else {
+                        localStorage.removeItem(LOCKOUT_KEY);
+                        localStorage.removeItem(FAILED_ATTEMPTS_KEY);
+                        return { terkunci: false, sisaDetik: 0, attempts: 0 };
+                    }
+                }
+                return { terkunci: false, sisaDetik: 0, attempts: attempts };
+            } catch (e) {
+                return { terkunci: false, sisaDetik: 0, attempts: 0 };
+            }
+        },
+
         loginAdmin: async function (username, password) {
+            var lockStatus = this.cekStatusLockout();
+            if (lockStatus.terkunci) {
+                var menit = Math.ceil(lockStatus.sisaDetik / 60);
+                return {
+                    ok: false,
+                    terkunci: true,
+                    sisaDetik: lockStatus.sisaDetik,
+                    pesan: 'Form login dikunci sementara demi keamanan karena 5x percobaan gagal. Silakan coba lagi dalam ' + menit + ' menit.'
+                };
+            }
+
             var u = String(username || '').trim();
             var p = String(password || '');
             if (!u || !p) {
                 return { ok: false, pesan: 'Masukkan username dan password.' };
             }
+
+            var self = this;
+            var prosesGagal = async function () {
+                var cur = parseInt(localStorage.getItem(FAILED_ATTEMPTS_KEY) || '0', 10) + 1;
+                localStorage.setItem(FAILED_ATTEMPTS_KEY, String(cur));
+                await self.catatAktivitas('login_gagal', 'Percobaan login gagal untuk username: ' + (u.slice(0, 30)));
+
+                if (cur >= MAX_FAILED_ATTEMPTS) {
+                    var lockUntil = Date.now() + LOCKOUT_DURATION_MS;
+                    localStorage.setItem(LOCKOUT_KEY, String(lockUntil));
+                    return {
+                        ok: false,
+                        terkunci: true,
+                        sisaDetik: 15 * 60,
+                        pesan: '5 kali percobaan gagal berturut-turut. Akses login dikunci sementara selama 15 menit.'
+                    };
+                }
+                var sisa = MAX_FAILED_ATTEMPTS - cur;
+                return {
+                    ok: false,
+                    terkunci: false,
+                    attempts: cur,
+                    sisaPercobaan: sisa,
+                    pesan: 'Username atau password salah. (Tersisa ' + sisa + ' kali percobaan sebelum akses dikunci)'
+                };
+            };
 
             var LEGACY_SEED_BCRYPT = '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi';
 
@@ -1066,11 +1130,14 @@
                             await sb.from('admin').update({ terakhir_login: now }).eq('id', adm.id);
                             adm.terakhir_login = now;
                             var sesiClean = sanitasiObjekAdmin(adm);
+                            sesiClean.kadaluwarsa_pada = Date.now() + SESSION_DURATION_MS;
                             localStorage.setItem(SESSION_KEY, JSON.stringify(sesiClean));
+                            localStorage.removeItem(LOCKOUT_KEY);
+                            localStorage.removeItem(FAILED_ATTEMPTS_KEY);
                             await this.catatAktivitas('login', 'Login berhasil ke dashboard admin');
                             return { ok: true, admin: sesiClean };
                         }
-                        return { ok: false, pesan: 'Username atau password salah.' };
+                        return await prosesGagal();
                     }
                 } catch (e) {
                     console.warn('Fallback loginAdmin:', e);
@@ -1079,16 +1146,19 @@
 
             var state = getLocalState();
             var admLocal = (state.admin || []).find(function (a) { return a.username === u; });
-            if (!admLocal) return { ok: false, pesan: 'Username atau password salah.' };
+            if (!admLocal) return await prosesGagal();
 
             var hashL = String(admLocal.password_hash || '');
             var cocokL = (hashL === p) || (hashL === LEGACY_SEED_BCRYPT && p === 'admin123');
-            if (!cocokL) return { ok: false, pesan: 'Username atau password salah.' };
+            if (!cocokL) return await prosesGagal();
 
             admLocal.terakhir_login = new Date().toISOString();
             saveLocalState(state);
             var sesiLocalClean = sanitasiObjekAdmin(admLocal);
+            sesiLocalClean.kadaluwarsa_pada = Date.now() + SESSION_DURATION_MS;
             localStorage.setItem(SESSION_KEY, JSON.stringify(sesiLocalClean));
+            localStorage.removeItem(LOCKOUT_KEY);
+            localStorage.removeItem(FAILED_ATTEMPTS_KEY);
             await this.catatAktivitas('login', 'Login berhasil ke dashboard admin');
             return { ok: true, admin: sesiLocalClean };
         },
@@ -1096,7 +1166,15 @@
         getAdminSesi: function () {
             try {
                 var raw = localStorage.getItem(SESSION_KEY);
-                return raw ? sanitasiObjekAdmin(JSON.parse(raw)) : null;
+                if (!raw) return null;
+                var parsed = JSON.parse(raw);
+                if (!parsed) return null;
+                // Cek kedaluwarsa sesi (8 jam)
+                if (parsed.kadaluwarsa_pada && Date.now() > parsed.kadaluwarsa_pada) {
+                    localStorage.removeItem(SESSION_KEY);
+                    return null;
+                }
+                return sanitasiObjekAdmin(parsed);
             } catch (e) {
                 return null;
             }
@@ -1115,7 +1193,7 @@
             var adminId = (sesi && sesi.id) ? sesi.id : 1;
             var now = new Date().toISOString();
 
-            if (isSupabaseReady && sesi && sesi.id) {
+            if (isSupabaseReady) {
                 try {
                     await sb.from('aktivitas_admin').insert({
                         admin_id: adminId,
@@ -1418,16 +1496,38 @@
             await this.catatAktivitas('ubah_status', 'Mengubah status ' + p.kode + ' menjadi ' + statusBaru);
 
             var waUrl = null;
-            if (statusBaru === 'Siap Diambil' && p.no_wa) {
+            if ((statusBaru === 'Sedang Dimasak' || statusBaru === 'Siap Diambil') && p.no_wa) {
                 var cleanWa = normalisasiWa(p.no_wa);
-                var pesanWa = 'Halo *' + p.nama_pelanggan + '*,\n\n'
-                    + 'Pesanan nasi box Anda di *' + (CFG.NAMA_WARTEG || 'Warteg Pak Sanam') + '* dengan kode *' + p.kode + '* (' + p.total_box + ' box) sudah *SIAP DIAMBIL*.\n\n'
-                    + 'Silakan diambil sesuai jadwal:\n'
-                    + 'Tanggal: ' + tanggalId(p.tanggal_ambil) + '\n'
-                    + 'Jam: ' + jamPendek(p.jam_ambil) + ' WIB\n'
-                    + 'Lokasi: ' + (CFG.ALAMAT_WARTEG || 'Jalan BDN 1 Cilandak Barat Jakarta Selatan') + '\n\n'
-                    + 'Terima kasih!';
-                waUrl = 'https://wa.me/' + cleanWa + '?text=' + encodeURIComponent(pesanWa);
+                if (cleanWa) {
+                    var origin = (typeof window !== 'undefined' && window.location && window.location.origin) ? window.location.origin : '';
+                    var pathname = (typeof window !== 'undefined' && window.location && window.location.pathname) ? window.location.pathname : '';
+                    var baseDir = pathname.replace(/\/admin\/[^/]*$/, '/');
+                    var notaFullUrl = (origin && pathname)
+                        ? (origin + baseDir + 'nota.html?kode=' + encodeURIComponent(p.kode || '') + (p.token_nota ? ('&t=' + encodeURIComponent(p.token_nota)) : ''))
+                        : ('nota.html?kode=' + encodeURIComponent(p.kode || ''));
+
+                    var pesanWa = '';
+                    if (statusBaru === 'Sedang Dimasak') {
+                        pesanWa = 'Halo *' + p.nama_pelanggan + '*,\n\n'
+                            + 'Pesanan nasi box Anda di *' + (CFG.NAMA_WARTEG || 'Warteg Pak Sanam') + '* dengan kode *' + p.kode + '* (' + p.total_box + ' box) saat ini *SEDANG DIMASAK* di dapur kami! 🍳🔥\n\n'
+                            + 'Jadwal Pengambilan:\n'
+                            + '📅 Tanggal: ' + tanggalId(p.tanggal_ambil) + '\n'
+                            + '⏰ Jam: ' + jamPendek(p.jam_ambil) + ' WIB\n'
+                            + '📍 Lokasi: ' + (CFG.ALAMAT_WARTEG || 'Jalan BDN 1 Cilandak Barat Jakarta Selatan') + '\n\n'
+                            + 'Tautan Nota Digital:\n' + notaFullUrl + '\n\n'
+                            + 'Kami akan mengabari kembali saat pesanan sudah siap diambil. Terima kasih!';
+                    } else if (statusBaru === 'Siap Diambil') {
+                        pesanWa = 'Halo *' + p.nama_pelanggan + '*,\n\n'
+                            + 'Pesanan nasi box Anda di *' + (CFG.NAMA_WARTEG || 'Warteg Pak Sanam') + '* dengan kode *' + p.kode + '* (' + p.total_box + ' box) sudah *SIAP DIAMBIL*! 🍱✨\n\n'
+                            + 'Silakan diambil sesuai jadwal:\n'
+                            + '📅 Tanggal: ' + tanggalId(p.tanggal_ambil) + '\n'
+                            + '⏰ Jam: ' + jamPendek(p.jam_ambil) + ' WIB\n'
+                            + '📍 Lokasi: ' + (CFG.ALAMAT_WARTEG || 'Jalan BDN 1 Cilandak Barat Jakarta Selatan') + '\n\n'
+                            + 'Tautan Nota Digital:\n' + notaFullUrl + '\n\n'
+                            + 'Harap tunjukkan nota ini saat pengambilan di warteg. Terima kasih!';
+                    }
+                    waUrl = 'https://wa.me/' + cleanWa + '?text=' + encodeURIComponent(pesanWa);
+                }
             }
 
             return { ok: true, status: statusBaru, wa_url: waUrl };

@@ -8,14 +8,25 @@
     var DB = window.WARTEG_DB;
     var CFG = window.WARTEG_CONFIG || {};
 
-    // -----------------------------------------------------------------
-    // 1. Cek Sesi Login Admin
-    // -----------------------------------------------------------------
+    // -------------------------------------------------------------
+    // 1. Cek Sesi Login Admin & Kedaluwarsa Sesi (8 Jam)
+    // -------------------------------------------------------------
     var isLoginPage = window.location.pathname.endsWith('login.html');
+    var rawSesi = localStorage.getItem('warteg_admin_session_v1');
+    var isExpired = false;
+    if (rawSesi) {
+        try {
+            var pRaw = JSON.parse(rawSesi);
+            if (pRaw && pRaw.kadaluwarsa_pada && Date.now() > pRaw.kadaluwarsa_pada) {
+                isExpired = true;
+            }
+        } catch (e) {}
+    }
+
     var sesi = DB ? DB.getAdminSesi() : null;
 
     if (!isLoginPage && !sesi) {
-        window.location.href = 'login.html';
+        window.location.href = isExpired ? 'login.html?expired=1' : 'login.html';
         return;
     }
     if (isLoginPage && sesi) {
