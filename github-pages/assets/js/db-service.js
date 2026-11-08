@@ -872,8 +872,31 @@
 
         // Ubah Status Katering (Mulai Masak / Siap Diambil)
         ubahStatusKatering: async function (id, statusBaru) {
+            var numId = parseInt(id, 10);
+            if (isSupabaseReady) {
+                try {
+                    var { data, error } = await supabaseClient
+                        .from('pesanan')
+                        .update({ status: statusBaru, diubah_pada: new Date().toISOString() })
+                        .eq('id', numId)
+                        .select('no_wa, nama_pelanggan, total_box, kode')
+                        .single();
+                    if (!error && data) {
+                        var state = loadLocalState();
+                        var lp = (state.pesanan || []).find(function (x) { return x.id === numId; });
+                        if (lp) { lp.status = statusBaru; saveLocalState(state); }
+                        return {
+                            ok: true,
+                            wa_url: statusBaru === 'Siap Diambil' ? linkWa(data.no_wa, data.nama_pelanggan, data.total_box, data.kode) : ''
+                        };
+                    }
+                } catch (e) {
+                    console.warn('Supabase ubahStatusKatering error:', e);
+                }
+            }
+
             var state = loadLocalState();
-            var p = (state.pesanan || []).find(function (x) { return x.id === parseInt(id, 10); });
+            var p = (state.pesanan || []).find(function (x) { return x.id === numId; });
             if (!p) return { ok: false, pesan: 'Pesanan tidak ditemukan.' };
             p.status = statusBaru;
             saveLocalState(state);
@@ -883,12 +906,34 @@
         // Verifikasi Pembayaran (Setujui LUNAS / Tolak)
         verifikasiPembayaran: async function (pesananId, aksi, alasan) {
             var sesi = this.getAdminSesi() || { id: 1, nama: 'Admin Warteg' };
+            var numId = parseInt(pesananId, 10);
+            var statusBaru = aksi === 'setuju' ? 'berhasil' : 'ditolak';
+
+            if (isSupabaseReady) {
+                try {
+                    var updatePayload = {
+                        status_bayar: statusBaru,
+                        diverifikasi_pada: new Date().toISOString()
+                    };
+                    if (aksi === 'tolak') {
+                        updatePayload.alasan_tolak = alasan || 'Bukti pembayaran tidak sesuai.';
+                    } else {
+                        updatePayload.alasan_tolak = null;
+                    }
+                    await supabaseClient
+                        .from('pesanan')
+                        .update(updatePayload)
+                        .eq('id', numId);
+                } catch (e) {
+                    console.warn('Supabase verifikasiPembayaran error:', e);
+                }
+            }
+
             var state = loadLocalState();
-            var p = (state.pesanan || []).find(function (x) { return x.id === parseInt(pesananId, 10); });
+            var p = (state.pesanan || []).find(function (x) { return x.id === numId; });
             if (!p) return { ok: false, pesan: 'Pesanan tidak ditemukan.' };
 
             var statusLama = p.status_bayar;
-            var statusBaru = aksi === 'setuju' ? 'berhasil' : 'ditolak';
 
             p.status_bayar = statusBaru;
             p.admin_verifikator_id = sesi.id;
