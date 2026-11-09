@@ -62,6 +62,8 @@ CREATE TABLE IF NOT EXISTS kuota_harian (
     terpakai INTEGER NOT NULL DEFAULT 0,
     diperbarui_pada TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+ALTER TABLE kuota_harian ADD COLUMN IF NOT EXISTS terpakai INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE kuota_harian ADD COLUMN IF NOT EXISTS diperbarui_pada TIMESTAMPTZ NOT NULL DEFAULT NOW();
 
 -- 5. TABEL PESANAN (Header Transaksi Katering)
 CREATE TABLE IF NOT EXISTS pesanan (
@@ -182,16 +184,30 @@ CREATE TABLE IF NOT EXISTS konfigurasi_toko (
     nilai TEXT NULL,
     diperbarui_pada TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+ALTER TABLE konfigurasi_toko ADD COLUMN IF NOT EXISTS diperbarui_pada TIMESTAMPTZ NOT NULL DEFAULT NOW();
 
 -- 8. TABEL LOG VERIFIKASI PEMBAYARAN
 CREATE TABLE IF NOT EXISTS verifikasi_log (
     id BIGSERIAL PRIMARY KEY,
     pesanan_id BIGINT NOT NULL REFERENCES pesanan(id) ON DELETE CASCADE,
     admin_id BIGINT NULL REFERENCES admin(id) ON DELETE SET NULL,
-    aksi TEXT NOT NULL CHECK (aksi IN ('terima', 'tolak', 'unggah_bukti')),
+    aksi TEXT NOT NULL CHECK (aksi IN ('terima', 'setuju', 'tolak', 'unggah_bukti')),
     catatan TEXT NULL,
     dibuat_pada TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+ALTER TABLE verifikasi_log ADD COLUMN IF NOT EXISTS catatan TEXT NULL;
+ALTER TABLE verifikasi_log DROP CONSTRAINT IF EXISTS verifikasi_log_aksi_check;
+ALTER TABLE verifikasi_log ADD CONSTRAINT verifikasi_log_aksi_check
+    CHECK (aksi IN ('terima', 'setuju', 'tolak', 'unggah_bukti'));
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'verifikasi_log' AND column_name = 'kode_pesanan'
+    ) THEN
+        ALTER TABLE verifikasi_log ALTER COLUMN kode_pesanan DROP NOT NULL;
+    END IF;
+END $$;
 CREATE INDEX IF NOT EXISTS idx_verifikasi_pesanan ON verifikasi_log (pesanan_id);
 
 -- 9. TABEL AKTIVITAS ADMIN
@@ -246,15 +262,36 @@ DROP POLICY IF EXISTS "public_all_aktivitas_admin" ON aktivitas_admin;
 CREATE POLICY "public_all_aktivitas_admin" ON aktivitas_admin FOR ALL USING (true) WITH CHECK (true);
 
 -- =====================================================================
+-- HAK AKSES SCHEMA PUBLIC UNTUK ANON & AUTHENTICATED (POSTGREST)
+-- =====================================================================
+GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;
+GRANT ALL ON ALL ROUTINES IN SCHEMA public TO anon, authenticated;
+
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon, authenticated;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO anon, authenticated;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON ROUTINES TO anon, authenticated;
+
+-- =====================================================================
 -- FUNGSI RPC TRANSAKSI CHECKOUT (ANTI-OVERBOOKING 120 BOX/HARI + VALIDASI)
 -- =====================================================================
--- Hapus versi fungsi lama jika ada perubahan nama parameter input (mencegah error 42P13)
-DROP FUNCTION IF EXISTS buat_pesanan_katering(TEXT, TEXT, DATE, TIME WITHOUT TIME ZONE, TEXT, JSONB);
-DROP FUNCTION IF EXISTS buat_pesanan_katering(TEXT, TEXT, DATE, TIME, TEXT, JSONB);
-DROP FUNCTION IF EXISTS public.buat_pesanan_katering(TEXT, TEXT, DATE, TIME WITHOUT TIME ZONE, TEXT, JSONB);
-DROP FUNCTION IF EXISTS public.buat_pesanan_katering(TEXT, TEXT, DATE, TIME, TEXT, JSONB);
+-- Hapus semua versi overload fungsi lama agar tidak bentrok tipe/nama parameter (42P13 / PGRST202)
+DO $$
+DECLARE
+    r RECORD;
+BEGIN
+    FOR r IN
+        SELECT oid::regprocedure AS sig
+        FROM pg_proc
+        WHERE proname = 'buat_pesanan_katering'
+          AND pronamespace = 'public'::regnamespace
+    LOOP
+        EXECUTE 'DROP FUNCTION IF EXISTS ' || r.sig || ' CASCADE';
+    END LOOP;
+END $$;
 
-CREATE OR REPLACE FUNCTION buat_pesanan_katering(
+CREATE OR REPLACE FUNCTION public.buat_pesanan_katering(
     p_nama_pelanggan TEXT,
     p_no_wa TEXT,
     p_tanggal_ambil DATE,
@@ -265,6 +302,7 @@ CREATE OR REPLACE FUNCTION buat_pesanan_katering(
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public
 AS $$
 DECLARE
     v_total_box INTEGER := 0;
@@ -273,7 +311,7 @@ DECLARE
     v_diskon INTEGER := 0;
     v_nominal_bayar INTEGER := 0;
     v_kuota_saat_ini INTEGER := 0;
-    v_item JSONB;
+    v_item RECORD;
     v_menu RECORD;
     v_mh RECORD;
     v_terjual INTEGER;
@@ -285,24 +323,30 @@ DECLARE
     v_batas_jam INTEGER := 24;
 BEGIN
     -- 0. Validasi Tanggal Ambil (H+1 s/d H+30) & Jam Operasional (09:00 - 19:00)
-    IF p_tanggal_ambil < (CURRENT_DATE + 1) OR p_tanggal_ambil > (CURRENT_DATE + 30) THEN
+    IF p_tanggal_ambil IS NULL OR p_tanggal_ambil < (CURRENT_DATE + 1) OR p_tanggal_ambil > (CURRENT_DATE + 30) THEN
         RETURN jsonb_build_object(
             'ok', false,
             'pesan', 'Tanggal pengambilan harus berada dalam rentang H-1 (besok) hingga 30 hari ke depan.'
         );
     END IF;
 
-    IF p_jam_ambil < '09:00:00'::time OR p_jam_ambil > '19:00:00'::time THEN
+    IF p_jam_ambil IS NULL OR p_jam_ambil < '09:00:00'::time OR p_jam_ambil > '19:00:00'::time THEN
         RETURN jsonb_build_object(
             'ok', false,
             'pesan', 'Jam pengambilan harus berada dalam jam operasional dapur (09.00 - 19.00 WIB).'
         );
     END IF;
 
-    -- 1. Kunci baris kuota_harian untuk tanggal tersebut
+    IF p_items IS NULL OR jsonb_typeof(p_items) <> 'array' OR jsonb_array_length(p_items) = 0 THEN
+        RETURN jsonb_build_object('ok', false, 'pesan', 'Pilih minimal satu menu katering.');
+    END IF;
+
+    -- 1. Kunci baris kuota_harian untuk tanggal tersebut agar aman dari race condition
     INSERT INTO kuota_harian (tanggal, terpakai)
     VALUES (p_tanggal_ambil, 0)
     ON CONFLICT (tanggal) DO NOTHING;
+
+    PERFORM 1 FROM kuota_harian WHERE tanggal = p_tanggal_ambil FOR UPDATE;
 
     SELECT COALESCE(SUM(total_box), 0) INTO v_kuota_saat_ini
     FROM pesanan
@@ -310,24 +354,28 @@ BEGIN
       AND status NOT IN ('Dibatalkan')
       AND status_bayar NOT IN ('gagal', 'kedaluwarsa', 'dibatalkan');
 
-    -- 2. Hitung total box utama & validasi stok tiap menu
-    FOR v_item IN SELECT * FROM jsonb_array_elements(p_items)
+    -- 2. Hitung total box utama & validasi stok tiap menu (agregasi per menu_id)
+    FOR v_item IN
+        SELECT (elem->>'menu_id')::BIGINT AS menu_id,
+               SUM(GREATEST(0, COALESCE((elem->>'jumlah')::INTEGER, 0)))::INTEGER AS jumlah
+        FROM jsonb_array_elements(p_items) AS elem
+        GROUP BY (elem->>'menu_id')::BIGINT
+        HAVING SUM(GREATEST(0, COALESCE((elem->>'jumlah')::INTEGER, 0))) > 0
     LOOP
-        IF COALESCE((v_item->>'jumlah')::INTEGER, 0) <= 0 THEN
-            CONTINUE;
-        END IF;
-
-        SELECT * INTO v_menu FROM menu WHERE id = (v_item->>'menu_id')::BIGINT AND aktif = TRUE;
+        SELECT * INTO v_menu FROM menu WHERE id = v_item.menu_id AND aktif = TRUE;
         IF NOT FOUND THEN
             RETURN jsonb_build_object('ok', false, 'pesan', 'Salah satu menu tidak ditemukan atau sedang nonaktif.');
         END IF;
 
-        SELECT * INTO v_mh FROM menu_harian WHERE tanggal = p_tanggal_ambil AND menu_id = v_menu.id;
-        IF FOUND AND v_mh.tersedia = FALSE THEN
-            RETURN jsonb_build_object('ok', false, 'pesan', 'Menu "' || v_menu.nama || '" sedang tidak tersedia pada tanggal tersebut.');
+        v_stok_efektif := v_menu.stok_default;
+        SELECT tersedia, stok INTO v_mh FROM menu_harian WHERE tanggal = p_tanggal_ambil AND menu_id = v_menu.id;
+        IF FOUND THEN
+            IF v_mh.tersedia = FALSE THEN
+                RETURN jsonb_build_object('ok', false, 'pesan', 'Menu "' || v_menu.nama || '" sedang tidak tersedia pada tanggal tersebut.');
+            END IF;
+            v_stok_efektif := COALESCE(v_mh.stok, v_menu.stok_default);
         END IF;
 
-        v_stok_efektif := COALESCE(v_mh.stok, v_menu.stok_default);
         IF v_stok_efektif IS NOT NULL THEN
             SELECT COALESCE(SUM(dp.jumlah), 0) INTO v_terjual
             FROM detail_pesanan dp
@@ -337,7 +385,7 @@ BEGIN
               AND p.status NOT IN ('Dibatalkan')
               AND p.status_bayar NOT IN ('gagal', 'kedaluwarsa', 'dibatalkan');
 
-            IF (v_terjual + (v_item->>'jumlah')::INTEGER) > v_stok_efektif THEN
+            IF (v_terjual + v_item.jumlah) > v_stok_efektif THEN
                 RETURN jsonb_build_object(
                     'ok', false,
                     'pesan', 'Stok "' || v_menu.nama || '" pada tanggal tersebut hanya tersisa ' || GREATEST(0, v_stok_efektif - v_terjual) || '.'
@@ -345,11 +393,11 @@ BEGIN
             END IF;
         END IF;
 
-        v_total_item_qty := v_total_item_qty + (v_item->>'jumlah')::INTEGER;
-        IF v_menu.kategori IN ('paket a', 'paket b', 'paket c', 'nasi') THEN
-            v_total_box := v_total_box + (v_item->>'jumlah')::INTEGER;
+        v_total_item_qty := v_total_item_qty + v_item.jumlah;
+        IF v_menu.kategori IN ('paket a', 'paket b', 'paket c', 'nasi') OR v_menu.kategori LIKE 'paket%' THEN
+            v_total_box := v_total_box + v_item.jumlah;
         END IF;
-        v_total_harga := v_total_harga + ((v_item->>'jumlah')::INTEGER * v_menu.harga);
+        v_total_harga := v_total_harga + (v_item.jumlah * v_menu.harga);
     END LOOP;
 
     -- 3. Validasi minimal 10 box utama & maksimal kapasitas 120 box
@@ -367,16 +415,24 @@ BEGIN
         );
     END IF;
 
-    -- 4. Buat Kode Pesanan Unik (WRT-YYYYMMDD-XXX) & Token Nota
-    v_kode := 'WRT-' || to_char(p_tanggal_ambil, 'YYYYMMDD') || '-' || lpad((floor(random() * 900) + 100)::TEXT, 3, '0');
-    v_token := encode(gen_random_bytes(16), 'hex');
+    -- 4. Buat Kode Pesanan Unik (WRT-YYYYMMDD-XXX) & Token Nota (core gen_random_uuid)
+    LOOP
+        v_kode := 'WRT-' || to_char(p_tanggal_ambil, 'YYYYMMDD') || '-' || lpad((floor(random() * 900) + 100)::TEXT, 3, '0');
+        EXIT WHEN NOT EXISTS (SELECT 1 FROM pesanan WHERE kode = v_kode);
+    END LOOP;
+    v_token := replace(gen_random_uuid()::TEXT, '-', '');
 
-    -- 5. Hitung Diskon Kelipatan 50 Box (Rp 50.000 per kelipatan 50 box)
-    v_diskon := FLOOR(v_total_box / 50) * 50000;
+    -- 5. Hitung Voucher Diskon 5% untuk pemesanan 80 box atau lebih
+    IF v_total_box >= 80 THEN
+        v_diskon := ROUND(v_total_harga * 0.05)::INTEGER;
+    ELSE
+        v_diskon := 0;
+    END IF;
     v_nominal_bayar := GREATEST(0, v_total_harga - v_diskon);
 
     SELECT COALESCE(NULLIF(nilai, '')::INTEGER, 24) INTO v_batas_jam
     FROM konfigurasi_toko WHERE kunci = 'batas_bayar_jam';
+    v_batas_jam := COALESCE(v_batas_jam, 24);
 
     -- 6. Simpan ke tabel pesanan
     INSERT INTO pesanan (
@@ -389,14 +445,19 @@ BEGIN
         v_nominal_bayar, NOW() + (v_batas_jam || ' hours')::INTERVAL, v_token
     ) RETURNING id INTO v_pesanan_id;
 
-    -- 7. Simpan detail_pesanan beserta snapshot nama_menu & unit
-    FOR v_item IN SELECT * FROM jsonb_array_elements(p_items)
+    -- 7. Simpan detail_pesanan beserta snapshot nama_menu & unit (agregasi per menu_id agar aman terhadap constraint unik)
+    FOR v_item IN
+        SELECT (elem->>'menu_id')::BIGINT AS menu_id,
+               SUM(GREATEST(0, COALESCE((elem->>'jumlah')::INTEGER, 0)))::INTEGER AS jumlah
+        FROM jsonb_array_elements(p_items) AS elem
+        GROUP BY (elem->>'menu_id')::BIGINT
+        HAVING SUM(GREATEST(0, COALESCE((elem->>'jumlah')::INTEGER, 0))) > 0
     LOOP
-        IF COALESCE((v_item->>'jumlah')::INTEGER, 0) <= 0 THEN
-            CONTINUE;
-        END IF;
-        SELECT * INTO v_menu FROM menu WHERE id = (v_item->>'menu_id')::BIGINT;
-        v_unit := CASE WHEN v_menu.kategori IN ('paket a', 'paket b', 'paket c', 'nasi') THEN 'box' ELSE 'porsi' END;
+        SELECT * INTO v_menu FROM menu WHERE id = v_item.menu_id;
+        v_unit := CASE
+            WHEN v_menu.kategori IN ('paket a', 'paket b', 'paket c', 'nasi') OR v_menu.kategori LIKE 'paket%' THEN 'box'
+            ELSE 'porsi'
+        END;
 
         INSERT INTO detail_pesanan (pesanan_id, menu_id, nama_menu, unit, jumlah, harga_satuan, subtotal)
         VALUES (
@@ -404,9 +465,9 @@ BEGIN
             v_menu.id,
             v_menu.nama,
             v_unit,
-            (v_item->>'jumlah')::INTEGER,
+            v_item.jumlah,
             v_menu.harga,
-            (v_item->>'jumlah')::INTEGER * v_menu.harga
+            v_item.jumlah * v_menu.harga
         );
     END LOOP;
 
@@ -429,6 +490,8 @@ BEGIN
 END;
 $$;
 
+GRANT EXECUTE ON FUNCTION public.buat_pesanan_katering(TEXT, TEXT, DATE, TIME, TEXT, JSONB) TO anon, authenticated, service_role;
+
 -- =====================================================================
 -- DATA AWAL (SEED DATA DEMO)
 -- =====================================================================
@@ -440,7 +503,7 @@ INSERT INTO konfigurasi_toko (kunci, nilai) VALUES
     ('qris_nmid', 'ID1024000000001'),
     ('qris_instruksi', 'Scan kode QRIS di atas dengan aplikasi pembayaran apa pun (BCA mobile, Livin, BRImo, GoPay, OVO, DANA, ShopeePay), masukkan nominal sesuai total tagihan, lalu unggah tangkapan layar bukti pembayaran di halaman ini.'),
     ('batas_bayar_jam', '24')
-ON CONFLICT (kunci) DO UPDATE SET nilai = EXCLUDED.nilai;
+ON CONFLICT (kunci) DO NOTHING;
 
 -- 2. Seed Akun Admin Default (Username: admin | Password: admin123)
 INSERT INTO admin (username, password_hash, nama, role, jabatan, no_hp, email)
@@ -475,13 +538,7 @@ INSERT INTO menu (nama, deskripsi, harga, kategori, foto, stok_default, aktif) V
 ('Es Teler Premium', 'Es teler manis segar isi alpukat, kelapa muda, nangka, jeli & susu kental manis', 10000, 'sayur', 'es_teler.jpg', 50, true),
 ('Nasi Putih Pulen', 'Nasi putih hangat porsi katering box sekat', 6000, 'nasi', 'ayam_goreng_sambal.jpg', 120, true),
 ('Nasi Uduk Gurih', 'Nasi uduk santan rempah daun salam dengan taburan bawang goreng', 8000, 'nasi', 'ayam_bakar_sambal.jpg', 80, true)
-ON CONFLICT (nama) DO UPDATE SET
-    deskripsi = EXCLUDED.deskripsi,
-    harga = EXCLUDED.harga,
-    kategori = EXCLUDED.kategori,
-    foto = EXCLUDED.foto,
-    stok_default = EXCLUDED.stok_default,
-    aktif = EXCLUDED.aktif;
+ON CONFLICT (nama) DO NOTHING;
 
 -- 4. Pastikan kolom audit dan relasi aktivitas admin mendukung log upaya login gagal
 ALTER TABLE IF EXISTS aktivitas_admin ALTER COLUMN admin_id DROP NOT NULL;

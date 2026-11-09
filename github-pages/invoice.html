@@ -267,7 +267,7 @@
                 <h2>Ketentuan Katering</h2>
                 <ul>
                     <li>Minimal order 10 box per transaksi</li>
-                    <li>Promo kelipatan 50 box hemat Rp 50.000</li>
+                    <li>Promo voucher diskon 5% untuk 80 box atau lebih</li>
                     <li>Maksimal dapur 120 box per hari</li>
                     <li>Pesan minimal H-1 sebelum pengambilan</li>
                     <li>Pembayaran non-tunai via QRIS Statis</li>
@@ -352,13 +352,16 @@
 
                 html += '</tbody><tfoot>';
                 if (p.diskon > 0) {
+                    var labelDiskonInv = Number(p.total_box || 0) >= 80
+                        ? 'Voucher Diskon 5% (&ge;80 Box)'
+                        : 'Voucher Diskon Pesanan';
                     html += '<tr>'
                         + '<td colspan="3" style="font-size:14px;font-weight:600;color:var(--c-redup);border-top:2px solid var(--c-teks);padding-bottom:4px">Subtotal (' + Number(p.total_box || 0) + ' box)</td>'
                         + '<td style="text-align:right;font-size:14px;font-weight:600;color:var(--c-redup);border-top:2px solid var(--c-teks);padding-bottom:4px">Subtotal</td>'
                         + '<td style="text-align:right;font-size:14px;font-weight:600;color:var(--c-redup);border-top:2px solid var(--c-teks);padding-bottom:4px">' + DB.rupiah(p.total_harga) + '</td>'
                         + '</tr>'
                         + '<tr>'
-                        + '<td colspan="3" style="font-size:14px;font-weight:700;color:#1b6e44;border-top:none;padding-top:4px;padding-bottom:6px">Voucher Diskon Kelipatan 50 Box</td>'
+                        + '<td colspan="3" style="font-size:14px;font-weight:700;color:#1b6e44;border-top:none;padding-top:4px;padding-bottom:6px">' + labelDiskonInv + '</td>'
                         + '<td style="text-align:right;font-size:14px;font-weight:700;color:#1b6e44;border-top:none;padding-top:4px;padding-bottom:6px">Potongan</td>'
                         + '<td style="text-align:right;font-size:14px;font-weight:700;color:#1b6e44;border-top:none;padding-top:4px;padding-bottom:6px">- ' + DB.rupiah(p.diskon) + '</td>'
                         + '</tr>';

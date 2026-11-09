@@ -604,9 +604,11 @@
         var jmlPorsi = totalPorsiTambahan();
         var jmlSemua = totalItemKeranjang();
         var subHarga = totalHarga();
-        var diskon = DB.hitungDiskon(jmlBox);
+        var diskon = DB.hitungDiskon(jmlBox, subHarga);
         var hargaBersih = Math.max(0, subHarga - diskon);
         var minBox = CFG.MINIMAL_BOX || 10;
+        var minBoxDiskon = Number(CFG.MIN_BOX_DISKON || 80);
+        var persenDiskon = Number(CFG.PERSEN_DISKON || 5);
 
         if (elTotalBox) elTotalBox.textContent = jmlBox + (jmlPorsi > 0 ? ' Box + ' + jmlPorsi + ' Porsi' : '');
         if (elSubtotal) elSubtotal.textContent = DB.rupiah(subHarga);
@@ -618,27 +620,25 @@
             elBarisDiskon.style.display = 'flex';
             if (diskon > 0) {
                 elNilaiDiskon.className = 'diskon-aktif';
-                elNilaiDiskon.textContent = '- ' + DB.rupiah(diskon);
+                elNilaiDiskon.textContent = '- ' + DB.rupiah(diskon) + ' (' + persenDiskon + '%)';
             } else {
                 elNilaiDiskon.className = 'diskon-belum';
-                elNilaiDiskon.textContent = 'Rp 0 (Belum 50 Box)';
+                elNilaiDiskon.textContent = 'Rp 0 (Min. ' + minBoxDiskon + ' Box)';
             }
         }
 
-        // Update Milestone Promo Kelipatan 50 Box
+        // Update Milestone Promo Diskon 5% (>= 80 Box)
         if (promoSub && promoBar) {
-            var sisaKe50 = 50 - (jmlBox % 50);
-            var persenMilestone = jmlBox === 0 ? 0 : (jmlBox % 50 === 0 ? 100 : Math.round(((jmlBox % 50) / 50) * 100));
+            var sisaKeDiskon = Math.max(0, minBoxDiskon - jmlBox);
+            var persenMilestone = jmlBox === 0 ? 0 : Math.min(100, Math.round((jmlBox / minBoxDiskon) * 100));
             promoBar.style.width = persenMilestone + '%';
 
             if (jmlBox === 0) {
-                promoSub.textContent = 'Pesan 50 box untuk klaim diskon Rp 50.000!';
-            } else if (diskon > 0 && jmlBox % 50 === 0) {
-                promoSub.textContent = 'Selamat! Voucher diskon ' + DB.rupiah(diskon) + ' aktif otomatis.';
-            } else if (diskon > 0) {
-                promoSub.textContent = 'Diskon ' + DB.rupiah(diskon) + ' aktif! Tambah ' + sisaKe50 + ' box lagi untuk ekstra Rp 50.000.';
+                promoSub.textContent = 'Pesan minimal ' + minBoxDiskon + ' box untuk klaim voucher diskon ' + persenDiskon + '%!';
+            } else if (jmlBox >= minBoxDiskon) {
+                promoSub.textContent = 'Selamat! Voucher diskon ' + persenDiskon + '% (' + DB.rupiah(diskon) + ') aktif otomatis.';
             } else {
-                promoSub.textContent = 'Pesan ' + sisaKe50 + ' box lagi untuk klaim diskon Rp 50.000!';
+                promoSub.textContent = 'Pesan ' + sisaKeDiskon + ' box lagi untuk klaim voucher diskon ' + persenDiskon + '%!';
             }
         }
 
@@ -754,14 +754,20 @@
             var jam = (elJam && elJam.value) ? elJam.value : jamPilih;
             var catatan = (elCatatan ? elCatatan.value : '').trim();
 
-            var items = Object.keys(keranjang)
-                .filter(function (k) { return keranjang[k] > 0; })
-                .map(function (k) { return { menu_id: Number(k), jumlah: Number(keranjang[k]) }; });
-
             if (!nama || !wa || !tgl || !jam) {
                 tampilGalat('Mohon lengkapi nama, nomor WhatsApp, tanggal, dan jam pengambilan.');
                 return;
             }
+
+            if (/\d/.test(nama)) {
+                tampilGalat('Nama lengkap pemesan tidak boleh mengandung angka.');
+                if (elNama) elNama.focus();
+                return;
+            }
+
+            var items = Object.keys(keranjang)
+                .filter(function (k) { return keranjang[k] > 0; })
+                .map(function (k) { return { menu_id: Number(k), jumlah: Number(keranjang[k]) }; });
 
             if (totalBox() < (CFG.MINIMAL_BOX || 10)) {
                 tampilGalat('Jumlah pesanan minimal adalah 10 box utama (Paket Nasi Box atau Nasi Pilihan).');

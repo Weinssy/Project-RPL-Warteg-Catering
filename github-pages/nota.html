@@ -80,7 +80,7 @@
                 <h2>Ketentuan Katering</h2>
                 <ul>
                     <li>Minimal order 10 box per transaksi</li>
-                    <li>Promo kelipatan 50 box hemat Rp 50.000</li>
+                    <li>Promo voucher diskon 5% untuk 80 box atau lebih</li>
                     <li>Maksimal dapur 120 box per hari</li>
                     <li>Pesan minimal H-1 sebelum pengambilan</li>
                     <li>Pembayaran non-tunai via QRIS Statis</li>
@@ -193,12 +193,15 @@
             html += '</tbody></table>';
 
             if (p.diskon > 0) {
+                var labelDiskonNota = Number(p.total_box || 0) >= 80
+                    ? 'Potongan Voucher Diskon 5% (&ge;80 Box)'
+                    : 'Potongan Voucher Diskon';
                 html += '<div style="display:flex;justify-content:space-between;font-size:14px;padding-top:10px;color:var(--c-redup)">'
                     + '<span>Subtotal Menu</span>'
                     + '<span>' + DB.rupiah(p.total_harga) + '</span>'
                     + '</div>'
                     + '<div style="display:flex;justify-content:space-between;font-size:14px;padding-top:6px;color:var(--c-hijau);font-weight:700">'
-                    + '<span>Potongan Voucher Diskon (Kelipatan 50 Box)</span>'
+                    + '<span>' + labelDiskonNota + '</span>'
                     + '<span>- ' + DB.rupiah(p.diskon) + '</span>'
                     + '</div>';
             }

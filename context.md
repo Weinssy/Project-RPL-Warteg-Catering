@@ -48,12 +48,11 @@ Setiap implementasi kode di repositori **wajib** lolos validasi aturan berikut:
    * Modul transaksi kasir harian (dine-in dan bungkus langsung) berdiri terpisah dan **sama sekali tidak memotong/mengurangi kuota katering 120 box**.
 8. **Skema Perhitungan Harga & Voucher Diskon Box:**
    * Formula Subtotal: $\text{Subtotal} = \sum (\text{Harga Komponen Menu} \times \text{Jumlah Box})$
-   * **Aturan Voucher Diskon Kelipatan 50 Box:**
-     * Pemesanan dalam satu transaksi yang mencapai kelipatan 50 box berhak mendapatkan potongan voucher diskon sebesar **Rp 50.000 per 50 box**.
-     * Formula Diskon: $\text{Diskon} = \lfloor \frac{\text{Total Box}}{50} \rfloor \times 50.000$
-       * $10 - 49\text{ box} \rightarrow \text{Diskon } \text{Rp } 0$
-       * $50 - 99\text{ box} \rightarrow \text{Diskon } \text{Rp } 50.000$
-       * $100 - 120\text{ box} \rightarrow \text{Diskon } \text{Rp } 100.000$
+   * **Aturan Voucher Diskon 5% (>= 80 Box):**
+     * Pemesanan dalam satu transaksi yang mencapai **80 box atau lebih** berhak mendapatkan potongan voucher diskon sebesar **5% dari subtotal pesanan**.
+     * Formula Diskon:
+       * Jika $\text{Total Box} < 80$: $\text{Diskon} = \text{Rp } 0$
+       * Jika $\text{Total Box} \ge 80$: $\text{Diskon} = \text{round}(\text{Subtotal} \times 0.05)$
      * Total Tagihan Bersih: $\text{Total Bayar} = \max(0, \text{Subtotal} - \text{Diskon})$.
      * Rincian potongan diskon wajib dicantumkan transparan pada ringkasan keranjang belanja, formulir checkout, nota pesanan, dan invoice pembayaran.
 9. **Perilaku Menu Tidak Tersedia (is_ready = false):**
@@ -134,7 +133,7 @@ Repositori mendukung dua lingkungan deployment:
   * `jam_ambil` (Time)
   * `total_box` (Integer, Min: 10)
   * `total_harga` (BigInt, Subtotal kotor sebelum diskon)
-  * `diskon` (BigInt, Potongan voucher kelipatan 50 box)
+  * `diskon` (Integer/BigInt, Potongan voucher diskon 5% untuk pemesanan 80 box atau lebih)
   * `nominal_bayar` (BigInt, Total tagihan bersih setelah diskon)
   * `status` (Text: `'Menunggu Konfirmasi'`, `'Sedang Dimasak'`, `'Siap Diambil'`)
   * `status_bayar` (Text: `'belum_bayar'`, `'menunggu_verifikasi'`, `'berhasil'`, `'ditolak'`)
@@ -156,7 +155,7 @@ Repositori mendukung dua lingkungan deployment:
 
 | Method / Akses | URI (GitHub Pages) | Komponen / Handler | Deskripsi & Fungsi |
 | :--- | :--- | :--- | :--- |
-| `GET` | `index.html` | `customer-app.js` | Halaman beranda, banner promo diskon 50 box, live kuota gauge, meal builder. |
+| `GET` | `index.html` | `customer-app.js` | Halaman beranda, banner promo diskon 5% (>= 80 box), live kuota gauge, meal builder. |
 | `GET` | `checkout.html` | `customer-app.js` | Rincian keranjang, kalkulasi diskon otomatis, form pemesan & jam ambil. |
 | `POST` | `RPC: buat_pesanan_katering` | `db-service.js` | Eksekusi transaksi kuota dapur 120 box & pemotongan voucher diskon. |
 | `GET` | `pembayaran.html` | `pembayaran.html` | Informasi tagihan bersih, QRIS Statis Warteg Pak Sanam, upload bukti transfer. |
@@ -186,8 +185,12 @@ IF (v_kuota_terpakai + v_total_box) > 120 THEN
     RAISE EXCEPTION 'Kapasitas dapur penuh! Sisa kuota hanya % box.', (120 - v_kuota_terpakai);
 END IF;
 
--- Hitung voucher diskon kelipatan 50 box
-v_diskon := FLOOR(v_total_box / 50) * 50000;
+-- Hitung voucher diskon 5% untuk pemesanan 80 box atau lebih
+IF v_total_box >= 80 THEN
+    v_diskon := ROUND(v_total_harga * 0.05)::INTEGER;
+ELSE
+    v_diskon := 0;
+END IF;
 v_nominal_bayar := GREATEST(0, v_total_harga - v_diskon);
 ```
 
@@ -207,9 +210,9 @@ https://wa.me/6285783423626?text=Halo%20Warteg%20Pak%20Sanam,%20saya%20telah%20m
 | **TC-03** | Validasi Tanggal | Input `tanggal_ambil = Hari Ini` | Validasi gagal, sistem menolak order mendadak (wajib minimal H-1). | Lolos |
 | **TC-04** | Validasi Kuota (Over) | Kuota terisi 115 box. Pesanan baru 10 box pada tanggal sama. | Sistem menolak transaksi dan menampilkan notifikasi: "Sisa kuota: 5 box". | Lolos |
 | **TC-05** | Validasi Kuota (Pas) | Kuota terisi 110 box. Pesanan baru 10 box pada tanggal sama. | Transaksi berhasil. Kuota tanggal tersebut menjadi 120/120 (Penuh). | Lolos |
-| **TC-06** | Diskon 50 Box | Input `jumlah_box = 50`, Subtotal Rp 1.000.000 | Sistem memotong voucher diskon Rp 50.000, Total Tagihan Akhir = Rp 950.000. | Lolos |
-| **TC-07** | Diskon 100 Box | Input `jumlah_box = 100`, Subtotal Rp 2.000.000 | Sistem memotong voucher diskon Rp 100.000, Total Tagihan Akhir = Rp 1.900.000. | Lolos |
-| **TC-08** | Non-Diskon (< 50 Box) | Input `jumlah_box = 49`, Subtotal Rp 980.000 | Voucher Diskon = Rp 0, Total Tagihan Akhir = Rp 980.000 (tidak ada potongan). | Lolos |
+| **TC-06** | Diskon 80 Box (5%) | Input `jumlah_box = 80`, Subtotal Rp 1.840.000 | Sistem memotong voucher diskon 5% sebesar Rp 92.000, Total Tagihan Akhir = Rp 1.748.000. | Lolos |
+| **TC-07** | Diskon 100 Box (5%) | Input `jumlah_box = 100`, Subtotal Rp 2.300.000 | Sistem memotong voucher diskon 5% sebesar Rp 115.000, Total Tagihan Akhir = Rp 2.185.000. | Lolos |
+| **TC-08** | Non-Diskon (< 80 Box) | Input `jumlah_box = 79`, Subtotal Rp 1.817.000 | Voucher Diskon = Rp 0, Total Tagihan Akhir = Rp 1.817.000 (tidak ada potongan). | Lolos |
 | **TC-09** | Validasi Nama | Input `nama_pemesan = "Budi 123"` | Form memunculkan peringatan galat: "Nama tidak boleh mengandung angka". | Lolos |
 | **TC-10** | Verifikasi Pembayaran | Admin menyetujui bukti transfer QRIS di menu Verifikasi. | Status bayar pesanan berubah menjadi `berhasil` (LUNAS), nota & invoice menampilkan cap LUNAS. | Lolos |
 
@@ -228,7 +231,7 @@ https://wa.me/6285783423626?text=Halo%20Warteg%20Pak%20Sanam,%20saya%20telah%20m
 
 - [x] Identitas mitra terkonfigurasi konsisten sebagai **Warteg Pak Sanam**, Jalan BDN 1 Cilandak Barat Jakarta Selatan.
 - [x] Nomor WhatsApp resmi terkonfigurasi ke **0857-8342-3626** (`6285783423626`).
-- [x] Aturan voucher diskon kelipatan 50 box (`Math.floor(box / 50) * 50000`) terpasang pada `customer-app.js`, `checkout.html`, `db-service.js`, dan `supabase_setup.sql`.
+- [x] Aturan voucher diskon 5% untuk pemesanan 80 box atau lebih (`box >= 80 ? Math.round(subtotal * 0.05) : 0`) terpasang pada `config.js`, `customer-app.js`, `checkout.html`, `db-service.js`, dan `supabase_setup.sql`.
 - [x] Validasi nama pemesan menolak angka sama sekali (`namaValid`).
 - [x] Kuota harian flat 120 box/hari dan aturan pemesanan minimal H-1 terkunci.
 - [x] Alur checkout, pembayaran QRIS, upload bukti bayar, nota, invoice, dan cek status berjalan baik pada mode Supabase maupun fallback LocalStorage.

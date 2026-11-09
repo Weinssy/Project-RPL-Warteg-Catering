@@ -172,10 +172,37 @@
         return '<span class="badge ' + kls + '">' + escapeHtml(status || 'Menunggu Konfirmasi') + '</span>';
     }
 
-    function hitungDiskon(totalBox) {
+    function hitungDiskon(totalBox, subtotal) {
         var box = Number(totalBox) || 0;
-        var kelipatan = Math.floor(box / (CFG.DISKON_PER_BOX || 50));
-        return kelipatan * (CFG.NOMINAL_DISKON || 50000);
+        var sub = Number(subtotal) || 0;
+        var minBox = Number(CFG.MIN_BOX_DISKON || 80);
+        var persen = Number(CFG.PERSEN_DISKON || 5);
+        if (box < minBox || sub <= 0 || persen <= 0) return 0;
+        return Math.round(sub * (persen / 100));
+    }
+
+    function resolveDiskonPesanan(p) {
+        if (!p) return 0;
+        if (p.diskon !== undefined && p.diskon !== null) {
+            return Number(p.diskon) || 0;
+        }
+        if (p.nominal_bayar !== undefined && p.nominal_bayar !== null) {
+            return Math.max(0, Number(p.total_harga || 0) - Number(p.nominal_bayar || 0));
+        }
+        return hitungDiskon(p.total_box, p.total_harga);
+    }
+
+    function generateTokenHex() {
+        try {
+            if (typeof window !== 'undefined' && window.crypto && window.crypto.getRandomValues) {
+                var arr = new Uint8Array(16);
+                window.crypto.getRandomValues(arr);
+                return Array.prototype.map.call(arr, function (b) {
+                    return b.toString(16).padStart(2, '0');
+                }).join('');
+            }
+        } catch (e) {}
+        return ('tok' + Math.random().toString(36).slice(2) + Date.now().toString(36) + Math.random().toString(36).slice(2)).slice(0, 32);
     }
 
     function validasiTanggalAmbil(tglStr) {
@@ -443,11 +470,24 @@
         simpanKonfigurasi: async function (objBaru) {
             if (isSupabaseReady) {
                 try {
+                    var now = new Date().toISOString();
                     var rows = Object.keys(objBaru).map(function (k) {
-                        return { kunci: k, nilai: String(objBaru[k] ?? ''), diperbarui_pada: new Date().toISOString() };
+                        return { kunci: k, nilai: String(objBaru[k] ?? ''), diperbarui_pada: now };
                     });
                     var res = await sb.from('konfigurasi_toko').upsert(rows);
-                    if (res.error) return { ok: false, pesan: res.error.message || 'Gagal menyimpan konfigurasi ke Supabase.' };
+                    if (res.error) {
+                        var rowsKompat = Object.keys(objBaru).map(function (k) {
+                            return { kunci: k, nilai: String(objBaru[k] ?? ''), diubah_pada: now };
+                        });
+                        var res2 = await sb.from('konfigurasi_toko').upsert(rowsKompat);
+                        if (res2.error) {
+                            var rowsMinimal = Object.keys(objBaru).map(function (k) {
+                                return { kunci: k, nilai: String(objBaru[k] ?? '') };
+                            });
+                            var res3 = await sb.from('konfigurasi_toko').upsert(rowsMinimal);
+                            if (res3.error) return { ok: false, pesan: res3.error.message || 'Gagal menyimpan konfigurasi ke Supabase.' };
+                        }
+                    }
                 } catch (e) {
                     return { ok: false, pesan: e.message || 'Gagal menghubungi server database.' };
                 }
@@ -644,6 +684,9 @@
             if (!nama || !wa || !tgl || !jam) {
                 return { ok: false, pesan: 'Mohon lengkapi nama pemesan, nomor WhatsApp, tanggal, dan jam pengambilan.' };
             }
+            if (/\d/.test(nama)) {
+                return { ok: false, pesan: 'Nama lengkap pemesan tidak boleh mengandung angka.' };
+            }
             if (wa.replace(/\D/g, '').length < 9) {
                 return { ok: false, pesan: 'Nomor WhatsApp tidak valid (minimal 9 digit angka).' };
             }
@@ -654,7 +697,19 @@
             var valJam = validasiJamAmbil(jam);
             if (!valJam.ok) return valJam;
 
-            if (!items.length) {
+            // Gabungkan item duplikat berdasarkan menu_id agar aman terhadap constraint unik detail_pesanan
+            var mergedMap = {};
+            items.forEach(function (it) {
+                var mid = Number(it && it.menu_id);
+                var qty = parseInt(it && it.jumlah, 10);
+                if (!mid || isNaN(qty) || qty <= 0) return;
+                mergedMap[mid] = (mergedMap[mid] || 0) + qty;
+            });
+            var mergedItems = Object.keys(mergedMap).map(function (midStr) {
+                return { menu_id: Number(midStr), jumlah: mergedMap[midStr] };
+            });
+
+            if (!mergedItems.length) {
                 return { ok: false, pesan: 'Pilih minimal satu menu katering.' };
             }
 
@@ -668,10 +723,9 @@
             var totalHargaHitung = 0;
             var itemValid = [];
 
-            for (var i = 0; i < items.length; i++) {
-                var it = items[i];
-                var qty = parseInt(it.jumlah, 10);
-                if (isNaN(qty) || qty <= 0) continue;
+            for (var i = 0; i < mergedItems.length; i++) {
+                var it = mergedItems[i];
+                var qty = it.jumlah;
 
                 var m = menuMap[Number(it.menu_id)];
                 if (!m || !m.aktif) {
@@ -719,11 +773,139 @@
                 };
             }
 
-            var diskon = hitungDiskon(totalBoxUtama);
+            var diskon = hitungDiskon(totalBoxUtama, totalHargaHitung);
             var nominalBayar = Math.max(0, totalHargaHitung - diskon);
             var cfgToko = await this.getKonfigurasi();
             var batasJam = Math.max(1, parseInt(cfgToko.batas_bayar_jam || '24', 10) || 24);
             var bayarKedaluwarsa = new Date(Date.now() + batasJam * 3600000).toISOString();
+
+            var self = this;
+            var simpanLangsungSupabase = async function () {
+                var kapUlang = await self.getKapasitasTanggal(tgl);
+                if (totalBoxUtama > kapUlang.sisa) {
+                    return {
+                        ok: false,
+                        pesan: 'Kuota dapur pada ' + tanggalId(tgl, false) + ' hanya tersisa ' + kapUlang.sisa + ' box (pesanan Anda ' + totalBoxUtama + ' box).'
+                    };
+                }
+
+                try {
+                    var khRes = await sb.from('kuota_harian').upsert({
+                        tanggal: tgl,
+                        terpakai: Number(kapUlang.terpakai || 0) + totalBoxUtama
+                    }, { onConflict: 'tanggal' });
+                    if (khRes.error) {
+                        await sb.from('kuota_harian').upsert({ tanggal: tgl }, { onConflict: 'tanggal', ignoreDuplicates: true });
+                    }
+                } catch (eKh) {}
+
+                var tokenNota = generateTokenHex();
+                var created = null;
+                var lastErr = null;
+                var includeDiskonCol = true;
+
+                for (var attempt = 0; attempt < 5; attempt++) {
+                    var kodeGen = 'WRT-' + tgl.replace(/-/g, '') + '-' + Math.floor(100 + Math.random() * 900);
+                    var headerPayload = {
+                        kode: kodeGen,
+                        nama_pelanggan: nama,
+                        no_wa: wa,
+                        tanggal_ambil: tgl,
+                        jam_ambil: valJam.jam,
+                        catatan: catatan,
+                        total_box: totalBoxUtama,
+                        total_harga: totalHargaHitung,
+                        nominal_bayar: nominalBayar,
+                        status: 'Menunggu Konfirmasi',
+                        metode_bayar: 'qris_statis',
+                        status_bayar: 'belum_bayar',
+                        bayar_kedaluwarsa_pada: bayarKedaluwarsa,
+                        token_nota: tokenNota
+                    };
+                    if (includeDiskonCol) {
+                        headerPayload.diskon = diskon;
+                    }
+
+                    var insPesanan = await sb
+                        .from('pesanan')
+                        .insert(headerPayload)
+                        .select('id, kode, token_nota')
+                        .single();
+
+                    if (!insPesanan.error && insPesanan.data) {
+                        created = insPesanan.data;
+                        break;
+                    }
+
+                    lastErr = insPesanan.error;
+                    var errText = (lastErr && lastErr.message) ? String(lastErr.message) : '';
+                    var errCode = (lastErr && lastErr.code) ? String(lastErr.code) : '';
+
+                    if (includeDiskonCol && (errCode === 'PGRST204' || errCode === '42703' || /diskon|schema cache|does not exist/i.test(errText))) {
+                        includeDiskonCol = false;
+                        continue;
+                    }
+                    if (errCode === '23505' && /kode/i.test(errText)) {
+                        continue;
+                    }
+                    break;
+                }
+
+                if (!created) {
+                    return {
+                        ok: false,
+                        pesan: 'Gagal menyimpan pesanan ke database: ' + ((lastErr && lastErr.message) || 'Tidak dapat membuat data pesanan.')
+                    };
+                }
+
+                var detailRowsFull = itemValid.map(function (x) {
+                    return {
+                        pesanan_id: created.id,
+                        menu_id: x.menu_id,
+                        nama_menu: x.nama_menu,
+                        unit: x.unit,
+                        jumlah: x.jumlah,
+                        harga_satuan: x.harga_satuan,
+                        subtotal: x.subtotal
+                    };
+                });
+                var insDetail = await sb.from('detail_pesanan').insert(detailRowsFull);
+                if (insDetail.error) {
+                    var dErrMsg = String(insDetail.error.message || '');
+                    var dErrCode = String(insDetail.error.code || '');
+                    if (dErrCode === 'PGRST204' || dErrCode === '42703' || /nama_menu|unit|schema cache|does not exist/i.test(dErrMsg)) {
+                        var detailRowsKompat = itemValid.map(function (x) {
+                            return {
+                                pesanan_id: created.id,
+                                menu_id: x.menu_id,
+                                jumlah: x.jumlah,
+                                harga_satuan: x.harga_satuan,
+                                subtotal: x.subtotal
+                            };
+                        });
+                        insDetail = await sb.from('detail_pesanan').insert(detailRowsKompat);
+                    }
+                }
+
+                if (insDetail.error) {
+                    await sb.from('pesanan').delete().eq('id', created.id);
+                    return {
+                        ok: false,
+                        pesan: 'Gagal menyimpan rincian pesanan ke database: ' + insDetail.error.message
+                    };
+                }
+
+                return {
+                    ok: true,
+                    id: created.id,
+                    kode: created.kode,
+                    token_nota: created.token_nota || tokenNota,
+                    total_box: totalBoxUtama,
+                    total_harga: totalHargaHitung,
+                    diskon: diskon,
+                    nominal_bayar: nominalBayar
+                };
+            };
 
             if (isSupabaseReady) {
                 try {
@@ -740,17 +922,26 @@
                         if (!rpcRes.data.ok) {
                             return { ok: false, pesan: rpcRes.data.pesan || 'Gagal membuat pesanan.' };
                         }
-                        // Pastikan diskon, nominal_bayar, dan bayar_kedaluwarsa_pada tersimpan konsisten di Supabase
-                        if (rpcRes.data.id) {
-                            await sb.from('pesanan').update({
+                        var pesananIdRpc = rpcRes.data.id || rpcRes.data.pesanan_id;
+                        if (pesananIdRpc) {
+                            var updRpc = await sb.from('pesanan').update({
                                 total_box: totalBoxUtama,
                                 total_harga: totalHargaHitung,
                                 diskon: diskon,
                                 nominal_bayar: nominalBayar,
                                 bayar_kedaluwarsa_pada: bayarKedaluwarsa
-                            }).eq('id', rpcRes.data.id);
+                            }).eq('id', pesananIdRpc);
+                            if (updRpc.error) {
+                                await sb.from('pesanan').update({
+                                    total_box: totalBoxUtama,
+                                    total_harga: totalHargaHitung,
+                                    nominal_bayar: nominalBayar,
+                                    bayar_kedaluwarsa_pada: bayarKedaluwarsa
+                                }).eq('id', pesananIdRpc);
+                            }
                         }
                         return Object.assign({}, rpcRes.data, {
+                            id: pesananIdRpc,
                             total_box: totalBoxUtama,
                             total_harga: totalHargaHitung,
                             diskon: diskon,
@@ -758,8 +949,14 @@
                         });
                     }
                     if (rpcRes.error) {
-                        console.warn('Supabase RPC buat_pesanan_katering gagal:', rpcRes.error.message);
-                        return { ok: false, pesan: 'Gagal menyimpan pesanan ke database: ' + rpcRes.error.message };
+                        var rpcErrMsg = String(rpcRes.error.message || '');
+                        var rpcErrCode = String(rpcRes.error.code || '');
+                        if (rpcErrCode === 'PGRST202' || rpcErrCode === '42883' || /could not find the function|schema cache/i.test(rpcErrMsg)) {
+                            console.warn('RPC buat_pesanan_katering belum tersedia di schema cache, menjalankan simpan langsung Supabase:', rpcErrMsg);
+                            return await simpanLangsungSupabase();
+                        }
+                        console.warn('Supabase RPC buat_pesanan_katering gagal:', rpcErrMsg);
+                        return { ok: false, pesan: 'Gagal menyimpan pesanan ke database: ' + rpcErrMsg };
                     }
                 } catch (e) {
                     console.warn('Error buatPesanan Supabase:', e);
@@ -850,9 +1047,7 @@
                         if (tokenClean && p.token_nota && p.token_nota !== tokenClean) {
                             return null;
                         }
-                        if (p.diskon === undefined || p.diskon === null) {
-                            p.diskon = hitungDiskon(p.total_box);
-                        }
+                        p.diskon = resolveDiskonPesanan(p);
                         if (p.nominal_bayar === undefined || p.nominal_bayar === null) {
                             p.nominal_bayar = Math.max(0, Number(p.total_harga || 0) - Number(p.diskon || 0));
                         }
@@ -899,9 +1094,7 @@
             });
             if (!pLocal) return null;
 
-            if (pLocal.diskon === undefined || pLocal.diskon === null) {
-                pLocal.diskon = hitungDiskon(pLocal.total_box);
-            }
+            pLocal.diskon = resolveDiskonPesanan(pLocal);
             if (pLocal.nominal_bayar === undefined || pLocal.nominal_bayar === null) {
                 pLocal.nominal_bayar = Math.max(0, Number(pLocal.total_harga || 0) - Number(pLocal.diskon || 0));
             }
@@ -1321,7 +1514,7 @@
                                 };
                             });
                             var ringkas = dList.map(function (x) { return x.nama + ' (' + x.jumlah + ' ' + x.unit + ')'; }).join(', ');
-                            var diskonVal = (p.diskon !== undefined && p.diskon !== null) ? Number(p.diskon) : hitungDiskon(p.total_box);
+                            var diskonVal = resolveDiskonPesanan(p);
                             var nominalVal = (p.nominal_bayar !== undefined && p.nominal_bayar !== null)
                                 ? Number(p.nominal_bayar)
                                 : Math.max(0, Number(p.total_harga || 0) - diskonVal);
@@ -1415,7 +1608,7 @@
                         };
                     });
                 var ringkas = dList.map(function (x) { return x.nama + ' (' + x.jumlah + ' ' + x.unit + ')'; }).join(', ');
-                var diskonVal = (p.diskon !== undefined && p.diskon !== null) ? Number(p.diskon) : hitungDiskon(p.total_box);
+                var diskonVal = resolveDiskonPesanan(p);
                 var nominalVal = (p.nominal_bayar !== undefined && p.nominal_bayar !== null)
                     ? Number(p.nominal_bayar)
                     : Math.max(0, Number(p.total_harga || 0) - diskonVal);

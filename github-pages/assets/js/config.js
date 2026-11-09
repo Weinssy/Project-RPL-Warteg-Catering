@@ -21,8 +21,8 @@ window.WARTEG_CONFIG = {
     STOK_MAKS: 120,            // Batas maksimal jatah stok per menu per hari
 
     // Aturan Promo & Diskon Box
-    DISKON_PER_BOX: 50,        // Setiap kelipatan 50 box
-    NOMINAL_DISKON: 50000,     // Mendapat voucher potongan Rp 50.000
+    MIN_BOX_DISKON: 80,        // Pemesanan minimal 80 box atau lebih
+    PERSEN_DISKON: 5,          // Mendapat voucher diskon 5% dari total pesanan
 
     // Waktu & Ketentuan Pengambilan (Self-Pickup)
     JAM_BUKA: "09:00",

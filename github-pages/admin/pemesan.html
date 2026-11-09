@@ -214,12 +214,15 @@ document.addEventListener('DOMContentLoaded', async function () {
 
                     h += '</tbody><tfoot>';
                     if (item.diskon > 0) {
+                        var labelDiskonAdmin = Number(item.total_box || 0) >= 80
+                            ? 'Voucher Diskon 5% (&ge;80 Box)'
+                            : 'Diskon Voucher Pesanan';
                         h += '<tr style="border-top:1px solid var(--garis);font-size:12.5px;color:var(--redup);">'
                             + '<td style="padding:6px 10px;" colspan="2">Subtotal Menu</td>'
                             + '<td style="text-align:right;padding:6px 10px;" colspan="2">' + DB.rupiah(item.total_harga) + '</td>'
                             + '</tr>'
                             + '<tr style="font-size:12.5px;color:#1b6e44;font-weight:700;">'
-                            + '<td style="padding:4px 10px;" colspan="2">Diskon Voucher (Kelipatan 50 Box)</td>'
+                            + '<td style="padding:4px 10px;" colspan="2">' + labelDiskonAdmin + '</td>'
                             + '<td style="text-align:right;padding:4px 10px;" colspan="2">- ' + DB.rupiah(item.diskon) + '</td>'
                             + '</tr>';
                     }
