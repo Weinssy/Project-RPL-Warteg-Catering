@@ -4,11 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Pengaturan QRIS - Warteg Pak Sanam</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../assets/css/admin.css">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="../assets/js/config.js"></script>
-    <script src="../assets/js/db-service.js"></script>
-    <script src="../assets/js/admin-app.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script defer src="../assets/js/config.js"></script>
+    <script defer src="../assets/js/db-service.js"></script>
+    <script defer src="../assets/js/admin-app.js"></script>
 </head>
 <body>
 <div class="main-content">
@@ -23,12 +26,12 @@
             <div class="card-body">
                 <div class="alert alert-info" style="font-size:13px;margin-bottom:16px;">
                     <div>
-                        <strong>QRIS Statis</strong> — gambar ini ditampilkan ke semua customer untuk pembayaran. Customer memasukkan nominal transfer manual.
+                        <strong>QRIS Statis:</strong> Gambar ini ditampilkan ke semua pelanggan untuk pembayaran. Pelanggan memasukkan nominal transfer manual.
                     </div>
                 </div>
 
                 <div style="text-align:center;margin-bottom:16px;" id="qrisImgWrap">
-                    <img id="imgQrisPreview" src="../uploads/qris/qris_90ce220b97a92f248db3.jpg" alt="QRIS Statis" style="max-width:260px;width:100%;height:auto;border-radius:10px;border:1px solid #e5e7eb;" onerror="this.onerror=null;this.src='../uploads/1.jpeg';">
+                    <img id="imgQrisPreview" src="../uploads/qris/qris_90ce220b97a92f248db3.jpg" alt="QRIS Statis" style="max-width:260px;width:100%;height:auto;border-radius:10px;border:1px solid var(--garis);margin:0 auto;" onerror="this.onerror=null;this.src='../uploads/1.jpeg';">
                     <p class="bantuan" style="margin-top:8px;">Gambar QRIS aktif</p>
                 </div>
 
@@ -36,7 +39,7 @@
                     <label class="form-label" for="inpGantiQris">Ganti gambar QRIS</label>
                     <input class="form-control" type="file" id="inpGantiQris" accept="image/*" required>
                     <p class="bantuan">Pilih file gambar JPG, PNG, atau WebP.</p>
-                    <button class="btn btn-primary btn-blok" type="submit" id="btnUploadQris">Perbarui Gambar QRIS</button>
+                    <button class="btn btn-primary btn-blok" type="submit" id="btnUploadQris" style="margin-top:12px;">Perbarui Gambar QRIS</button>
                 </form>
             </div>
         </div>
@@ -69,26 +72,30 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', async function () {
+    var DB = window.WARTEG_DB;
     window.WARTEG_ADMIN_LAYOUT.render('qris', 'Pengaturan QRIS');
-
-    var cfg = await window.WARTEG_DB.getKonfigurasiToko();
-    var imgQris = document.getElementById('imgQrisPreview');
-
-    if (cfg.qris_gambar) {
-        imgQris.src = cfg.qris_gambar.startsWith('data:') ? cfg.qris_gambar : ('../uploads/qris/' + cfg.qris_gambar);
-    }
-    document.getElementById('qrisNama').value = cfg.qris_nama_merchant || 'Warteg Pak Sanam';
-    document.getElementById('qrisNmid').value = cfg.qris_nmid || 'ID1025439892668';
-    document.getElementById('qrisInstruksi').value = cfg.qris_instruksi || '';
-    document.getElementById('qrisBatasJam').value = cfg.batas_bayar_jam || 24;
 
     function notif(msg, tipe) {
         var wrap = document.getElementById('notifWrap');
-        wrap.innerHTML = '<div class="alert alert-' + (tipe || 'sukses') + '">' + msg + '</div>';
+        wrap.innerHTML = '<div class="alert alert-' + (tipe || 'sukses') + '">' + DB.escapeHtml(msg) + '</div>';
         setTimeout(function () { wrap.innerHTML = ''; }, 4000);
     }
 
-    // Submit Ganti Gambar QRIS
+    var imgQris = document.getElementById('imgQrisPreview');
+
+    try {
+        var cfg = await DB.getKonfigurasiToko();
+        if (cfg.qris_gambar) {
+            imgQris.src = cfg.qris_gambar.startsWith('data:') ? cfg.qris_gambar : ('../uploads/qris/' + cfg.qris_gambar);
+        }
+        document.getElementById('qrisNama').value = cfg.qris_nama_merchant || 'Warteg Pak Sanam';
+        document.getElementById('qrisNmid').value = cfg.qris_nmid || 'ID1025439892668';
+        document.getElementById('qrisInstruksi').value = cfg.qris_instruksi || '';
+        document.getElementById('qrisBatasJam').value = cfg.batas_bayar_jam || 24;
+    } catch (err) {
+        notif('Gagal memuat konfigurasi QRIS dari server.', 'galat');
+    }
+
     document.getElementById('formGantiQris').onsubmit = function (e) {
         e.preventDefault();
         var fileInp = document.getElementById('inpGantiQris');
@@ -98,31 +105,44 @@ document.addEventListener('DOMContentLoaded', async function () {
         var reader = new FileReader();
         reader.onload = async function (evt) {
             var dataUrl = evt.target.result;
-            await window.WARTEG_DB.simpanKonfigurasiToko('qris_gambar', dataUrl);
-            imgQris.src = dataUrl;
-            fileInp.value = '';
-            notif('Gambar QRIS berhasil diperbarui!', 'sukses');
+            var btnUpload = document.getElementById('btnUploadQris');
+            btnUpload.disabled = true;
+            btnUpload.textContent = 'Menyimpan Gambar...';
+            try {
+                await DB.simpanKonfigurasiToko('qris_gambar', dataUrl);
+                imgQris.src = dataUrl;
+                fileInp.value = '';
+                notif('Gambar QRIS berhasil diperbarui.', 'sukses');
+            } catch (err) {
+                notif('Gagal memperbarui gambar QRIS.', 'galat');
+            } finally {
+                btnUpload.disabled = false;
+                btnUpload.textContent = 'Perbarui Gambar QRIS';
+            }
         };
         reader.readAsDataURL(f);
     };
 
-    // Submit Info QRIS
     document.getElementById('formInfoQris').onsubmit = async function (e) {
         e.preventDefault();
-        var nama = document.getElementById('qrisNama').value;
-        var nmid = document.getElementById('qrisNmid').value;
-        var inst = document.getElementById('qrisInstruksi').value;
-        var jam = document.getElementById('qrisBatasJam').value;
+        var btnSimpan = document.getElementById('btnSimpanInfo');
+        btnSimpan.disabled = true;
+        btnSimpan.textContent = 'Menyimpan...';
 
-        await window.WARTEG_DB.simpanKonfigurasiToko('qris_nama_merchant', nama);
-        await window.WARTEG_DB.simpanKonfigurasiToko('qris_nmid', nmid);
-        await window.WARTEG_DB.simpanKonfigurasiToko('qris_instruksi', inst);
-        await window.WARTEG_DB.simpanKonfigurasiToko('batas_bayar_jam', jam);
-
-        notif('Informasi QRIS berhasil disimpan!', 'sukses');
+        try {
+            await DB.simpanKonfigurasiToko('qris_nama_merchant', document.getElementById('qrisNama').value);
+            await DB.simpanKonfigurasiToko('qris_nmid', document.getElementById('qrisNmid').value);
+            await DB.simpanKonfigurasiToko('qris_instruksi', document.getElementById('qrisInstruksi').value);
+            await DB.simpanKonfigurasiToko('batas_bayar_jam', document.getElementById('qrisBatasJam').value);
+            notif('Informasi QRIS berhasil disimpan.', 'sukses');
+        } catch (err) {
+            notif('Gagal menyimpan informasi QRIS.', 'galat');
+        } finally {
+            btnSimpan.disabled = false;
+            btnSimpan.textContent = 'Simpan Informasi';
+        }
     };
 });
 </script>
 </body>
 </html>
-

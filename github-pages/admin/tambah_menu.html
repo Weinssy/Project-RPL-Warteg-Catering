@@ -4,16 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Tambah Menu - Warteg Pak Sanam</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../assets/css/admin.css">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="../assets/js/config.js"></script>
-    <script src="../assets/js/db-service.js"></script>
-    <script src="../assets/js/admin-app.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script defer src="../assets/js/config.js"></script>
+    <script defer src="../assets/js/db-service.js"></script>
+    <script defer src="../assets/js/admin-app.js"></script>
     <style>
-        .form-menu .baris-dua { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
         .kartu-form { max-width: 640px; }
         #pratinjauFoto { width: 96px; height: 96px; object-fit: cover; border-radius: 12px; margin-top: 10px; border: 1px solid var(--c-garis); }
-        @media (max-width: 560px) { .form-menu .baris-dua { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
@@ -25,7 +26,7 @@
         </div>
         <div class="card-body">
             <div class="alert alert-sukses" id="notifSukses" style="display:none;margin-bottom:14px;"></div>
-            <div class="alert alert-galat" id="notifGalat" style="display:none;margin-bottom:14px;"></div>
+            <div class="alert alert-galat" id="notifGalat" style="display:none;margin-bottom:14px;" role="alert"></div>
 
             <form class="form-menu" id="formTambahMenu" autocomplete="off">
                 <label class="form-label" for="tanggalMenu">Tanggal pengambilan</label>
@@ -34,7 +35,7 @@
                 <label class="form-label" for="namaMenu">Nama menu</label>
                 <input class="form-control" id="namaMenu" name="nama" maxlength="100" placeholder="Contoh: Nasi Rendang Sapi" required>
 
-                <div class="baris-dua">
+                <div class="baris-dua" style="margin-top:12px;">
                     <div>
                         <label class="form-label" for="kategoriMenu">Kategori</label>
                         <select class="form-select" id="kategoriMenu" name="kategori" required>
@@ -69,6 +70,7 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    var DB = window.WARTEG_DB;
     window.WARTEG_ADMIN_LAYOUT.render('tambah', 'Tambah Menu');
 
     var hariIni = new Date().toISOString().slice(0, 10);
@@ -110,36 +112,40 @@ document.addEventListener('DOMContentLoaded', function () {
         btn.disabled = true;
         btn.textContent = 'Menyimpan Menu...';
 
-        var res = await window.WARTEG_DB.simpanMenu({
-            nama: nama,
-            kategori: kat,
-            harga: harga,
-            stok: stok,
-            foto: dataUrlFoto,
-            tanggal: tgl
-        });
+        try {
+            var res = await DB.simpanMenu({
+                nama: nama,
+                kategori: kat,
+                harga: harga,
+                stok: stok,
+                foto: dataUrlFoto,
+                tanggal: tgl
+            });
 
-        btn.disabled = false;
-        btn.textContent = 'Tambah ke menu';
+            if (!res || !res.ok) {
+                notifErr.textContent = (res && res.pesan) || 'Gagal menyimpan menu.';
+                notifErr.style.display = 'flex';
+                return;
+            }
 
-        if (!res || !res.ok) {
-            notifErr.textContent = 'Gagal menyimpan menu.';
-            notifErr.style.display = 'block';
-            return;
+            notifOk.textContent = 'Menu "' + nama + '" berhasil ditambahkan untuk ' + DB.tanggalId(tgl, false) + '.';
+            notifOk.style.display = 'flex';
+
+            document.getElementById('namaMenu').value = '';
+            document.getElementById('hargaMenu').value = '';
+            document.getElementById('stokMenu').value = '';
+            fileInp.value = '';
+            imgPrev.style.display = 'none';
+            dataUrlFoto = null;
+        } catch (err) {
+            notifErr.textContent = 'Gangguan koneksi saat menyimpan menu baru.';
+            notifErr.style.display = 'flex';
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Tambah ke menu';
         }
-
-        notifOk.textContent = 'Menu "' + nama + '" berhasil ditambahkan untuk ' + window.WARTEG_DB.tanggalId(tgl, false) + '.';
-        notifOk.style.display = 'block';
-
-        document.getElementById('namaMenu').value = '';
-        document.getElementById('hargaMenu').value = '';
-        document.getElementById('stokMenu').value = '';
-        fileInp.value = '';
-        imgPrev.style.display = 'none';
-        dataUrlFoto = null;
     };
 });
 </script>
 </body>
 </html>
-

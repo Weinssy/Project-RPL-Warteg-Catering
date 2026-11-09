@@ -68,6 +68,13 @@
                     btnToggle.setAttribute('aria-expanded', 'false');
                 });
             });
+            document.addEventListener('keydown', function (ev) {
+                if (ev.key === 'Escape' && navLinks.classList.contains('buka')) {
+                    navLinks.classList.remove('buka');
+                    btnToggle.setAttribute('aria-expanded', 'false');
+                    btnToggle.focus();
+                }
+            });
         }
 
         var inpCek = document.getElementById('cekTanggal');
@@ -117,10 +124,10 @@
                 btn.addEventListener('click', function () {
                     filterWrap.querySelectorAll('.filter-btn').forEach(function (b) {
                         b.classList.remove('aktif');
-                        b.setAttribute('aria-selected', 'false');
+                        b.setAttribute('aria-pressed', 'false');
                     });
                     this.classList.add('aktif');
-                    this.setAttribute('aria-selected', 'true');
+                    this.setAttribute('aria-pressed', 'true');
                     kategoriAktif = this.getAttribute('data-filter') || 'semua';
                     renderKatalog();
                 });
@@ -198,22 +205,37 @@
     // -----------------------------------------------------------------
     async function muatDataTanggal(tgl) {
         sinkronTanggal(tgl);
-        await muatKuota(tglPilih);
-
         var wadah = document.getElementById('katalogMenu');
         if (wadah) {
-            wadah.innerHTML = '<div class="kosong"><p>Memuat katalog menu untuk ' + DB.escapeHtml(DB.tanggalId(tglPilih)) + '...</p></div>';
+            wadah.innerHTML = '<div class="kosong"><div class="spinner" style="margin:0 auto 10px" aria-hidden="true"></div><p>Memuat katalog menu untuk ' + DB.escapeHtml(DB.tanggalId(tglPilih)) + '...</p></div>';
         }
-        katalogMenu = await DB.getMenuTanggal(tglPilih);
+        try {
+            await muatKuota(tglPilih);
+            katalogMenu = await DB.getMenuTanggal(tglPilih);
 
-        // Sesuaikan item keranjang jika pada tanggal baru menu tidak tersedia atau stok berkurang
-        sesuaikanKeranjangDenganStokTanggal();
+            // Sesuaikan item keranjang jika pada tanggal baru menu tidak tersedia atau stok berkurang
+            sesuaikanKeranjangDenganStokTanggal();
 
-        if (wadah) {
-            updateLabelTabKategori();
-            renderKatalog();
+            if (wadah) {
+                updateLabelTabKategori();
+                renderKatalog();
+            }
+            renderRingkasan();
+        } catch (err) {
+            console.error('Gagal memuat data menu:', err);
+            if (wadah) {
+                wadah.innerHTML = '<div class="kosong kosong-galat">'
+                    + '<p><strong>Gagal memuat daftar menu.</strong> Periksa koneksi internet Anda lalu coba lagi.</p>'
+                    + '<button type="button" class="btn btn-garis btn-kecil js-retry-katalog" style="margin-top:12px">Muat Ulang Menu</button>'
+                    + '</div>';
+                var btnRetry = wadah.querySelector('.js-retry-katalog');
+                if (btnRetry) {
+                    btnRetry.addEventListener('click', function () {
+                        muatDataTanggal(tglPilih);
+                    });
+                }
+            }
         }
-        renderRingkasan();
     }
 
     function sesuaikanKeranjangDenganStokTanggal() {
@@ -284,11 +306,12 @@
             }
         }
 
-        // Update pill kuota di navbar dengan konteks tanggal terpilih (Temuan 19)
+        // Update pill kuota di navbar dengan konteks tanggal terpilih
         var navQuotaPill = document.getElementById('navQuotaPill');
         if (navQuotaPill) {
             var labelTgl = (tgl === tglMin) ? 'Besok' : DB.tanggalId(tgl, false);
-            navQuotaPill.innerHTML = '<span class="dot-aman" aria-hidden="true">●</span> Sisa Kuota (' + DB.escapeHtml(labelTgl) + '): <b id="navSisaKuota">' + info.sisa + '</b> Box';
+            navQuotaPill.className = 'nav-quota-pill ' + info.level;
+            navQuotaPill.innerHTML = '<span class="dot-aman" aria-hidden="true"></span> Sisa Kuota (' + DB.escapeHtml(labelTgl) + '): <b id="navSisaKuota">' + info.sisa + '</b> Box';
         }
 
         // Update info jadwal ambil di keranjang/checkout jika elemen tersedia
@@ -372,7 +395,7 @@
         var fotoHtml = '';
         if (m.foto) {
             fotoHtml = '<div class="menu-thumb-item">'
-                + '<img src="uploads/menu/' + DB.escapeHtml(m.foto) + '" alt="' + DB.escapeHtml(m.nama) + '" loading="lazy" onerror="this.parentElement.style.display=\'none\'">'
+                + '<img src="uploads/menu/' + DB.escapeHtml(m.foto) + '" alt="' + DB.escapeHtml(m.nama) + '" width="80" height="80" onerror="this.parentElement.style.display=\'none\'">'
                 + '</div>';
         }
 
@@ -391,7 +414,7 @@
             + '<div class="stepper">'
             + '<button type="button" class="btn-step js-min" data-id="' + m.id + '" ' + (habis || qty <= 0 ? 'disabled' : '') + ' aria-label="Kurangi ' + DB.escapeHtml(m.nama) + '">−</button>'
             + '<input type="number" class="qty-input js-qty" data-id="' + m.id + '" min="0" max="120" value="' + qty + '" ' + (habis ? 'disabled' : '') + ' aria-label="Jumlah ' + DB.escapeHtml(m.nama) + '">'
-            + '<span class="qty-unit-badge">' + qty + ' ' + unitLabel + '</span>'
+            + '<span class="qty-unit-badge">' + unitLabel + '</span>'
             + '<button type="button" class="btn-step plus js-plus" data-id="' + m.id + '" ' + (habis ? 'disabled' : '') + ' aria-label="Tambah ' + DB.escapeHtml(m.nama) + '">+</button>'
             + '</div>'
             + '</div>'
@@ -408,7 +431,21 @@
         });
 
         if (!daftar.length) {
-            wadah.innerHTML = '<div class="kosong"><p>Tidak ada menu untuk kategori ini.</p></div>';
+            wadah.innerHTML = '<div class="kosong">'
+                + '<p>Tidak ada menu untuk kategori ini.</p>'
+                + '<button type="button" class="btn btn-garis btn-kecil js-reset-filter" style="margin-top:12px">Tampilkan Semua Menu</button>'
+                + '</div>';
+            var btnResetFilter = wadah.querySelector('.js-reset-filter');
+            if (btnResetFilter) {
+                btnResetFilter.addEventListener('click', function () {
+                    var btnSemua = document.querySelector('#kategoriFilter .filter-btn[data-filter="semua"]');
+                    if (btnSemua) btnSemua.click();
+                    else {
+                        kategoriAktif = 'semua';
+                        renderKatalog();
+                    }
+                });
+            }
             return;
         }
 
@@ -605,10 +642,10 @@
             }
         }
 
-        // Info Jadwal Ambil di Ringkasan Keranjang (Temuan 9)
-        var infoJadwalHtml = '<div style="font-size:12px;color:var(--c-teks-2);background:#fdf8f2;border:1px solid var(--c-garis);border-radius:8px;padding:7px 10px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;">'
-            + '<span>📅 Ambil: <strong>' + DB.escapeHtml(DB.tanggalId(tglPilih, false)) + '</strong></span>'
-            + '<span style="color:var(--c-primer);font-weight:700;">Sisa ' + sisaKuotaSaatIni + ' box</span>'
+        // Info Jadwal Ambil di Ringkasan Keranjang
+        var infoJadwalHtml = '<div class="ringkasan-jadwal">'
+            + '<span>Ambil: <strong>' + DB.escapeHtml(DB.tanggalId(tglPilih, false)) + '</strong></span>'
+            + '<span class="ringkasan-jadwal-sisa">Sisa ' + sisaKuotaSaatIni + ' box</span>'
             + '</div>';
 
         // Daftar Item di Keranjang
@@ -623,16 +660,19 @@
                     var q = keranjang[k];
                     var sub = m.harga * q;
                     var uLabel = m.is_box ? 'box' : 'porsi';
+                    var maksItem = batasMaksItem(m, q);
                     html += '<div class="ringkasan-item">'
-                        + '<div class="ringkasan-item-kiri">'
-                        + '<span class="nama"><strong>' + q + 'x</strong> ' + DB.escapeHtml(m.nama) + ' <small style="color:var(--c-redup);">(' + uLabel + ')</small></span>'
+                        + '<div class="ringkasan-item-atas">'
+                        + '<span class="nama"><strong>' + q + 'x</strong> ' + DB.escapeHtml(m.nama) + ' <small class="unit-label">(' + uLabel + ')</small></span>'
+                        + '<span class="sub">' + DB.rupiah(sub) + '</span>'
+                        + '</div>'
                         + '<div class="ringkasan-item-kontrol">'
-                        + '<button type="button" class="btn-mini-step js-cart-min" data-id="' + m.id + '" aria-label="Kurangi ' + DB.escapeHtml(m.nama) + '">−</button>'
-                        + '<button type="button" class="btn-mini-step js-cart-plus" data-id="' + m.id + '" aria-label="Tambah ' + DB.escapeHtml(m.nama) + '">+</button>'
+                        + '<div class="ringkasan-stepper-grup">'
+                        + '<button type="button" class="btn-mini-step js-cart-min" data-id="' + m.id + '" aria-label="Kurangi ' + DB.escapeHtml(m.nama) + '">&minus;</button>'
+                        + '<button type="button" class="btn-mini-step plus js-cart-plus" data-id="' + m.id + '" ' + (q >= maksItem ? 'disabled' : '') + ' aria-label="Tambah ' + DB.escapeHtml(m.nama) + '">+</button>'
+                        + '</div>'
                         + '<button type="button" class="btn-mini-hapus js-cart-del" data-id="' + m.id + '" aria-label="Hapus ' + DB.escapeHtml(m.nama) + '">Hapus</button>'
                         + '</div>'
-                        + '</div>'
-                        + '<span class="sub">' + DB.rupiah(sub) + '</span>'
                         + '</div>';
                 });
                 isi.innerHTML = html;
@@ -659,14 +699,14 @@
         var memenuhiSyarat = (jmlBox >= minBox && jmlBox <= sisaKuotaSaatIni);
         if (elPesanMin && elStatusBanner) {
             if (jmlBox === 0 && jmlPorsi === 0) {
-                elStatusBanner.className = 'cart-min-status';
-                elPesanMin.textContent = '📦 0 Box Terpilih (Syarat minimal ' + minBox + ' box)';
+                elStatusBanner.className = 'cart-min-status netral';
+                elPesanMin.textContent = '0 Box Terpilih (Syarat minimal ' + minBox + ' box)';
             } else if (jmlBox < minBox) {
                 elStatusBanner.className = 'cart-min-status kurang';
-                elPesanMin.textContent = '⚠️ ' + jmlBox + ' Box Utama Terpilih (Kurang ' + (minBox - jmlBox) + ' box paket/nasi lagi)';
+                elPesanMin.textContent = jmlBox + ' Box Utama Terpilih (Kurang ' + (minBox - jmlBox) + ' box paket/nasi lagi)';
             } else if (jmlBox > sisaKuotaSaatIni) {
                 elStatusBanner.className = 'cart-min-status kurang';
-                elPesanMin.textContent = '⚠️ Melebihi sisa kuota dapur (' + sisaKuotaSaatIni + ' box tersedia)';
+                elPesanMin.textContent = 'Melebihi sisa kuota dapur (' + sisaKuotaSaatIni + ' box tersedia)';
             } else {
                 elStatusBanner.className = 'cart-min-status cukup';
                 elPesanMin.textContent = jmlBox + ' Box Terpilih' + (jmlPorsi > 0 ? ' (+ ' + jmlPorsi + ' Porsi Lauk/Sayur)' : '') + ' · Syarat min. ' + minBox + ' box terpenuhi';
@@ -732,28 +772,34 @@
             var teksAsli = btnSubmit.textContent;
             btnSubmit.textContent = 'Memproses Pesanan...';
 
-            var hasil = await DB.buatPesanan({
-                nama_pelanggan: nama,
-                no_wa: wa,
-                tanggal_ambil: tgl,
-                jam_ambil: jam,
-                catatan: catatan,
-                items: items
-            });
+            try {
+                var hasil = await DB.buatPesanan({
+                    nama_pelanggan: nama,
+                    no_wa: wa,
+                    tanggal_ambil: tgl,
+                    jam_ambil: jam,
+                    catatan: catatan,
+                    items: items
+                });
 
-            if (!hasil || !hasil.ok) {
+                if (!hasil || !hasil.ok) {
+                    btnSubmit.disabled = false;
+                    btnSubmit.textContent = teksAsli;
+                    tampilGalat((hasil && hasil.pesan) || 'Terjadi kesalahan saat menyimpan pesanan.');
+                    return;
+                }
+
+                // Bersihkan keranjang setelah sukses
+                keranjang = {};
+                simpanKeranjangStorage();
+
+                // Arahkan ke halaman pembayaran QRIS
+                window.location.href = DB.urlPembayaran(hasil.kode, hasil.token_nota);
+            } catch (err) {
                 btnSubmit.disabled = false;
                 btnSubmit.textContent = teksAsli;
-                tampilGalat((hasil && hasil.pesan) || 'Terjadi kesalahan saat menyimpan pesanan.');
-                return;
+                tampilGalat('Koneksi ke server terganggu. Periksa internet Anda lalu coba kirim pesanan lagi.');
             }
-
-            // Bersihkan keranjang setelah sukses
-            keranjang = {};
-            simpanKeranjangStorage();
-
-            // Arahkan ke halaman pembayaran QRIS
-            window.location.href = DB.urlPembayaran(hasil.kode, hasil.token_nota);
         });
 
         function tampilGalat(pesan) {

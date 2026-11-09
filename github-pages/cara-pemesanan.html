@@ -9,10 +9,10 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/customer.css">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="assets/js/config.js"></script>
-    <script src="assets/js/db-service.js"></script>
-    <script src="assets/js/customer-app.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script defer src="assets/js/config.js"></script>
+    <script defer src="assets/js/db-service.js"></script>
+    <script defer src="assets/js/customer-app.js"></script>
 </head>
 <body class="cust">
     <div class="cust-toast-area" id="custToast" aria-live="polite"></div>
@@ -20,8 +20,14 @@
     <!-- ================= TOP OPERATIONAL NOTICE ================= -->
     <div class="top-notice-bar">
         <div class="wadah top-notice-inner">
-            <span class="top-notice-info">🍱 Warteg Pak Sanam • Jl. BDN 1 Cilandak Barat, Jakarta Selatan • Jam Buka: 09.00 - 19.00 WIB</span>
-            <span class="top-notice-wa">WA: 0857-8342-3626 • Khusus Ambil Mandiri (Self-Pickup)</span>
+            <span class="top-notice-info">
+                <span class="desk-only">Warteg Pak Sanam • Jl. BDN 1 Cilandak Barat, Jakarta Selatan • Jam Buka: 09.00 - 19.00 WIB</span>
+                <span class="mob-only">Warteg Pak Sanam • 09.00 - 19.00 WIB</span>
+            </span>
+            <span class="top-notice-wa">
+                <span class="desk-only">WA: 0857-8342-3626 • Khusus Ambil Mandiri (Self-Pickup)</span>
+                <span class="mob-only">Ambil Mandiri</span>
+            </span>
         </div>
     </div>
 
@@ -29,24 +35,25 @@
     <header class="cust-header">
         <div class="wadah cust-nav">
             <a href="index.html" class="cust-logo">
-                <span class="cust-logo-emblem" aria-hidden="true">🍱</span>
+                <span class="cust-logo-emblem" aria-hidden="true">PS</span>
                 <span class="cust-logo-text">
                     <strong class="cust-logo-title">WARTEG PAK SANAM</strong>
-                    <small class="cust-logo-sub">Spesialis Katering &amp; Nasi Box Rumahan</small>
+                    <small class="cust-logo-sub">Katering &amp; Nasi Box Rumahan</small>
                 </span>
             </a>
-            <div class="cust-links" id="custLinks">
+            <nav class="cust-links" id="custLinks" aria-label="Navigasi utama">
                 <a href="index.html">Beranda</a>
                 <a href="index.html#katalog">Katalog Menu</a>
-                <a href="index.html#kapasitas">Cek Kuota Dapur</a>
+                <a href="index.html#kapasitas">Cek Kuota</a>
                 <a href="cara-pemesanan.html" class="aktif">Cara Pemesanan</a>
-                <a href="cek_status.html">Cek Status Pesanan</a>
+                <a href="cek_status.html">Cek Status</a>
                 <a href="admin/login.html" class="link-admin">Login Admin</a>
-            </div>
+            </nav>
             <div class="cust-nav-kanan">
-                <a href="index.html#katalog" class="btn btn-primer btn-kecil">Pesan Nasi Box</a>
-                <button type="button" class="cust-toggle" id="custToggle" aria-label="Buka menu" aria-expanded="false" aria-controls="custLinks">
-                    <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                <a href="index.html#katalog" class="btn btn-primer btn-kecil btn-nav-cta">Pesan Nasi Box</a>
+                <button type="button" class="cust-toggle" id="custToggle" aria-label="Buka menu navigasi" aria-expanded="false" aria-controls="custLinks">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                    <span class="cust-toggle-label">Menu</span>
                 </button>
             </div>
         </div>
@@ -54,13 +61,11 @@
 
     <main>
         <!-- ================= HERO CARA PEMESANAN ================= -->
-        <section class="seksi" style="background:var(--c-primer);color:#fff;text-align:center;padding:48px 0 40px">
+        <section class="seksi" style="background:var(--c-primer);color:#ffffff;text-align:center;padding:48px 0 40px">
             <div class="wadah">
-                <span style="display:inline-block;background:rgba(255,255,255,0.18);padding:4px 14px;border-radius:999px;font-size:12px;font-weight:700;letter-spacing:0.04em;margin-bottom:12px;text-transform:uppercase;">Panduan Tamu &amp; Pelanggan</span>
-                <h1 style="font-size:2.2rem;margin-bottom:10px;font-family:var(--font-serif);letter-spacing:-0.02em;">Cara Pemesanan Nasi Box</h1>
-                <p class="lead" style="color:rgba(255,255,255,0.9);max-width:640px;margin:0 auto;font-size:16px;">
-                    Panduan lengkap memesan katering di Warteg Pak Sanam.
-                    Tanpa perlu mendaftar akun, cukup pesan online, bayar via QRIS, dan ambil hangat di warteg.
+                <h1 style="font-size:clamp(26px,3.2vw,36px);margin-bottom:12px;letter-spacing:-0.02em;color:#ffffff;">Cara Pemesanan Nasi Box</h1>
+                <p class="lead" style="color:#fef3eb;max-width:640px;margin:0 auto;font-size:16px;line-height:1.65;">
+                    Panduan lengkap memesan katering di Warteg Pak Sanam. Tanpa perlu mendaftar akun, cukup pesan online, bayar via QRIS, dan ambil hangat di warteg.
                 </p>
             </div>
         </section>
@@ -74,60 +79,46 @@
                 </div>
                 <div class="cara-pemesanan-grid">
 
-                    <!-- Langkah 1 -->
                     <div class="cara-langkah">
                         <div class="nomor-langkah" aria-hidden="true">1</div>
-                        <div class="ikon-langkah" aria-hidden="true">📋</div>
                         <h3>Pilih Menu Favorit</h3>
                         <p>Pilih paket nasi box hemat siap santap atau racik kombinasi nasi, lauk utama, dan sayuran segar sesuai selera acara Anda.</p>
                     </div>
 
-                    <!-- Langkah 2 -->
                     <div class="cara-langkah">
                         <div class="nomor-langkah" aria-hidden="true">2</div>
-                        <div class="ikon-langkah" aria-hidden="true">📦</div>
                         <h3>Tentukan Jumlah Box</h3>
                         <p>Minimal order adalah 10 box. Pesanan kelipatan 50 box otomatis mendapatkan voucher diskon Rp 50.000 (100 box hemat Rp 100.000).</p>
                     </div>
 
-                    <!-- Langkah 3 -->
                     <div class="cara-langkah">
                         <div class="nomor-langkah" aria-hidden="true">3</div>
-                        <div class="ikon-langkah" aria-hidden="true">📅</div>
                         <h3>Pilih Jadwal Ambil</h3>
                         <p>Tentukan tanggal dan jam pengambilan (rentang H-1 sampai H+30). Pastikan kuota dapur pada tanggal tersebut masih tersedia.</p>
                     </div>
 
-                    <!-- Langkah 4 -->
                     <div class="cara-langkah">
                         <div class="nomor-langkah" aria-hidden="true">4</div>
-                        <div class="ikon-langkah" aria-hidden="true">✏️</div>
                         <h3>Isi Data Pemesan</h3>
                         <p>Masukkan Nama Lengkap dan nomor WhatsApp aktif Anda untuk konfirmasi pesanan tanpa perlu registrasi atau login akun.</p>
                     </div>
 
-                    <!-- Langkah 5 -->
                     <div class="cara-langkah">
                         <div class="nomor-langkah" aria-hidden="true">5</div>
-                        <div class="ikon-langkah" aria-hidden="true">💳</div>
                         <h3>Bayar Melalui QRIS Statis</h3>
                         <p>Scan barcode QRIS Warteg Pak Sanam dari aplikasi mobile banking atau e-wallet, masukkan nominal sesuai total tagihan, lalu unggah bukti transfer.</p>
                     </div>
 
-                    <!-- Langkah 6 -->
                     <div class="cara-langkah">
                         <div class="nomor-langkah" aria-hidden="true">6</div>
-                        <div class="ikon-langkah" aria-hidden="true">🧾</div>
                         <h3>Simpan Invoice &amp; Kode Pesanan</h3>
                         <p>Simpan kode pesanan (contoh: WRT-20261109-001) atau cetak nota digital untuk mengecek progres masak kapan saja di website ini.</p>
                     </div>
 
-                    <!-- Langkah 7 -->
                     <div class="cara-langkah">
                         <div class="nomor-langkah" aria-hidden="true">7</div>
-                        <div class="ikon-langkah" aria-hidden="true">🍱</div>
                         <h3>Ambil Pesanan Mandiri</h3>
-                        <p>Datang ke Warteg Pak Sanam (Jl. BDN 1 Cilandak Barat, Jakarta Selatan) pada jam yang dipilih (09.00 - 19.00 WIB). Nasi box sudah siap hangat bebas ongkir.</p>
+                        <p>Datang ke Warteg Pak Sanam (Jl. BDN 1 Cilandak Barat, Jakarta Selatan) pada jam yang dipilih (09.00 - 19.00 WIB). Nasi box siap hangat bebas ongkir.</p>
                     </div>
 
                 </div>
@@ -135,23 +126,23 @@
         </section>
 
         <!-- ================= INFORMASI TAMBAHAN ================= -->
-        <section class="seksi" style="background:#fff;border-top:1px solid var(--c-garis)">
+        <section class="seksi" style="background:#ffffff;border-top:1px solid var(--c-garis)">
             <div class="wadah" style="max-width:680px;text-align:center">
-                <div class="seksi-kepala">
+                <div class="seksi-kepala" style="text-align:center;">
                     <h2>Ketentuan &amp; Operasional Dapur</h2>
-                    <p>Mohon perhatikan poin-poin berikut sebelum melakukan pemesanan.</p>
+                    <p style="margin:0 auto;">Mohon perhatikan poin-poin berikut sebelum melakukan pemesanan.</p>
                 </div>
-                <div class="panel-putih" style="text-align:left;margin-bottom:28px;border:1.5px solid var(--c-garis);">
+                <div class="panel-putih" style="text-align:left;margin-bottom:28px;border:1px solid var(--c-garis);">
                     <ul style="list-style:none;padding:0;margin:0;display:grid;gap:14px;font-size:15px;line-height:1.6;">
-                        <li><strong>⏰ Jam Operasional Ambil:</strong> Pukul 09.00 sampai 19.00 WIB setiap hari.</li>
-                        <li><strong>📍 Lokasi Pengambilan:</strong> Warteg Pak Sanam, Jalan BDN 1 Cilandak Barat, Jakarta Selatan (Self-pickup mandiri).</li>
-                        <li><strong>📦 Minimal Pemesanan:</strong> 10 box per transaksi (agar kualitas bumbu merata terjaga).</li>
-                        <li><strong>🎁 Promo Diskon Box:</strong> Diskon langsung Rp 50.000 setiap kelipatan 50 box tanpa batas maksimal.</li>
-                        <li><strong>📅 Batas Waktu Pre-Order:</strong> Pemesanan paling lambat H-1 sebelum tanggal pengambilan.</li>
-                        <li><strong>🏷️ Batas Kapasitas Dapur:</strong> Maksimal 120 box per hari demi menjaga kesegaran dan ketepatan waktu.</li>
+                        <li><strong>Jam Operasional Ambil:</strong> Pukul 09.00 sampai 19.00 WIB setiap hari.</li>
+                        <li><strong>Lokasi Pengambilan:</strong> Warteg Pak Sanam, Jalan BDN 1 Cilandak Barat, Jakarta Selatan (Self-pickup mandiri).</li>
+                        <li><strong>Minimal Pemesanan:</strong> 10 box per transaksi agar kualitas bumbu dan porsi tetap terjaga.</li>
+                        <li><strong>Promo Diskon Box:</strong> Diskon langsung Rp 50.000 setiap kelipatan 50 box tanpa batas maksimal.</li>
+                        <li><strong>Batas Waktu Pre-Order:</strong> Pemesanan paling lambat H-1 sebelum tanggal pengambilan.</li>
+                        <li><strong>Batas Kapasitas Dapur:</strong> Maksimal 120 box per hari demi menjaga kesegaran dan ketepatan waktu.</li>
                     </ul>
                 </div>
-                <a href="index.html#katalog" class="btn btn-primer">Mulai Pesan Nasi Box Sekarang →</a>
+                <a href="index.html#katalog" class="btn btn-primer">Mulai Pesan Nasi Box Sekarang</a>
             </div>
         </section>
     </main>
@@ -160,11 +151,11 @@
     <footer class="cust-footer">
         <div class="wadah cust-footer-grid">
             <div>
-                <h4>🍱 WARTEG PAK SANAM</h4>
+                <h2>WARTEG PAK SANAM</h2>
                 <p>Melayani pemesanan nasi box dan katering harian masakan rumahan Nusantara. Seluruh pesanan disiapkan segar dan diambil langsung (self-pickup) di warteg kami.</p>
             </div>
             <div>
-                <h4>Navigasi</h4>
+                <h2>Navigasi</h2>
                 <ul>
                     <li><a href="index.html">Beranda</a></li>
                     <li><a href="index.html#katalog">Katalog Menu</a></li>
@@ -174,7 +165,7 @@
                 </ul>
             </div>
             <div>
-                <h4>Ketentuan Katering</h4>
+                <h2>Ketentuan Katering</h2>
                 <ul>
                     <li>Minimal order 10 box per transaksi</li>
                     <li>Promo kelipatan 50 box hemat Rp 50.000</li>
@@ -184,13 +175,15 @@
                 </ul>
             </div>
             <div>
-                <h4>Lokasi &amp; Jam Operasional</h4>
+                <h2>Lokasi &amp; Jam Operasional</h2>
                 <p>Warteg Pak Sanam<br>Jalan BDN 1 Cilandak Barat, Jakarta Selatan</p>
                 <p>Jam Operasional: 09.00 - 19.00 WIB</p>
                 <p>WhatsApp Layanan: 0857-8342-3626</p>
             </div>
         </div>
-        <div class="copy">&copy; 2026 Warteg Pak Sanam. Sistem POS &amp; Pre-Order Katering Harian Berbasis Web. Semua harga dalam Rupiah (IDR).</div>
+        <div class="wadah">
+            <div class="copy">&copy; 2026 Warteg Pak Sanam. Sistem POS &amp; Pre-Order Katering Harian Berbasis Web. Semua harga dalam Rupiah (IDR).</div>
+        </div>
     </footer>
 </body>
 </html>

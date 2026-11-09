@@ -4,15 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Dashboard - Warteg Pak Sanam</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../assets/css/admin.css">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="../assets/js/config.js"></script>
-    <script src="../assets/js/db-service.js"></script>
-    <script src="../assets/js/admin-app.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script defer src="../assets/js/config.js"></script>
+    <script defer src="../assets/js/db-service.js"></script>
+    <script defer src="../assets/js/admin-app.js"></script>
     <style>
         .kolom-kiri { display: grid; gap: 20px; }
         .menu-item { display: flex; align-items: center; gap: 12px; }
-        .menu-thumb { width: 48px; height: 48px; border-radius: 10px; background: #f1f5f9; display: grid; place-items: center; font-size: 22px; overflow: hidden; flex: none; }
+        .menu-thumb { width: 48px; height: 48px; border-radius: 10px; background: #f1f5f9; color: var(--oranye-tua); display: grid; place-items: center; font-size: 13px; font-weight: 800; overflow: hidden; flex: none; }
         .menu-thumb img { width: 100%; height: 100%; object-fit: cover; }
         .daftar-menu li { align-items: center; }
         .daftar-menu .menu-hitungan { text-align: right; font-size: 12px; line-height: 1.5; }
@@ -44,7 +47,7 @@
                     <ul class="daftar-menu" id="listMenuHariIni">
                         <li>Memuat menu...</li>
                     </ul>
-                    <div class="progress" role="progressbar" id="progressBarWrap" style="margin-top:16px;">
+                    <div class="progress" role="progressbar" aria-label="Pemakaian kuota harian" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progressBarWrap" style="margin-top:16px;">
                         <div class="progress-bar level-aman" id="progressBar" style="width: 0%"></div>
                     </div>
                     <p class="teks-redup" id="teksProgresKuota" style="margin-top:8px;">Terpakai 0% · sisa kuota 120 box</p>
@@ -59,7 +62,7 @@
                     <h2 style="margin:0;">Pesanan terbaru</h2>
                     <span class="teks-redup" style="font-size:12.5px;">Daftar pesanan katering masuk terkini</span>
                 </div>
-                <a class="btn btn-secondary btn-kecil" href="pemesan.html">Buka Semua Pesanan →</a>
+                <a class="btn btn-secondary btn-kecil" href="pemesan.html">Buka Semua Pesanan</a>
             </div>
             <div class="table-wrapper">
                 <table>
@@ -84,99 +87,108 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', async function () {
+    var DB = window.WARTEG_DB;
     window.WARTEG_ADMIN_LAYOUT.render('dashboard', 'Dashboard');
 
     var hariIni = new Date().toISOString().slice(0, 10);
-    document.getElementById('subTglHariIni').textContent = 'Pengambilan ' + window.WARTEG_DB.tanggalId(hariIni, false);
+    document.getElementById('subTglHariIni').textContent = 'Pengambilan ' + DB.tanggalId(hariIni, false);
 
-    var kap = await window.WARTEG_DB.getKapasitasTanggal(hariIni);
-    document.getElementById('statBox').textContent = kap.box + ' box';
-    document.getElementById('statKapasitas').textContent = kap.kapasitas + ' box';
-    document.getElementById('statSisa').textContent = kap.sisa + ' box';
-    document.getElementById('statPesanan').textContent = kap.pesanan + ' pesanan';
+    try {
+        var kap = await DB.getKapasitasTanggal(hariIni);
+        document.getElementById('statBox').textContent = kap.box + ' box';
+        document.getElementById('statKapasitas').textContent = kap.kapasitas + ' box';
+        document.getElementById('statSisa').textContent = kap.sisa + ' box';
+        document.getElementById('statPesanan').textContent = kap.pesanan + ' pesanan';
 
-    if (kap.level === 'penuh') document.getElementById('kartuSisa').className = 'kartu-stat kartu-merah';
-    else if (kap.level === 'hampir') document.getElementById('kartuSisa').className = 'kartu-stat kartu-kuning';
+        if (kap.level === 'penuh') document.getElementById('kartuSisa').className = 'kartu-stat kartu-merah';
+        else if (kap.level === 'hampir') document.getElementById('kartuSisa').className = 'kartu-stat kartu-kuning';
 
-    var bar = document.getElementById('progressBar');
-    bar.style.width = kap.persen + '%';
-    bar.className = 'progress-bar level-' + kap.level;
-    document.getElementById('teksProgresKuota').textContent = 'Terpakai ' + kap.persen + '% · sisa kuota ' + kap.sisa + ' box';
+        var bar = document.getElementById('progressBar');
+        bar.style.width = kap.persen + '%';
+        bar.className = 'progress-bar level-' + kap.level;
+        document.getElementById('progressBarWrap').setAttribute('aria-valuenow', String(kap.persen));
+        document.getElementById('teksProgresKuota').textContent = 'Terpakai ' + kap.persen + '% · sisa kuota ' + kap.sisa + ' box';
 
-    if (kap.level === 'penuh') {
-        document.getElementById('alertKuota').innerHTML = '<div class="alert alert-galat" style="margin-bottom:12px;">Kuota hari ini sudah penuh. Pesanan baru akan ditolak otomatis.</div>';
-    } else if (kap.level === 'hampir') {
-        document.getElementById('alertKuota').innerHTML = '<div class="alert alert-peringatan" style="margin-bottom:12px;">Kuota hampir penuh, tersisa ' + kap.sisa + ' box.</div>';
-    }
-
-    // Menu Hari Ini
-    var menus = await window.WARTEG_DB.getMenuTanggal(hariIni);
-    var menuUl = document.getElementById('listMenuHariIni');
-    menuUl.innerHTML = '';
-
-    var totalStok = 0, totalStokTerjual = 0;
-    (menus || []).forEach(function (m) {
-        if (!m.tersedia && !m.jumlah) return;
-        var sisa = m.stok === null ? null : Math.max(0, m.stok - (m.jumlah || 0));
-        if (m.stok !== null) {
-            totalStok += m.stok;
-            totalStokTerjual += (m.jumlah || 0);
+        if (kap.level === 'penuh') {
+            document.getElementById('alertKuota').innerHTML = '<div class="alert alert-galat" style="margin-bottom:12px;">Kuota hari ini sudah penuh. Pesanan baru akan ditolak otomatis.</div>';
+        } else if (kap.level === 'hampir') {
+            document.getElementById('alertKuota').innerHTML = '<div class="alert alert-peringatan" style="margin-bottom:12px;">Kuota hampir penuh, tersisa ' + kap.sisa + ' box.</div>';
         }
 
-        var li = document.createElement('li');
-        var imgThumb = m.foto ? ('<img src="../uploads/menu/' + m.foto + '" alt="' + m.nama + '" onerror="this.parentNode.innerHTML=\'🍱\'">') : '<span aria-hidden="true">🍱</span>';
+        // Menu Hari Ini
+        var menus = await DB.getMenuTanggal(hariIni);
+        var menuUl = document.getElementById('listMenuHariIni');
+        menuUl.innerHTML = '';
 
-        var statusStok = '';
-        if (m.stok === null) {
-            statusStok = '<strong>' + (m.jumlah || 0) + ' box</strong><br><small class="teks-redup">tanpa batas stok</small>';
-        } else if (sisa <= 0 && (m.jumlah || 0) >= m.stok) {
-            statusStok = '<span class="stok-habis">Stok habis</span><br><small class="teks-redup">' + m.jumlah + ' / ' + m.stok + ' box</small>';
-        } else {
-            statusStok = '<strong>sisa ' + sisa + ' box</strong><br><small class="teks-redup ' + (sisa <= m.stok * 0.2 ? 'stok-tipis' : '') + '">dipesan ' + m.jumlah + ' dari ' + m.stok + '</small>';
-        }
+        var totalStok = 0, totalStokTerjual = 0;
+        (menus || []).forEach(function (m) {
+            if (!m.tersedia && !m.jumlah) return;
+            var sisa = m.stok === null ? null : Math.max(0, m.stok - (m.jumlah || 0));
+            if (m.stok !== null) {
+                totalStok += m.stok;
+                totalStokTerjual += (m.jumlah || 0);
+            }
 
-        li.innerHTML = '<span class="menu-item">'
-            + '<span class="menu-thumb">' + imgThumb + '</span>'
-            + '<span>' + m.nama + (!m.tersedia ? ' <em class="tag-nonaktif">dinonaktifkan</em>' : '') + '<br>'
-            + '<small class="teks-redup">' + window.WARTEG_DB.rupiah(m.harga) + ' / box</small>'
-            + '</span></span>'
-            + '<span class="menu-hitungan">' + statusStok + '</span>';
-        menuUl.appendChild(li);
-    });
+            var li = document.createElement('li');
+            var safeNama = DB.escapeHtml(m.nama);
+            var imgThumb = m.foto
+                ? ('<img src="../uploads/menu/' + DB.escapeHtml(m.foto) + '" alt="' + safeNama + '" onerror="this.parentNode.innerHTML=\'<span aria-hidden=&quot;true&quot;>PS</span>\'">')
+                : '<span aria-hidden="true">PS</span>';
 
-    var liTotal = document.createElement('li');
-    liTotal.className = 'total';
-    liTotal.innerHTML = '<span>Total</span><strong>' + kap.box + ' dari ' + kap.kapasitas + ' box</strong>';
-    menuUl.appendChild(liTotal);
+            var statusStok = '';
+            if (m.stok === null) {
+                statusStok = '<strong>' + (m.jumlah || 0) + ' box</strong><br><small class="teks-redup">tanpa batas stok</small>';
+            } else if (sisa <= 0 && (m.jumlah || 0) >= m.stok) {
+                statusStok = '<span class="stok-habis">Stok habis</span><br><small class="teks-redup">' + m.jumlah + ' / ' + m.stok + ' box</small>';
+            } else {
+                statusStok = '<strong>sisa ' + sisa + ' box</strong><br><small class="teks-redup ' + (sisa <= m.stok * 0.2 ? 'stok-tipis' : '') + '">dipesan ' + m.jumlah + ' dari ' + m.stok + '</small>';
+            }
 
-    var persenStok = totalStok > 0 ? Math.min(100, Math.round(totalStokTerjual / totalStok * 100)) : 0;
-    var sisaStok = Math.max(0, totalStok - totalStokTerjual);
-    document.getElementById('statTotalStok').textContent = totalStok + ' box';
-    document.getElementById('statPersenStok').textContent = persenStok + '%';
-    if (persenStok >= 100) document.getElementById('kartuPersenStok').className = 'kartu-stat kartu-merah';
-    else if (persenStok >= 80) document.getElementById('kartuPersenStok').className = 'kartu-stat kartu-kuning';
-    document.getElementById('teksStokRingkas').textContent = 'Stok menu: ' + totalStokTerjual + ' dari ' + totalStok + ' box terpakai (' + persenStok + '%), sisa ' + sisaStok + ' box.';
-
-    // Pesanan Terbaru (Limit 6)
-    var pemesanRes = await window.WARTEG_DB.getDaftarPemesan({ per: 6, urut: 'terbaru' });
-    var tbody = document.getElementById('tbodyTerbaru');
-    tbody.innerHTML = '';
-    if (!pemesanRes.items || !pemesanRes.items.length) {
-        tbody.innerHTML = '<tr><td colspan="6" class="kosong">Belum ada pesanan masuk.</td></tr>';
-    } else {
-        pemesanRes.items.forEach(function (p) {
-            var tr = document.createElement('tr');
-            tr.innerHTML = '<td><strong style="font-family:monospace;letter-spacing:0.5px;">' + window.WARTEG_DB.escapeHtml(p.kode) + '</strong></td>'
-                + '<td><strong>' + window.WARTEG_DB.escapeHtml(p.nama_pelanggan) + '</strong></td>'
-                + '<td>' + Number(p.total_box || 0) + ' box</td>'
-                + '<td>' + window.WARTEG_DB.tanggalId(p.tanggal_ambil, false) + ', ' + window.WARTEG_DB.jamPendek(p.jam_ambil) + ' WIB</td>'
-                + '<td>' + window.WARTEG_DB.badgeStatus(p.status) + '</td>'
-                + '<td style="text-align:center;"><a href="pemesan.html?q=' + encodeURIComponent(p.kode) + '" class="btn-action btn-detail" style="text-decoration:none;font-size:12px;padding:4px 10px;">Detail →</a></td>';
-            tbody.appendChild(tr);
+            li.innerHTML = '<span class="menu-item">'
+                + '<span class="menu-thumb">' + imgThumb + '</span>'
+                + '<span>' + safeNama + (!m.tersedia ? ' <em class="tag-nonaktif">dinonaktifkan</em>' : '') + '<br>'
+                + '<small class="teks-redup">' + DB.rupiah(m.harga) + ' / box</small>'
+                + '</span></span>'
+                + '<span class="menu-hitungan">' + statusStok + '</span>';
+            menuUl.appendChild(li);
         });
+
+        var liTotal = document.createElement('li');
+        liTotal.className = 'total';
+        liTotal.innerHTML = '<span>Total</span><strong>' + kap.box + ' dari ' + kap.kapasitas + ' box</strong>';
+        menuUl.appendChild(liTotal);
+
+        var persenStok = totalStok > 0 ? Math.min(100, Math.round(totalStokTerjual / totalStok * 100)) : 0;
+        var sisaStok = Math.max(0, totalStok - totalStokTerjual);
+        document.getElementById('statTotalStok').textContent = totalStok + ' box';
+        document.getElementById('statPersenStok').textContent = persenStok + '%';
+        if (persenStok >= 100) document.getElementById('kartuPersenStok').className = 'kartu-stat kartu-merah';
+        else if (persenStok >= 80) document.getElementById('kartuPersenStok').className = 'kartu-stat kartu-kuning';
+        document.getElementById('teksStokRingkas').textContent = 'Stok menu: ' + totalStokTerjual + ' dari ' + totalStok + ' box terpakai (' + persenStok + '%), sisa ' + sisaStok + ' box.';
+
+        // Pesanan Terbaru (Limit 6)
+        var pemesanRes = await DB.getDaftarPemesan({ per: 6, urut: 'terbaru' });
+        var tbody = document.getElementById('tbodyTerbaru');
+        tbody.innerHTML = '';
+        if (!pemesanRes.items || !pemesanRes.items.length) {
+            tbody.innerHTML = '<tr><td colspan="6" class="kosong">Belum ada pesanan masuk.</td></tr>';
+        } else {
+            pemesanRes.items.forEach(function (p) {
+                var tr = document.createElement('tr');
+                tr.innerHTML = '<td><strong style="font-family:monospace;letter-spacing:0.5px;">' + DB.escapeHtml(p.kode) + '</strong></td>'
+                    + '<td><strong>' + DB.escapeHtml(p.nama_pelanggan) + '</strong></td>'
+                    + '<td>' + Number(p.total_box || 0) + ' box</td>'
+                    + '<td>' + DB.tanggalId(p.tanggal_ambil, false) + ', ' + DB.jamPendek(p.jam_ambil) + ' WIB</td>'
+                    + '<td>' + DB.badgeStatus(p.status) + '</td>'
+                    + '<td style="text-align:center;"><a href="pemesan.html?q=' + encodeURIComponent(p.kode) + '" class="btn-action btn-detail">Detail</a></td>';
+                tbody.appendChild(tr);
+            });
+        }
+    } catch (err) {
+        document.getElementById('alertKuota').innerHTML = '<div class="alert alert-galat" style="margin-bottom:12px;">Gagal memuat data dashboard. Periksa koneksi internet Anda lalu muat ulang halaman.</div>';
+        document.getElementById('tbodyTerbaru').innerHTML = '<tr><td colspan="6" class="kosong" style="color:var(--merah);">Gagal memuat daftar pesanan terbaru.</td></tr>';
     }
 });
 </script>
 </body>
 </html>
-

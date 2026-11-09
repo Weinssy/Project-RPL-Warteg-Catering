@@ -6,42 +6,49 @@
     <title>Nota Pesanan - Warteg Pak Sanam</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/customer.css">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="assets/js/config.js"></script>
-    <script src="assets/js/db-service.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script defer src="assets/js/config.js"></script>
+    <script defer src="assets/js/db-service.js"></script>
 </head>
 <body class="cust">
     <!-- ================= TOP OPERATIONAL NOTICE ================= -->
     <div class="top-notice-bar">
         <div class="wadah top-notice-inner">
-            <span class="top-notice-info">🍱 Warteg Pak Sanam • Jl. BDN 1 Cilandak Barat, Jakarta Selatan • Jam Buka: 09.00 - 19.00 WIB</span>
-            <span class="top-notice-wa">WA: 0857-8342-3626 • Khusus Ambil Mandiri (Self-Pickup)</span>
+            <span class="top-notice-info">
+                <span class="desk-only">Warteg Pak Sanam • Jl. BDN 1 Cilandak Barat, Jakarta Selatan • Jam Buka: 09.00 - 19.00 WIB</span>
+                <span class="mob-only">Warteg Pak Sanam • 09.00 - 19.00 WIB</span>
+            </span>
+            <span class="top-notice-wa">
+                <span class="desk-only">WA: 0857-8342-3626 • Khusus Ambil Mandiri (Self-Pickup)</span>
+                <span class="mob-only">Ambil Mandiri</span>
+            </span>
         </div>
     </div>
 
     <header class="cust-header">
         <div class="wadah cust-nav">
             <a href="index.html" class="cust-logo">
-                <span class="cust-logo-emblem" aria-hidden="true">🍱</span>
+                <span class="cust-logo-emblem" aria-hidden="true">PS</span>
                 <span class="cust-logo-text">
                     <strong class="cust-logo-title">WARTEG PAK SANAM</strong>
-                    <small class="cust-logo-sub">Spesialis Katering &amp; Nasi Box Rumahan</small>
+                    <small class="cust-logo-sub">Katering &amp; Nasi Box Rumahan</small>
                 </span>
             </a>
-            <div class="cust-links" id="custLinks">
+            <nav class="cust-links" id="custLinks" aria-label="Navigasi utama">
                 <a href="index.html">Beranda</a>
                 <a href="index.html#katalog">Katalog Menu</a>
-                <a href="index.html#kapasitas">Cek Kuota Dapur</a>
+                <a href="index.html#kapasitas">Cek Kuota</a>
                 <a href="cara-pemesanan.html">Cara Pemesanan</a>
-                <a href="cek_status.html">Cek Status Pesanan</a>
+                <a href="cek_status.html">Cek Status</a>
                 <a href="admin/login.html" class="link-admin">Login Admin</a>
-            </div>
+            </nav>
             <div class="cust-nav-kanan">
-                <a href="index.html#katalog" class="btn btn-primer btn-kecil">Pesan Nasi Box</a>
-                <button type="button" class="cust-toggle" id="custToggle" aria-label="Buka menu" aria-expanded="false" aria-controls="custLinks">
-                    <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                <a href="index.html#katalog" class="btn btn-primer btn-kecil btn-nav-cta">Pesan Nasi Box</a>
+                <button type="button" class="cust-toggle" id="custToggle" aria-label="Buka menu navigasi" aria-expanded="false" aria-controls="custLinks">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                    <span class="cust-toggle-label">Menu</span>
                 </button>
             </div>
         </div>
@@ -56,11 +63,11 @@
     <footer class="cust-footer">
         <div class="wadah cust-footer-grid">
             <div>
-                <h4>🍱 WARTEG PAK SANAM</h4>
+                <h2>WARTEG PAK SANAM</h2>
                 <p>Melayani pemesanan nasi box dan katering harian masakan rumahan Nusantara. Seluruh pesanan disiapkan segar dan diambil langsung (self-pickup) di warteg kami.</p>
             </div>
             <div>
-                <h4>Navigasi</h4>
+                <h2>Navigasi</h2>
                 <ul>
                     <li><a href="index.html">Beranda</a></li>
                     <li><a href="index.html#katalog">Katalog Menu</a></li>
@@ -70,7 +77,7 @@
                 </ul>
             </div>
             <div>
-                <h4>Ketentuan Katering</h4>
+                <h2>Ketentuan Katering</h2>
                 <ul>
                     <li>Minimal order 10 box per transaksi</li>
                     <li>Promo kelipatan 50 box hemat Rp 50.000</li>
@@ -80,13 +87,15 @@
                 </ul>
             </div>
             <div>
-                <h4>Lokasi &amp; Jam Operasional</h4>
+                <h2>Lokasi &amp; Jam Operasional</h2>
                 <p>Warteg Pak Sanam<br>Jalan BDN 1 Cilandak Barat, Jakarta Selatan</p>
                 <p>Jam Operasional: 09.00 - 19.00 WIB</p>
                 <p>WhatsApp Layanan: 0857-8342-3626</p>
             </div>
         </div>
-        <div class="copy">&copy; 2026 Warteg Pak Sanam. Sistem POS &amp; Pre-Order Katering Harian Berbasis Web. Semua harga dalam Rupiah (IDR).</div>
+        <div class="wadah">
+            <div class="copy">&copy; 2026 Warteg Pak Sanam. Sistem POS &amp; Pre-Order Katering Harian Berbasis Web. Semua harga dalam Rupiah (IDR).</div>
+        </div>
     </footer>
 
     <script>
@@ -97,133 +106,143 @@
         var token = (params.get('t') || '').trim();
         var wadah = document.getElementById('notaWadah');
 
-        var data = await DB.getPesanan(kode, token);
-        if (!data || !data.pesanan) {
-            wadah.innerHTML = '<div class="kosong">'
-                + '<div class="ikon">🔒</div>'
-                + '<h2>Nota tidak dapat dibuka</h2>'
-                + '<p>Untuk melindungi privasi pelanggan, nota hanya dapat dibuka melalui tautan resmi dengan token keamanan atau melalui halaman Cek Status.</p>'
+        try {
+            var data = await DB.getPesanan(kode, token);
+            if (!data || !data.pesanan) {
+                wadah.innerHTML = '<div class="kosong">'
+                    + '<h1>Nota tidak dapat dibuka</h1>'
+                    + '<p>Untuk melindungi privasi pelanggan, nota hanya dapat dibuka melalui tautan resmi dengan token keamanan atau melalui halaman Cek Status.</p>'
+                    + '<p style="margin-top:16px"><a class="btn btn-primer" href="cek_status.html">Cek Status Pesanan</a></p>'
+                    + '</div>';
+                return;
+            }
+
+            var p = data.pesanan;
+            var detail = data.detail || [];
+            var sb = p.status_bayar || 'belum_bayar';
+            var urlBayar = DB.urlPembayaran(p.kode, p.token_nota);
+            var urlInvoice = DB.urlInvoice(p.kode, p.token_nota);
+
+            var html = '<div class="nota-kartu">'
+                + '<div class="nota-atas">'
+                + '<span class="badge-hero" style="background:#5f2000;color:#ffffff;border:1px solid #fdba74;">Nota Pesanan Katering</span>'
+                + '<h1>Pesanan Anda Tercatat!</h1>'
+                + '<p style="color:#fef3eb;font-size:14px">Simpan halaman ini atau catat kode pesanan untuk mengambil pesanan di warteg.</p>'
+                + '<div class="kode">' + DB.escapeHtml(p.kode)
+                + ' <button type="button" class="btn-salin-nota" id="btnSalinKodeNota">Salin Kode</button>'
+                + '</div>'
+                + '</div>'
+                + '<div class="nota-isi">';
+
+            if (p.status === 'Dibatalkan' || sb === 'kedaluwarsa' || sb === 'dibatalkan' || sb === 'gagal') {
+                html += '<div class="alert alert-galat">Pesanan ini berstatus <strong>' + DB.escapeHtml(p.status === 'Dibatalkan' ? 'Dibatalkan' : DB.statusBayarLabel(sb)) + '</strong>. Silakan buat pesanan baru apabila Anda masih ingin memesan katering.</div>';
+            } else if (p.status === 'Selesai') {
+                html += '<div class="alert alert-sukses"><strong>Pesanan Selesai &amp; Telah Diambil.</strong> Terima kasih telah memesan katering di Warteg Pak Sanam.</div>';
+            } else if (sb === 'belum_bayar' || sb === 'menunggu') {
+                html += '<div class="alert alert-peringatan"><strong>Pesanan belum dibayar.</strong> Silakan lakukan pembayaran melalui QRIS dan unggah bukti pembayaran agar pesanan diproses dapur.<div style="margin-top:10px"><a class="btn btn-primer btn-kecil" href="' + urlBayar + '">Bayar &amp; Unggah Bukti</a></div></div>';
+            } else if (sb === 'menunggu_verifikasi') {
+                html += '<div class="alert alert-info"><strong>Bukti pembayaran sedang diverifikasi admin.</strong> Status pesanan akan diperbarui segera setelah pembayaran dinyatakan lunas.<div style="margin-top:10px"><a class="btn btn-garis btn-kecil" href="' + urlBayar + '">Lihat Bukti Pembayaran</a></div></div>';
+            } else if (sb === 'ditolak') {
+                html += '<div class="alert alert-galat"><strong>Bukti pembayaran ditolak.</strong>' + (p.alasan_tolak ? ' Alasan: <em>' + DB.escapeHtml(p.alasan_tolak) + '</em>.' : '') + ' Mohon unggah ulang bukti pembayaran yang benar.<div style="margin-top:10px"><a class="btn btn-primer btn-kecil" href="' + urlBayar + '">Unggah Ulang Bukti</a></div></div>';
+            } else if (sb === 'berhasil' || sb === 'lunas') {
+                html += '<div class="alert alert-sukses"><strong>Pembayaran LUNAS terverifikasi' + (p.dibayar_pada ? ' pada ' + DB.waktuId(p.dibayar_pada) : '') + '.</strong><div style="margin-top:10px"><a class="btn btn-primer btn-kecil" href="' + urlInvoice + '">Lihat &amp; Cetak Invoice Resmi</a></div></div>';
+            }
+
+            html += '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:18px">'
+                + '<div>'
+                + '<div style="font-size:12px;color:var(--c-redup)">Status Pesanan &amp; Pembayaran</div>'
+                + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">'
+                + DB.badgeStatus(p.status)
+                + '<span class="badge ' + DB.kelasStatusBayar(sb) + '">Pembayaran: ' + DB.escapeHtml(DB.statusBayarLabel(sb)) + '</span>'
+                + '</div></div>'
+                + '<div style="text-align:right">'
+                + '<div style="font-size:12px;color:var(--c-redup)">Metode Bayar</div>'
+                + '<strong>QRIS Statis</strong>'
+                + '</div></div>';
+
+            html += '<div class="nota-seksi">'
+                + '<h2>Informasi Pemesan &amp; Pengambilan</h2>'
+                + '<div class="nota-info">'
+                + '<div class="item"><div class="label">Nama</div><strong>' + DB.escapeHtml(p.nama_pelanggan) + '</strong></div>'
+                + '<div class="item"><div class="label">WhatsApp</div><strong>' + DB.escapeHtml(p.no_wa) + '</strong></div>'
+                + '<div class="item"><div class="label">Tanggal Ambil</div><strong>' + DB.tanggalId(p.tanggal_ambil) + '</strong></div>'
+                + '<div class="item"><div class="label">Jam Ambil</div><strong>' + DB.jamPendek(p.jam_ambil) + ' WIB</strong></div>'
+                + '<div class="item"><div class="label">Lokasi Ambil</div><strong>Warteg Pak Sanam, Jl. BDN 1 Cilandak Barat</strong></div>'
+                + '</div>';
+
+            if (p.catatan) {
+                html += '<p style="margin-top:10px;font-size:13px;color:var(--c-redup)">Catatan: <em>' + DB.escapeHtml(p.catatan) + '</em></p>';
+            }
+            html += '</div>';
+
+            html += '<div class="nota-seksi">'
+                + '<h2>Rincian Menu (' + Number(p.total_box || 0) + ' box)</h2>'
+                + '<table class="nota-rincian-tabel">'
+                + '<thead><tr><th>Menu</th><th>Jml</th><th>Harga</th><th>Subtotal</th></tr></thead><tbody>';
+
+            detail.forEach(function (d) {
+                var u = d.unit || 'box';
+                html += '<tr>'
+                    + '<td>' + DB.escapeHtml(d.nama) + '</td>'
+                    + '<td>' + Number(d.jumlah || 0) + ' ' + DB.escapeHtml(u) + '</td>'
+                    + '<td>' + DB.rupiah(d.harga_satuan) + '</td>'
+                    + '<td><strong>' + DB.rupiah(d.subtotal) + '</strong></td>'
+                    + '</tr>';
+            });
+
+            html += '</tbody></table>';
+
+            if (p.diskon > 0) {
+                html += '<div style="display:flex;justify-content:space-between;font-size:14px;padding-top:10px;color:var(--c-redup)">'
+                    + '<span>Subtotal Menu</span>'
+                    + '<span>' + DB.rupiah(p.total_harga) + '</span>'
+                    + '</div>'
+                    + '<div style="display:flex;justify-content:space-between;font-size:14px;padding-top:6px;color:var(--c-hijau);font-weight:700">'
+                    + '<span>Potongan Voucher Diskon (Kelipatan 50 Box)</span>'
+                    + '<span>- ' + DB.rupiah(p.diskon) + '</span>'
+                    + '</div>';
+            }
+
+            html += '<div class="nota-total">'
+                + '<span>Total Pembayaran</span>'
+                + '<span class="nilai">' + DB.rupiah(p.nominal_bayar || p.total_harga) + '</span>'
+                + '</div></div></div>';
+
+            html += '<div class="nota-aksi">';
+            if (['belum_bayar', 'menunggu', 'ditolak'].indexOf(sb) >= 0 && p.status !== 'Dibatalkan') {
+                html += '<a href="' + urlBayar + '" class="btn btn-primer">Bayar / Unggah Bukti</a>';
+            } else if (sb === 'menunggu_verifikasi') {
+                html += '<a href="' + urlBayar + '" class="btn btn-garis">Lihat Status Verifikasi</a>';
+            } else if (sb === 'berhasil' || sb === 'lunas') {
+                html += '<a href="' + urlInvoice + '" class="btn btn-primer">Buka Invoice Resmi</a>';
+            }
+            html += '<button type="button" class="btn btn-garis" onclick="window.print()">Cetak Nota</button>'
+                + '<a href="index.html" class="btn btn-garis">Pesan Lagi</a>'
+                + '</div></div>';
+
+            wadah.innerHTML = html;
+
+            var btnSalin = document.getElementById('btnSalinKodeNota');
+            if (btnSalin) {
+                btnSalin.onclick = function () {
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(p.kode).then(function () {
+                            btnSalin.textContent = 'Kode Tersalin';
+                            setTimeout(function () { btnSalin.textContent = 'Salin Kode'; }, 1800);
+                        }).catch(function () {
+                            prompt('Salin kode pesanan:', p.kode);
+                        });
+                    } else {
+                        prompt('Salin kode pesanan:', p.kode);
+                    }
+                };
+            }
+        } catch (err) {
+            wadah.innerHTML = '<div class="kosong kosong-galat">'
+                + '<h1>Gagal memuat nota pesanan</h1>'
+                + '<p>Terjadi gangguan koneksi saat mengambil data pesanan. Muat ulang halaman ini atau buka melalui Cek Status Pesanan.</p>'
                 + '<p style="margin-top:16px"><a class="btn btn-primer" href="cek_status.html">Cek Status Pesanan</a></p>'
                 + '</div>';
-            return;
-        }
-
-        var p = data.pesanan;
-        var detail = data.detail || [];
-        var sb = p.status_bayar || 'belum_bayar';
-        var urlBayar = DB.urlPembayaran(p.kode, p.token_nota);
-        var urlInvoice = DB.urlInvoice(p.kode, p.token_nota);
-
-        var html = '<div class="nota-kartu">'
-            + '<div class="nota-atas">'
-            + '<span class="badge-hero" style="background:rgba(255,255,255,.18);color:#fff">🧾 Nota Pesanan Katering</span>'
-            + '<h1>Pesanan Anda Tercatat!</h1>'
-            + '<p style="opacity:.9;font-size:14px">Simpan halaman ini atau catat kode pesanan untuk mengambil pesanan di warteg.</p>'
-            + '<div class="kode">' + DB.escapeHtml(p.kode)
-            + ' <button type="button" id="btnSalinKodeNota" style="background:rgba(255,255,255,0.22);color:#fff;border:1px solid rgba(255,255,255,0.35);border-radius:6px;padding:4px 10px;font-size:12px;font-weight:700;cursor:pointer;margin-left:8px;vertical-align:middle;">Salin Kode</button>'
-            + '</div>'
-            + '</div>'
-            + '<div class="nota-isi">';
-
-        if (p.status === 'Dibatalkan' || sb === 'kedaluwarsa' || sb === 'dibatalkan' || sb === 'gagal') {
-            html += '<div class="alert alert-galat">🚫 Pesanan ini berstatus <strong>' + DB.escapeHtml(p.status === 'Dibatalkan' ? 'Dibatalkan' : DB.statusBayarLabel(sb)) + '</strong>. Silakan buat pesanan baru apabila Anda masih ingin memesan katering.</div>';
-        } else if (p.status === 'Selesai') {
-            html += '<div class="alert alert-sukses">🍱 <strong>Pesanan Selesai &amp; Telah Diambil.</strong> Terima kasih telah memesan katering di Warteg Pak Sanam!</div>';
-        } else if (sb === 'belum_bayar' || sb === 'menunggu') {
-            html += '<div class="alert alert-peringatan">⚠️ <strong>Pesanan belum dibayar.</strong> Silakan lakukan pembayaran melalui QRIS dan unggah bukti pembayaran agar pesanan diproses dapur.<div style="margin-top:8px"><a class="btn btn-primer btn-kecil" href="' + urlBayar + '">Bayar &amp; Unggah Bukti →</a></div></div>';
-        } else if (sb === 'menunggu_verifikasi') {
-            html += '<div class="alert alert-info">⏳ <strong>Bukti pembayaran sedang diverifikasi admin.</strong> Status pesanan akan diperbarui segera setelah pembayaran dinyatakan lunas.<div style="margin-top:8px"><a class="btn btn-garis btn-kecil" href="' + urlBayar + '">Lihat Bukti Pembayaran</a></div></div>';
-        } else if (sb === 'ditolak') {
-            html += '<div class="alert alert-galat">❌ <strong>Bukti pembayaran ditolak.</strong>' + (p.alasan_tolak ? ' Alasan: <em>' + DB.escapeHtml(p.alasan_tolak) + '</em>.' : '') + ' Mohon unggah ulang bukti pembayaran yang benar.<div style="margin-top:8px"><a class="btn btn-primer btn-kecil" href="' + urlBayar + '">Unggah Ulang Bukti →</a></div></div>';
-        } else if (sb === 'berhasil' || sb === 'lunas') {
-            html += '<div class="alert alert-sukses">✅ <strong>Pembayaran LUNAS terverifikasi' + (p.dibayar_pada ? ' pada ' + DB.waktuId(p.dibayar_pada) : '') + '.</strong><div style="margin-top:8px"><a class="btn btn-primer btn-kecil" href="' + urlInvoice + '">🧾 Lihat &amp; Cetak Invoice Resmi</a></div></div>';
-        }
-
-        html += '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:18px">'
-            + '<div>'
-            + '<div style="font-size:12px;color:var(--c-redup)">Status Pesanan &amp; Pembayaran</div>'
-            + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">'
-            + DB.badgeStatus(p.status)
-            + '<span class="badge ' + DB.kelasStatusBayar(sb) + '">💳 ' + DB.escapeHtml(DB.statusBayarLabel(sb)) + '</span>'
-            + '</div></div>'
-            + '<div style="text-align:right">'
-            + '<div style="font-size:12px;color:var(--c-redup)">Metode Bayar</div>'
-            + '<strong>QRIS Statis</strong>'
-            + '</div></div>';
-
-        html += '<div class="nota-seksi">'
-            + '<h3>Informasi Pemesan &amp; Pengambilan</h3>'
-            + '<div class="nota-info">'
-            + '<div class="item"><div class="label">Nama</div><strong>' + DB.escapeHtml(p.nama_pelanggan) + '</strong></div>'
-            + '<div class="item"><div class="label">WhatsApp</div><strong>' + DB.escapeHtml(p.no_wa) + '</strong></div>'
-            + '<div class="item"><div class="label">Tanggal Ambil</div><strong>' + DB.tanggalId(p.tanggal_ambil) + '</strong></div>'
-            + '<div class="item"><div class="label">Jam Ambil</div><strong>' + DB.jamPendek(p.jam_ambil) + ' WIB</strong></div>'
-            + '<div class="item"><div class="label">Lokasi Ambil</div><strong>Warteg Pak Sanam, Jl. BDN 1 Cilandak Barat</strong></div>'
-            + '</div>';
-
-        if (p.catatan) {
-            html += '<p style="margin-top:10px;font-size:13px;color:var(--c-redup)">Catatan: <em>' + DB.escapeHtml(p.catatan) + '</em></p>';
-        }
-        html += '</div>';
-
-        html += '<div class="nota-seksi">'
-            + '<h3>Rincian Menu (' + Number(p.total_box || 0) + ' box)</h3>'
-            + '<table class="nota-rincian-tabel">'
-            + '<thead><tr><th>Menu</th><th>Jml</th><th>Harga</th><th>Subtotal</th></tr></thead><tbody>';
-
-        detail.forEach(function (d) {
-            var u = d.unit || 'box';
-            html += '<tr>'
-                + '<td>' + DB.escapeHtml(d.nama) + '</td>'
-                + '<td>' + Number(d.jumlah || 0) + ' ' + DB.escapeHtml(u) + '</td>'
-                + '<td>' + DB.rupiah(d.harga_satuan) + '</td>'
-                + '<td><strong>' + DB.rupiah(d.subtotal) + '</strong></td>'
-                + '</tr>';
-        });
-
-        html += '</tbody></table>';
-
-        if (p.diskon > 0) {
-            html += '<div style="display:flex;justify-content:space-between;font-size:14px;padding-top:10px;color:var(--c-redup)">'
-                + '<span>Subtotal Menu</span>'
-                + '<span>' + DB.rupiah(p.total_harga) + '</span>'
-                + '</div>'
-                + '<div style="display:flex;justify-content:space-between;font-size:14px;padding-top:6px;color:var(--c-hijau);font-weight:700">'
-                + '<span>🎁 Potongan Voucher Diskon (Kelipatan 50 Box)</span>'
-                + '<span>- ' + DB.rupiah(p.diskon) + '</span>'
-                + '</div>';
-        }
-
-        html += '<div class="nota-total">'
-            + '<span>Total Pembayaran</span>'
-            + '<span class="nilai">' + DB.rupiah(p.nominal_bayar || p.total_harga) + '</span>'
-            + '</div></div></div>';
-
-        html += '<div class="nota-aksi">';
-        if (['belum_bayar', 'menunggu', 'ditolak'].indexOf(sb) >= 0 && p.status !== 'Dibatalkan') {
-            html += '<a href="' + urlBayar + '" class="btn btn-primer">💳 Bayar / Unggah Bukti</a>';
-        } else if (sb === 'menunggu_verifikasi') {
-            html += '<a href="' + urlBayar + '" class="btn btn-garis">Lihat Status Verifikasi</a>';
-        } else if (sb === 'berhasil' || sb === 'lunas') {
-            html += '<a href="' + urlInvoice + '" class="btn btn-primer">🧾 Buka Invoice Resmi</a>';
-        }
-        html += '<button type="button" class="btn btn-garis" onclick="window.print()">🖨️ Cetak Nota</button>'
-            + '<a href="index.html" class="btn btn-garis">Pesan Lagi</a>'
-            + '</div></div>';
-
-        wadah.innerHTML = html;
-
-        var btnSalin = document.getElementById('btnSalinKodeNota');
-        if (btnSalin) {
-            btnSalin.onclick = function () {
-                if (navigator.clipboard && navigator.clipboard.writeText) {
-                    navigator.clipboard.writeText(p.kode).then(function () {
-                        alert('Kode pesanan berhasil disalin: ' + p.kode);
-                    });
-                } else {
-                    prompt('Salin kode pesanan:', p.kode);
-                }
-            };
         }
     });
     </script>

@@ -4,11 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Rekap Harian - Warteg Pak Sanam</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../assets/css/admin.css">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="../assets/js/config.js"></script>
-    <script src="../assets/js/db-service.js"></script>
-    <script src="../assets/js/admin-app.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script defer src="../assets/js/config.js"></script>
+    <script defer src="../assets/js/db-service.js"></script>
+    <script defer src="../assets/js/admin-app.js"></script>
 </head>
 <body>
 <div class="main-content">
@@ -16,10 +19,10 @@
         <!-- Kalender Rekap Bulanan -->
         <div class="content-card">
             <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
-                <div style="display:flex;align-items:center;gap:6px;">
-                    <button type="button" class="btn btn-secondary btn-kecil" id="bulanSebelum" aria-label="Bulan Sebelumnya">‹ Sebelumnya</button>
+                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                    <button type="button" class="btn btn-secondary btn-kecil" id="bulanSebelum" aria-label="Bulan Sebelumnya">Sebelumnya</button>
                     <button type="button" class="btn btn-secondary btn-kecil" id="btnHariIni">Hari Ini</button>
-                    <button type="button" class="btn btn-secondary btn-kecil" id="bulanBerikut" aria-label="Bulan Berikutnya">Berikutnya ›</button>
+                    <button type="button" class="btn btn-secondary btn-kecil" id="bulanBerikut" aria-label="Bulan Berikutnya">Berikutnya</button>
                 </div>
                 <h2 id="judulBulan" style="margin:0;font-size:16px;font-weight:800;">November 2026</h2>
             </div>
@@ -48,6 +51,7 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', async function () {
+    var DB = window.WARTEG_DB;
     window.WARTEG_ADMIN_LAYOUT.render('rekap', 'Rekap Harian');
 
     var skrg = new Date();
@@ -60,83 +64,83 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     async function renderKalender() {
         document.getElementById('judulBulan').textContent = namaBulan[curBln] + ' ' + curThn;
-        var dataBulan = await window.WARTEG_DB.getRekapBulan(curThn, curBln);
-
-        var firstDay = new Date(curThn, curBln - 1, 1).getDay(); // 0 = Sun
-        var startDay = (firstDay === 0 ? 7 : firstDay) - 1; // 0 = Mon
-        var totalHari = new Date(curThn, curBln, 0).getDate();
-
         var kal = document.getElementById('kalender');
-        kal.innerHTML = '';
 
-        // Kotak kosong awal bulan
-        for (var i = 0; i < startDay; i++) {
-            var kosong = document.createElement('div');
-            kosong.className = 'sel-hari sel-kosong';
-            kal.appendChild(kosong);
-        }
+        try {
+            var dataBulan = await DB.getRekapBulan(curThn, curBln);
 
-        // Kotak tanggal
-        for (var d = 1; d <= totalHari; d++) {
-            var strTgl = curThn + '-' + String(curBln).padStart(2, '0') + '-' + String(d).padStart(2, '0');
-            var info = dataBulan[strTgl] || { box: 0, pesanan: 0 };
-            var sisa = Math.max(0, 120 - info.box);
+            var firstDay = new Date(curThn, curBln - 1, 1).getDay();
+            var startDay = (firstDay === 0 ? 7 : firstDay) - 1;
+            var totalHari = new Date(curThn, curBln, 0).getDate();
 
-            var kelas = 'sel-hari'
-                + (info.box > 0 ? (sisa === 0 ? ' penuh' : ' ada') : '')
-                + (strTgl === hariIniStr ? ' hari-ini' : '')
-                + (strTgl === tglTerpilih ? ' dipilih' : '');
+            kal.innerHTML = '';
 
-            var btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = kelas;
-            btn.dataset.tgl = strTgl;
-            btn.setAttribute('aria-pressed', strTgl === tglTerpilih ? 'true' : 'false');
-            btn.setAttribute('aria-label', d + ' ' + namaBulan[curBln] + (info.box > 0 ? ', ' + info.box + ' box, ' + info.pesanan + ' pesanan' : ', sisa 120 box'));
-
-            var innerHtml = '<span class="angka">' + d + '</span>';
-            if (info.box > 0) {
-                innerHtml += '<span class="kecil">' + info.pesanan + ' pesanan</span>'
-                    + '<span style="font-weight:700;font-size:11px;">' + info.box + ' box</span>'
-                    + '<span class="kecil">sisa ' + sisa + '</span>';
-            } else {
-                innerHtml += '<span class="kecil">sisa 120</span>';
+            for (var i = 0; i < startDay; i++) {
+                var kosong = document.createElement('div');
+                kosong.className = 'sel-hari sel-kosong';
+                kal.appendChild(kosong);
             }
-            btn.innerHTML = innerHtml;
 
-            btn.onclick = function () {
-                tglTerpilih = this.dataset.tgl;
-                document.querySelectorAll('.sel-hari').forEach(function (x) {
-                    x.classList.remove('dipilih');
-                    x.setAttribute('aria-pressed', 'false');
-                });
-                this.classList.add('dipilih');
-                this.setAttribute('aria-pressed', 'true');
-                muatRekapTanggal(tglTerpilih);
-            };
+            for (var d = 1; d <= totalHari; d++) {
+                var strTgl = curThn + '-' + String(curBln).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+                var info = dataBulan[strTgl] || { box: 0, pesanan: 0 };
+                var sisa = Math.max(0, 120 - info.box);
 
-            kal.appendChild(btn);
+                var kelas = 'sel-hari'
+                    + (info.box > 0 ? (sisa === 0 ? ' penuh' : ' ada') : '')
+                    + (strTgl === hariIniStr ? ' hari-ini' : '')
+                    + (strTgl === tglTerpilih ? ' dipilih' : '');
+
+                var btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = kelas;
+                btn.dataset.tgl = strTgl;
+                btn.setAttribute('aria-pressed', strTgl === tglTerpilih ? 'true' : 'false');
+                btn.setAttribute('aria-label', d + ' ' + namaBulan[curBln] + (info.box > 0 ? ', ' + info.box + ' box, ' + info.pesanan + ' pesanan' : ', sisa 120 box'));
+
+                var innerHtml = '<span class="angka">' + d + '</span>';
+                if (info.box > 0) {
+                    innerHtml += '<span class="kecil">' + info.pesanan + ' pesanan</span>'
+                        + '<span style="font-weight:700;font-size:11px;">' + info.box + ' box</span>'
+                        + '<span class="kecil">sisa ' + sisa + '</span>';
+                } else {
+                    innerHtml += '<span class="kecil">sisa 120</span>';
+                }
+                btn.innerHTML = innerHtml;
+
+                btn.onclick = function () {
+                    tglTerpilih = this.dataset.tgl;
+                    document.querySelectorAll('.sel-hari').forEach(function (x) {
+                        x.classList.remove('dipilih');
+                        x.setAttribute('aria-pressed', 'false');
+                    });
+                    this.classList.add('dipilih');
+                    this.setAttribute('aria-pressed', 'true');
+                    muatRekapTanggal(tglTerpilih);
+                };
+
+                kal.appendChild(btn);
+            }
+        } catch (err) {
+            kal.innerHTML = '<div class="alert alert-galat" style="grid-column:1 / -1;">Gagal memuat kalender rekap bulan ini.</div>';
         }
     }
 
     async function muatRekapTanggal(tgl) {
         var judulEl = document.getElementById('judulRekap');
         var isi = document.getElementById('isiRekap');
-        if (judulEl) judulEl.textContent = 'Rekap: ' + window.WARTEG_DB.tanggalId(tgl);
+        if (judulEl) judulEl.textContent = 'Rekap: ' + DB.tanggalId(tgl);
         isi.innerHTML = '<div class="kosong"><div class="spinner" style="margin:0 auto 10px;"></div><p>Memuat rekap data...</p></div>';
 
         try {
-            var kap = await window.WARTEG_DB.getKapasitasTanggal(tgl);
-            var res = await window.WARTEG_DB.getDaftarPemesan({ tanggal: tgl, per: 100 });
+            var kap = await DB.getKapasitasTanggal(tgl);
+            var res = await DB.getDaftarPemesan({ tanggal: tgl, per: 100 });
             var items = res.items || [];
 
-            // Agregat Menu yang dipesan
             var menuAgg = {};
-            var totalBoxDihitung = 0;
             items.forEach(function (p) {
                 (p.items || []).forEach(function (it) {
                     menuAgg[it.nama] = (menuAgg[it.nama] || 0) + (it.jumlah || 0);
-                    totalBoxDihitung += (it.jumlah || 0);
                 });
             });
 
@@ -158,54 +162,51 @@ document.addEventListener('DOMContentLoaded', async function () {
 
             if (!items.length) {
                 html += '<div class="kosong" style="padding:32px 16px;border-top:1px dashed var(--garis);">'
-                    + '<div style="font-size:36px;margin-bottom:8px;">📅</div>'
                     + '<p><strong>Tidak Ada Pesanan</strong><br>'
                     + '<span class="teks-redup" style="font-size:12.5px;">Belum ada pesanan katering untuk tanggal ini. Kuota dapur 120 box masih tersedia penuh.</span></p>'
                     + '</div>';
             } else {
-                // Ringkasan Menu
                 html += '<div style="border-top:1px dashed var(--garis);padding-top:14px;margin-top:14px;">'
                     + '<h3 style="font-size:13.5px;font-weight:800;color:var(--teks);margin-bottom:8px;">Ringkasan Menu Dipesan</h3>'
                     + '<ul class="rekap-menu">';
-                
+
                 var menuKeys = Object.keys(menuAgg);
                 if (menuKeys.length > 0) {
                     menuKeys.forEach(function (mName) {
-                        html += '<li><span>' + window.WARTEG_DB.escapeHtml(mName) + '</span><strong>' + menuAgg[mName] + ' item</strong></li>';
+                        html += '<li><span>' + DB.escapeHtml(mName) + '</span><strong>' + menuAgg[mName] + ' item</strong></li>';
                     });
                 }
                 html += '<li class="total"><span>Total Box Utama Terjadwal</span><strong>' + kap.box + ' box</strong></li>';
                 html += '</ul></div>';
 
-                // Daftar Pesanan
                 html += '<div style="border-top:1px dashed var(--garis);padding-top:14px;margin-top:14px;">'
                     + '<h3 style="font-size:13.5px;font-weight:800;color:var(--teks);margin-bottom:10px;">Daftar Pesanan (' + items.length + ')</h3>'
                     + '<div class="rekap-pemesan">';
 
                 items.forEach(function (p) {
-                    var cleanWa = window.WARTEG_DB.normalisasiWa(p.no_wa);
+                    var cleanWa = DB.normalisasiWa(p.no_wa);
                     var nominalBersih = p.nominal_bayar || p.total_harga;
 
                     html += '<div class="item-pemesan">'
                         + '<div class="baris">'
-                        + '<div><strong style="font-size:14px;">' + window.WARTEG_DB.escapeHtml(p.nama_pelanggan) + '</strong> <span style="font-size:12px;color:var(--redup);">(' + window.WARTEG_DB.escapeHtml(p.kode) + ')</span></div>'
-                        + window.WARTEG_DB.badgeStatus(p.status)
+                        + '<div><strong style="font-size:14px;">' + DB.escapeHtml(p.nama_pelanggan) + '</strong> <span style="font-size:12px;color:var(--redup);">(' + DB.escapeHtml(p.kode) + ')</span></div>'
+                        + DB.badgeStatus(p.status)
                         + '</div>'
                         + '<div class="teks-redup" style="font-size:12px;margin:3px 0 6px;">'
-                        + 'Jam Ambil: <b>' + window.WARTEG_DB.jamPendek(p.jam_ambil) + ' WIB</b> · '
-                        + 'Total: <b>' + Number(p.total_box || 0) + ' box</b> (' + window.WARTEG_DB.rupiah(nominalBersih) + (p.diskon > 0 ? ' · hemat ' + window.WARTEG_DB.rupiah(p.diskon) : '') + ')'
+                        + 'Jam Ambil: <b>' + DB.jamPendek(p.jam_ambil) + ' WIB</b> · '
+                        + 'Total: <b>' + Number(p.total_box || 0) + ' box</b> (' + DB.rupiah(nominalBersih) + (p.diskon > 0 ? ' · hemat ' + DB.rupiah(p.diskon) : '') + ')'
                         + '</div>';
 
                     if (p.ringkas) {
-                        html += '<div style="font-size:12px;color:var(--teks);background:#f8fafc;padding:6px 10px;border-radius:6px;border:1px solid #f1f5f9;margin-bottom:8px;">'
-                            + '🍱 ' + window.WARTEG_DB.escapeHtml(p.ringkas)
+                        html += '<div style="font-size:12px;color:var(--teks);background:#f5f3ef;padding:6px 10px;border-radius:6px;border:1px solid var(--garis);margin-bottom:8px;">'
+                            + 'Menu: ' + DB.escapeHtml(p.ringkas)
                             + '</div>';
                     }
 
                     html += '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'
-                        + '<a href="pemesan.html?q=' + encodeURIComponent(p.kode) + '" class="btn-action btn-detail" style="font-size:11.5px;text-decoration:none;">Buka Detail Pesanan →</a>';
+                        + '<a href="pemesan.html?q=' + encodeURIComponent(p.kode) + '" class="btn-action btn-detail">Buka Detail Pesanan</a>';
                     if (cleanWa) {
-                        html += '<a href="https://wa.me/' + cleanWa + '" target="_blank" rel="noopener" class="btn-action btn-wa" style="font-size:11.5px;text-decoration:none;">Chat WA Pelanggan</a>';
+                        html += '<a href="https://wa.me/' + cleanWa + '" target="_blank" rel="noopener" class="btn-action btn-wa">Chat WA Pelanggan</a>';
                     }
                     html += '</div></div>';
                 });
@@ -215,8 +216,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 
             isi.innerHTML = html;
         } catch (err) {
-            console.error('Gagal memuat rekap tanggal:', err);
-            isi.innerHTML = '<div class="kosong" style="color:var(--merah);"><p>Gagal memuat rincian rekap: ' + (err.message || 'Terjadi kesalahan') + '</p></div>';
+            isi.innerHTML = '<div class="alert alert-galat">Gagal memuat rincian rekap: ' + DB.escapeHtml(err.message || 'Terjadi kesalahan') + '</div>';
         }
     }
 

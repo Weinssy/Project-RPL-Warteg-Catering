@@ -42,8 +42,11 @@
 
         var isOwner = (sesi && sesi.role === 'owner');
         var namaAdmin = (sesi && sesi.nama) || 'Admin Warteg';
-        var fotoAdmin = (sesi && sesi.foto) ? ('../uploads/admin/' + sesi.foto) : '';
-        var inisial = namaAdmin.charAt(0).toUpperCase();
+        var safeNamaAdmin = DB.escapeHtml(namaAdmin);
+        var fotoAdmin = (sesi && sesi.foto)
+            ? (String(sesi.foto).indexOf('data:') === 0 ? sesi.foto : ('../uploads/admin/' + sesi.foto))
+            : '';
+        var inisial = DB.escapeHtml(namaAdmin.charAt(0).toUpperCase());
 
         var navList = [
             { k: 'dashboard', t: 'Dashboard', h: 'index.html', i: 'M3 12l9-9 9 9M5 10v10h5v-6h4v6h5V10' },
@@ -61,17 +64,17 @@
         aside.className = 'sidebar';
         aside.id = 'sidebar';
 
-        var navHtml = '<div class="logo-section">' + CFG.NAMA_WARTEG + '</div><nav class="nav-menu">';
+        var navHtml = '<div class="logo-section">' + DB.escapeHtml(CFG.NAMA_WARTEG || 'Warteg Pak Sanam') + '</div><nav class="nav-menu" aria-label="Menu admin">';
         navList.forEach(function (it) {
             if (it.owner && !isOwner) return;
             var act = (it.k === menuAktif) ? ' active' : '';
             navHtml += '<a href="' + it.h + '" class="nav-item' + act + '">'
-                + '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="' + it.i + '"/></svg>'
+                + '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="' + it.i + '"/></svg>'
                 + '<span>' + it.t + '</span></a>';
         });
-        navHtml += '<a href="javascript:void(0)" id="btnKeluarAdmin" class="nav-item nav-keluar">'
-            + '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>'
-            + '<span>Keluar</span></a></nav>';
+        navHtml += '<button type="button" id="btnKeluarAdmin" class="nav-item nav-keluar" style="background:none;border:0;text-align:left;font-family:inherit;width:100%;">'
+            + '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>'
+            + '<span>Keluar</span></button></nav>';
         aside.innerHTML = navHtml;
 
         var overlay = document.createElement('div');
@@ -81,18 +84,18 @@
         // Topbar HTML
         var header = document.createElement('header');
         header.className = 'topbar';
-        header.innerHTML = '<button type="button" class="btn-hamburger" id="btnSidebar" aria-label="Buka menu">'
-            + '<svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>'
+        header.innerHTML = '<button type="button" class="btn-hamburger" id="btnSidebar" aria-label="Buka menu navigasi" aria-expanded="false" aria-controls="sidebar">'
+            + '<svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>'
             + '</button>'
             + '<div class="topbar-judul">'
-            + '<h1>' + (judulHalaman || 'Dashboard Admin') + '</h1>'
-            + '<p>' + CFG.NAMA_WARTEG + ' · ' + DB.tanggalId(new Date().toISOString().slice(0, 10)) + '</p>'
+            + '<h1>' + DB.escapeHtml(judulHalaman || 'Dashboard Admin') + '</h1>'
+            + '<p>' + DB.escapeHtml(CFG.NAMA_WARTEG || 'Warteg Pak Sanam') + ' · ' + DB.tanggalId(new Date().toISOString().slice(0, 10)) + '</p>'
             + '</div>'
             + '<div class="topbar-admin">'
-            + '<span class="topbar-foto" role="button" tabindex="0">'
-            + (fotoAdmin ? '<img src="' + fotoAdmin + '" alt="' + namaAdmin + '" class="avatar" onerror="this.outerHTML=\'<span class=avatar>' + inisial + '</span>\'">' : '<span class="avatar avatar-inisial">' + inisial + '</span>')
-            + '</span>'
-            + '<a href="profil.html" class="admin-nama" title="Buka profil">' + namaAdmin + '</a>'
+            + '<a href="profil.html" class="topbar-foto" aria-label="Buka profil admin">'
+            + (fotoAdmin ? '<img src="' + DB.escapeHtml(fotoAdmin) + '" alt="' + safeNamaAdmin + '" class="avatar" onerror="this.outerHTML=\'<span class=avatar>' + inisial + '</span>\'">' : '<span class="avatar avatar-inisial">' + inisial + '</span>')
+            + '</a>'
+            + '<a href="profil.html" class="admin-nama" title="Buka profil">' + safeNamaAdmin + '</a>'
             + '</div>';
 
         document.body.prepend(aside);
@@ -105,10 +108,23 @@
 
         // Event Toggle Sidebar
         var btnSide = document.getElementById('btnSidebar');
-        if (btnSide) {
-            btnSide.onclick = function () { document.body.classList.toggle('sidebar-open'); };
+        function tutupSidebar() {
+            document.body.classList.remove('sidebar-open');
+            if (btnSide) btnSide.setAttribute('aria-expanded', 'false');
         }
-        overlay.onclick = function () { document.body.classList.remove('sidebar-open'); };
+        if (btnSide) {
+            btnSide.onclick = function () {
+                var buka = document.body.classList.toggle('sidebar-open');
+                btnSide.setAttribute('aria-expanded', buka ? 'true' : 'false');
+            };
+        }
+        overlay.onclick = tutupSidebar;
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && document.body.classList.contains('sidebar-open')) {
+                tutupSidebar();
+                if (btnSide) btnSide.focus();
+            }
+        });
 
         // Event Keluar
         var btnKeluar = document.getElementById('btnKeluarAdmin');
@@ -128,11 +144,25 @@
         if (!lb) {
             lb = document.createElement('div');
             lb.id = 'lightboxFoto';
+            lb.className = 'lightbox';
             lb.hidden = true;
-            lb.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);z-index:9999;display:none;align-items:center;justify-content:center;padding:20px;';
-            lb.innerHTML = '<img id="lightboxImg" style="max-width:90%;max-height:90%;border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.5);"><button type="button" style="position:absolute;top:20px;right:20px;color:#fff;background:none;border:none;font-size:32px;cursor:pointer;">&times;</button>';
+            lb.setAttribute('role', 'dialog');
+            lb.setAttribute('aria-modal', 'true');
+            lb.setAttribute('aria-label', 'Pratinjau gambar diperbesar');
+            lb.innerHTML = '<img id="lightboxImg" class="lightbox-img" alt="Pratinjau bukti transfer diperbesar"><button type="button" id="lightboxTutupBtn" class="lightbox-tutup" aria-label="Tutup pratinjau">&times;</button>';
             document.body.appendChild(lb);
-            lb.onclick = function () { lb.style.display = 'none'; };
+
+            function tutupLightbox() {
+                lb.hidden = true;
+                document.body.classList.remove('lightbox-terbuka');
+            }
+
+            lb.onclick = function (e) {
+                if (e.target === lb || e.target.id === 'lightboxTutupBtn') tutupLightbox();
+            };
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape' && !lb.hidden) tutupLightbox();
+            });
         }
         document.addEventListener('click', function (e) {
             var target = e.target.closest('[data-lightbox]');
@@ -141,7 +171,10 @@
                 if (url) {
                     var img = document.getElementById('lightboxImg');
                     if (img) img.src = url;
-                    lb.style.display = 'flex';
+                    lb.hidden = false;
+                    document.body.classList.add('lightbox-terbuka');
+                    var closeBtn = document.getElementById('lightboxTutupBtn');
+                    if (closeBtn) closeBtn.focus();
                 }
             }
         });
@@ -152,4 +185,3 @@
         initLightbox: initLightbox
     };
 })();
-

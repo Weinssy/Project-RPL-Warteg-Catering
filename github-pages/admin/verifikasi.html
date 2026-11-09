@@ -4,25 +4,35 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Verifikasi Pembayaran - Warteg Pak Sanam</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../assets/css/admin.css">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="../assets/js/config.js"></script>
-    <script src="../assets/js/db-service.js"></script>
-    <script src="../assets/js/admin-app.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script defer src="../assets/js/config.js"></script>
+    <script defer src="../assets/js/db-service.js"></script>
+    <script defer src="../assets/js/admin-app.js"></script>
     <style>
-        .verif-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 18px; }
-        .verif-kartu { background:#fff; border:1px solid var(--garis); border-radius: 14px; overflow: hidden; display:flex; flex-direction:column; }
-        .verif-kepala { padding: 14px 18px; border-bottom: 1px solid var(--garis); display:flex; justify-content:space-between; align-items:center; gap: 10px; background:#f8fafc; }
+        .verif-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 18px; }
+        .verif-kartu { background: #ffffff; border: 1px solid var(--garis); border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; }
+        .verif-kepala { padding: 14px 18px; border-bottom: 1px solid var(--garis); display: flex; justify-content: space-between; align-items: center; gap: 10px; background: #f5f3ef; }
         .verif-kepala .kode { font-family: ui-monospace, monospace; font-weight: 700; color: var(--oranye); font-size: 14px; }
-        .verif-isi { padding: 16px 18px; font-size: 13px; flex: 1; display:flex; flex-direction:column; gap: 10px; }
+        .verif-isi { padding: 16px 18px; font-size: 13px; flex: 1; display: flex; flex-direction: column; gap: 10px; }
         .verif-nominal { font-size: 20px; font-weight: 800; color: var(--teks); }
-        .verif-bukti { border: 1px solid var(--garis); border-radius: 10px; overflow: hidden; background:#0f172a; max-height: 280px; display:flex; align-items:center; justify-content:center; cursor: zoom-in; }
-        .verif-bukti img { max-width: 100%; max-height: 280px; object-fit: contain; display:block; }
-        .verif-bukti-kosong { border: 1.5px dashed #fca5a5; border-radius: 10px; padding: 20px 14px; text-align: center; background: #fef2f2; color: #b91c1c; font-size: 12.5px; font-weight: 600; }
-        .verif-aksi { padding: 12px 18px; border-top: 1px solid var(--garis); display:flex; gap: 8px; flex-wrap:wrap; background:#fafafa; }
-        .form-tolak { width: 100%; margin-top: 8px; display: none; gap: 6px; }
-        .form-tolak.tampil { display:flex; }
-        .form-tolak input { flex: 1; padding: 7px 10px; border:1px solid var(--garis); border-radius: 8px; font-size: 12px; }
+        .verif-bukti {
+            width: 100%; padding: 0; border: 1px solid var(--garis-kontrol); border-radius: 10px;
+            overflow: hidden; background: #0f172a; max-height: 280px;
+            display: flex; align-items: center; justify-content: center; cursor: zoom-in;
+        }
+        .verif-bukti img { max-width: 100%; max-height: 280px; object-fit: contain; display: block; }
+        .verif-bukti-kosong { border: 1.5px dashed #b85252; border-radius: 10px; padding: 20px 14px; text-align: center; background: var(--merah-bg); color: var(--merah); font-size: 12.5px; font-weight: 600; }
+        .verif-aksi { padding: 12px 18px; border-top: 1px solid var(--garis); display: flex; gap: 8px; flex-wrap: wrap; background: #fafafa; }
+        .form-tolak { width: 100%; margin-top: 8px; display: none; gap: 8px; align-items: center; }
+        .form-tolak.tampil { display: flex; }
+        .form-tolak input {
+            flex: 1; min-height: 44px; padding: 8px 12px; border: 1.5px solid var(--garis-kontrol);
+            border-radius: 8px; font-size: 13px; font-family: inherit;
+        }
     </style>
 </head>
 <body>
@@ -41,7 +51,7 @@
 
     <div class="content-card">
         <div class="card-header">
-            <h2 id="judulDitolak">Bukti Ditolak — Menunggu Unggah Ulang (0)</h2>
+            <h2 id="judulDitolak">Bukti Ditolak · Menunggu Unggah Ulang (0)</h2>
         </div>
         <div class="card-body" id="wadahDitolak">
             <p class="kosong">Tidak ada bukti yang sedang ditolak.</p>
@@ -56,129 +66,144 @@ document.addEventListener('DOMContentLoaded', async function () {
     window.WARTEG_ADMIN_LAYOUT.initLightbox();
 
     async function muatVerifikasi() {
-        var resMenunggu = await DB.getDaftarPemesan({ status_bayar: 'menunggu_verifikasi', per: 100 });
-        var resDitolak = await DB.getDaftarPemesan({ status_bayar: 'ditolak', per: 50 });
-
-        var menunggu = resMenunggu.items || [];
-        var ditolak = resDitolak.items || [];
-
-        document.getElementById('judulMenunggu').textContent = 'Menunggu Verifikasi (' + menunggu.length + ')';
-        document.getElementById('judulDitolak').textContent = 'Bukti Ditolak · Menunggu Unggah Ulang (' + ditolak.length + ')';
-
         var wM = document.getElementById('wadahMenunggu');
-        if (!menunggu.length) {
-            wM.innerHTML = '<p class="kosong">🎉 Tidak ada pembayaran yang menunggu verifikasi saat ini.</p>';
-        } else {
-            var htmlM = '<div class="verif-grid">';
-            menunggu.forEach(function (p) {
-                var buktiSrc = p.bukti_bayar || '';
-                var adaBukti = Boolean(buktiSrc);
-                var nominalBersih = p.nominal_bayar || p.total_harga;
+        var wD = document.getElementById('wadahDitolak');
 
-                var blokBuktiHtml = adaBukti
-                    ? '<div class="verif-bukti" data-lightbox="' + DB.escapeHtml(buktiSrc) + '" title="Klik untuk memperbesar">'
-                        + '<img src="' + DB.escapeHtml(buktiSrc) + '" alt="Bukti bayar ' + DB.escapeHtml(p.kode) + '">'
+        try {
+            var resMenunggu = await DB.getDaftarPemesan({ status_bayar: 'menunggu_verifikasi', per: 100 });
+            var resDitolak = await DB.getDaftarPemesan({ status_bayar: 'ditolak', per: 50 });
+
+            var menunggu = resMenunggu.items || [];
+            var ditolak = resDitolak.items || [];
+
+            document.getElementById('judulMenunggu').textContent = 'Menunggu Verifikasi (' + menunggu.length + ')';
+            document.getElementById('judulDitolak').textContent = 'Bukti Ditolak · Menunggu Unggah Ulang (' + ditolak.length + ')';
+
+            if (!menunggu.length) {
+                wM.innerHTML = '<p class="kosong">Tidak ada pembayaran yang menunggu verifikasi saat ini.</p>';
+            } else {
+                var htmlM = '<div class="verif-grid">';
+                menunggu.forEach(function (p) {
+                    var buktiSrc = p.bukti_bayar || '';
+                    var adaBukti = Boolean(buktiSrc);
+                    var nominalBersih = p.nominal_bayar || p.total_harga;
+
+                    var blokBuktiHtml = adaBukti
+                        ? '<button type="button" class="verif-bukti" data-lightbox="' + DB.escapeHtml(buktiSrc) + '" aria-label="Perbesar bukti pembayaran pesanan ' + DB.escapeHtml(p.kode) + '" title="Klik untuk memperbesar">'
+                            + '<img src="' + DB.escapeHtml(buktiSrc) + '" alt="Bukti bayar ' + DB.escapeHtml(p.kode) + '">'
+                            + '</button>'
+                        : '<div class="verif-bukti-kosong">Bukti pembayaran belum tersedia atau gagal dimuat. Jangan setujui pesanan ini sebelum pelanggan mengunggah bukti yang valid.</div>';
+
+                    var infoDiskonHtml = '';
+                    if (p.diskon > 0) {
+                        infoDiskonHtml = '<div class="teks-redup" style="font-size:12px;">'
+                            + 'Subtotal: <span style="text-decoration:line-through">' + DB.rupiah(p.total_harga) + '</span> '
+                            + '· Diskon Voucher: <strong style="color:#1b6e44;">-' + DB.rupiah(p.diskon) + '</strong>'
+                            + '</div>';
+                    }
+
+                    htmlM += '<article class="verif-kartu">'
+                        + '<div class="verif-kepala">'
+                        + '<div><div class="kode">' + DB.escapeHtml(p.kode) + '</div><small class="teks-redup">Diunggah: ' + DB.waktuId(p.bukti_bayar_pada || p.dibuat_pada) + '</small></div>'
+                        + '<span class="badge badge-kuning">Menunggu Verifikasi</span>'
                         + '</div>'
-                    : '<div class="verif-bukti-kosong">⚠️ Bukti pembayaran belum tersedia atau gagal dimuat. Jangan setujui pesanan ini sebelum pelanggan mengunggah bukti yang valid.</div>';
+                        + '<div class="verif-isi">'
+                        + '<div>'
+                        + '<strong>' + DB.escapeHtml(p.nama_pelanggan) + '</strong>'
+                        + '<div class="teks-redup">WA: ' + DB.escapeHtml(p.no_wa || '-') + ' · Ambil: ' + DB.tanggalId(p.tanggal_ambil, false) + ' (' + DB.jamPendek(p.jam_ambil) + ' WIB)</div>'
+                        + '</div>'
+                        + infoDiskonHtml
+                        + '<div class="verif-nominal">' + DB.rupiah(nominalBersih) + ' <small class="teks-redup" style="font-weight:500;font-size:12px">(' + Number(p.total_box || 0) + ' box · Tagihan Bersih)</small></div>'
+                        + (p.ringkas ? '<div class="teks-redup" style="font-size:12px;">Menu: ' + DB.escapeHtml(p.ringkas) + '</div>' : '')
+                        + blokBuktiHtml
+                        + '</div>'
+                        + '<div class="verif-aksi">'
+                        + '<button type="button" class="btn btn-primary btn-kecil js-terima" data-id="' + p.id + '" data-kode="' + DB.escapeHtml(p.kode) + '" ' + (!adaBukti ? 'disabled title="Bukti bayar belum tersedia"' : '') + '>Setujui (LUNAS)</button>'
+                        + '<button type="button" class="btn btn-danger btn-kecil js-buka-tolak" data-target="tolak-' + p.id + '">Tolak</button>'
+                        + '<div class="form-tolak" id="tolak-' + p.id + '">'
+                        + '<input type="text" class="js-alasan-' + p.id + '" aria-label="Alasan penolakan untuk pesanan ' + DB.escapeHtml(p.kode) + '" placeholder="Alasan penolakan (mis. nominal kurang / gambar buram)" required>'
+                        + '<button type="button" class="btn btn-danger btn-kecil js-konfirmasi-tolak" data-id="' + p.id + '">Kirim</button>'
+                        + '</div>'
+                        + '</div></article>';
+                });
+                htmlM += '</div>';
+                wM.innerHTML = htmlM;
 
-                var infoDiskonHtml = '';
-                if (p.diskon > 0) {
-                    infoDiskonHtml = '<div class="teks-redup" style="font-size:12px;">'
-                        + 'Subtotal: <span style="text-decoration:line-through">' + DB.rupiah(p.total_harga) + '</span> '
-                        + '· Diskon Voucher: <strong style="color:#16a34a;">-' + DB.rupiah(p.diskon) + '</strong>'
-                        + '</div>';
-                }
+                wM.querySelectorAll('.js-terima').forEach(function (b) {
+                    b.onclick = async function () {
+                        var id = this.getAttribute('data-id');
+                        var kd = this.getAttribute('data-kode');
+                        if (confirm('Setujui bukti pembayaran untuk pesanan ' + kd + ' dan tandai LUNAS?')) {
+                            this.disabled = true;
+                            try {
+                                var res = await DB.verifikasiPembayaran(id, 'terima', '');
+                                if (!res || !res.ok) {
+                                    this.disabled = false;
+                                    document.getElementById('pesanFlash').innerHTML = '<div class="alert alert-galat">' + DB.escapeHtml((res && res.pesan) || 'Gagal memverifikasi pembayaran.') + '</div>';
+                                    return;
+                                }
+                                document.getElementById('pesanFlash').innerHTML = '<div class="alert alert-sukses">' + DB.escapeHtml(res.pesan) + '</div>';
+                                muatVerifikasi();
+                            } catch (err) {
+                                this.disabled = false;
+                                document.getElementById('pesanFlash').innerHTML = '<div class="alert alert-galat">Gangguan koneksi saat memverifikasi pembayaran.</div>';
+                            }
+                        }
+                    };
+                });
 
-                htmlM += '<article class="verif-kartu">'
-                    + '<div class="verif-kepala">'
-                    + '<div><div class="kode">' + DB.escapeHtml(p.kode) + '</div><small class="teks-redup">Diunggah: ' + DB.waktuId(p.bukti_bayar_pada || p.dibuat_pada) + '</small></div>'
-                    + '<span class="badge badge-kuning">Menunggu Verifikasi</span>'
-                    + '</div>'
-                    + '<div class="verif-isi">'
-                    + '<div>'
-                    + '<strong>' + DB.escapeHtml(p.nama_pelanggan) + '</strong>'
-                    + '<div class="teks-redup">WA: ' + DB.escapeHtml(p.no_wa || '-') + ' · Ambil: ' + DB.tanggalId(p.tanggal_ambil, false) + ' (' + DB.jamPendek(p.jam_ambil) + ' WIB)</div>'
-                    + '</div>'
-                    + infoDiskonHtml
-                    + '<div class="verif-nominal">' + DB.rupiah(nominalBersih) + ' <small class="teks-redup" style="font-weight:500;font-size:12px">(' + Number(p.total_box || 0) + ' box · Tagihan Bersih)</small></div>'
-                    + (p.ringkas ? '<div class="teks-redup" style="font-size:12px;">🍱 ' + DB.escapeHtml(p.ringkas) + '</div>' : '')
-                    + blokBuktiHtml
-                    + '</div>'
-                    + '<div class="verif-aksi">'
-                    + '<button type="button" class="btn btn-primary btn-kecil js-terima" data-id="' + p.id + '" data-kode="' + DB.escapeHtml(p.kode) + '" ' + (!adaBukti ? 'disabled title="Bukti bayar belum tersedia"' : '') + '>✓ Setujui (LUNAS)</button>'
-                    + '<button type="button" class="btn btn-danger btn-kecil js-buka-tolak" data-target="tolak-' + p.id + '">✕ Tolak</button>'
-                    + '<div class="form-tolak" id="tolak-' + p.id + '">'
-                    + '<input type="text" class="js-alasan-' + p.id + '" placeholder="Alasan penolakan (mis. nominal kurang / gambar buram)" required>'
-                    + '<button type="button" class="btn btn-danger btn-kecil js-konfirmasi-tolak" data-id="' + p.id + '">Kirim</button>'
-                    + '</div>'
-                    + '</div></article>';
-            });
-            htmlM += '</div>';
-            wM.innerHTML = htmlM;
+                wM.querySelectorAll('.js-buka-tolak').forEach(function (b) {
+                    b.onclick = function () {
+                        var target = document.getElementById(this.getAttribute('data-target'));
+                        if (target) target.classList.toggle('tampil');
+                    };
+                });
 
-            wM.querySelectorAll('.js-terima').forEach(function (b) {
-                b.onclick = async function () {
-                    var id = this.getAttribute('data-id');
-                    var kd = this.getAttribute('data-kode');
-                    if (confirm('Setujui bukti pembayaran untuk pesanan ' + kd + ' dan tandai LUNAS?')) {
-                        this.disabled = true;
-                        var res = await DB.verifikasiPembayaran(id, 'terima', '');
-                        if (!res || !res.ok) {
-                            this.disabled = false;
-                            alert((res && res.pesan) || 'Gagal memverifikasi pembayaran.');
+                wM.querySelectorAll('.js-konfirmasi-tolak').forEach(function (b) {
+                    b.onclick = async function () {
+                        var id = this.getAttribute('data-id');
+                        var inp = wM.querySelector('.js-alasan-' + id);
+                        var alasan = inp ? inp.value.trim() : '';
+                        if (!alasan) {
+                            alert('Isi alasan penolakan terlebih dahulu.');
                             return;
                         }
-                        document.getElementById('pesanFlash').innerHTML = '<div class="alert alert-sukses">' + DB.escapeHtml(res.pesan) + '</div>';
-                        muatVerifikasi();
-                    }
-                };
-            });
+                        this.disabled = true;
+                        try {
+                            var res = await DB.verifikasiPembayaran(id, 'tolak', alasan);
+                            if (!res || !res.ok) {
+                                this.disabled = false;
+                                document.getElementById('pesanFlash').innerHTML = '<div class="alert alert-galat">' + DB.escapeHtml((res && res.pesan) || 'Gagal menolak bukti pembayaran.') + '</div>';
+                                return;
+                            }
+                            document.getElementById('pesanFlash').innerHTML = '<div class="alert alert-peringatan">' + DB.escapeHtml(res.pesan) + '</div>';
+                            muatVerifikasi();
+                        } catch (err) {
+                            this.disabled = false;
+                            document.getElementById('pesanFlash').innerHTML = '<div class="alert alert-galat">Gangguan koneksi saat menolak bukti pembayaran.</div>';
+                        }
+                    };
+                });
+            }
 
-            wM.querySelectorAll('.js-buka-tolak').forEach(function (b) {
-                b.onclick = function () {
-                    var target = document.getElementById(this.getAttribute('data-target'));
-                    if (target) target.classList.toggle('tampil');
-                };
-            });
-
-            wM.querySelectorAll('.js-konfirmasi-tolak').forEach(function (b) {
-                b.onclick = async function () {
-                    var id = this.getAttribute('data-id');
-                    var inp = wM.querySelector('.js-alasan-' + id);
-                    var alasan = inp ? inp.value.trim() : '';
-                    if (!alasan) {
-                        alert('Isi alasan penolakan terlebih dahulu.');
-                        return;
-                    }
-                    this.disabled = true;
-                    var res = await DB.verifikasiPembayaran(id, 'tolak', alasan);
-                    if (!res || !res.ok) {
-                        this.disabled = false;
-                        alert((res && res.pesan) || 'Gagal menolak bukti pembayaran.');
-                        return;
-                    }
-                    document.getElementById('pesanFlash').innerHTML = '<div class="alert alert-peringatan">' + DB.escapeHtml(res.pesan) + '</div>';
-                    muatVerifikasi();
-                };
-            });
-        }
-
-        var wD = document.getElementById('wadahDitolak');
-        if (!ditolak.length) {
-            wD.innerHTML = '<p class="kosong">Tidak ada bukti yang sedang ditolak.</p>';
-        } else {
-            var htmlD = '<div class="table-wrapper"><table><thead><tr><th>Kode</th><th>Pelanggan</th><th>Nominal Bersih</th><th>Alasan Penolakan</th><th>Waktu Ditolak</th></tr></thead><tbody>';
-            ditolak.forEach(function (p) {
-                htmlD += '<tr>'
-                    + '<td><strong>' + DB.escapeHtml(p.kode) + '</strong></td>'
-                    + '<td>' + DB.escapeHtml(p.nama_pelanggan) + '<br><small class="teks-redup">' + DB.escapeHtml(p.no_wa || '-') + '</small></td>'
-                    + '<td>' + DB.rupiah(p.nominal_bayar || p.total_harga) + '</td>'
-                    + '<td>' + DB.escapeHtml(p.alasan_tolak || '-') + '</td>'
-                    + '<td>' + DB.waktuId(p.diverifikasi_pada || p.dibuat_pada) + '</td>'
-                    + '</tr>';
-            });
-            htmlD += '</tbody></table></div>';
-            wD.innerHTML = htmlD;
+            if (!ditolak.length) {
+                wD.innerHTML = '<p class="kosong">Tidak ada bukti yang sedang ditolak.</p>';
+            } else {
+                var htmlD = '<div class="table-wrapper"><table><thead><tr><th>Kode</th><th>Pelanggan</th><th>Nominal Bersih</th><th>Alasan Penolakan</th><th>Waktu Ditolak</th></tr></thead><tbody>';
+                ditolak.forEach(function (p) {
+                    htmlD += '<tr>'
+                        + '<td><strong>' + DB.escapeHtml(p.kode) + '</strong></td>'
+                        + '<td>' + DB.escapeHtml(p.nama_pelanggan) + '<br><small class="teks-redup">' + DB.escapeHtml(p.no_wa || '-') + '</small></td>'
+                        + '<td>' + DB.rupiah(p.nominal_bayar || p.total_harga) + '</td>'
+                        + '<td>' + DB.escapeHtml(p.alasan_tolak || '-') + '</td>'
+                        + '<td>' + DB.waktuId(p.diverifikasi_pada || p.dibuat_pada) + '</td>'
+                        + '</tr>';
+                });
+                htmlD += '</tbody></table></div>';
+                wD.innerHTML = htmlD;
+            }
+        } catch (err) {
+            wM.innerHTML = '<div class="alert alert-galat">Gagal memuat antrean verifikasi pembayaran. Silakan muat ulang halaman.</div>';
         }
     }
 

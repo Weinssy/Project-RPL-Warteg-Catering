@@ -4,11 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Manajemen Admin - Warteg Pak Sanam</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../assets/css/admin.css">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="../assets/js/config.js"></script>
-    <script src="../assets/js/db-service.js"></script>
-    <script src="../assets/js/admin-app.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script defer src="../assets/js/config.js"></script>
+    <script defer src="../assets/js/db-service.js"></script>
+    <script defer src="../assets/js/admin-app.js"></script>
 </head>
 <body>
 <div class="main-content">
@@ -22,8 +25,8 @@
                 <span class="teks-redup" style="font-size:13px;">Kelola hak akses dan staf operasional Warteg Pak Sanam</span>
             </div>
             <div>
-                <button type="button" class="btn btn-primary" id="btnBukaModalAdmin" style="display:inline-flex;align-items:center;gap:6px;">
-                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                <button type="button" class="btn btn-primary" id="btnBukaModalAdmin">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                     <span>Tambah Admin Baru</span>
                 </button>
             </div>
@@ -53,17 +56,17 @@
 </div>
 
 <!-- Modal Tambah Admin Baru -->
-<div class="modal" id="modalTambahAdmin" hidden style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,23,42,0.55);z-index:9999;display:none;align-items:center;justify-content:center;padding:20px;">
-    <div class="modal-kotak" role="dialog" aria-modal="true" style="background:#fff;border-radius:12px;max-width:520px;width:100%;box-shadow:0 12px 30px rgba(0,0,0,0.2);overflow:hidden;">
-        <div class="modal-kepala" style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid #e5e7eb;">
-            <div style="display:flex;align-items:center;gap:8px;">
-                <h2 style="font-size:17px;margin:0;font-weight:700;">Tambah Admin Baru</h2>
-                <span class="teks-redup" style="font-size:11.5px;background:#f1f5f9;color:#475569;padding:2px 8px;border-radius:4px;font-weight:600;">Khusus Owner</span>
+<div class="modal" id="modalTambahAdmin" hidden>
+    <div class="modal-kotak" role="dialog" aria-modal="true" aria-labelledby="judulTambahAdmin" style="max-width:520px;">
+        <div class="modal-kepala">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                <h2 id="judulTambahAdmin" style="font-size:17px;margin:0;font-weight:700;">Tambah Admin Baru</h2>
+                <span class="role-badge">Khusus Owner</span>
             </div>
-            <button type="button" class="btn-tutup" id="modalTambahTutup" aria-label="Tutup Modal" style="background:none;border:none;font-size:24px;cursor:pointer;line-height:1;">&times;</button>
+            <button type="button" class="btn-tutup" id="modalTambahTutup" aria-label="Tutup Modal">&times;</button>
         </div>
 
-        <div class="modal-isi" style="padding:20px;">
+        <div class="modal-isi">
             <form id="formTambahAdmin" autocomplete="off">
                 <label class="form-label" for="admNama">Nama lengkap <span class="wajib">*</span></label>
                 <input class="form-control" id="admNama" required maxlength="100" placeholder="Contoh: Siti Aminah"
@@ -74,7 +77,7 @@
                 <input class="form-control" id="admUsername" required maxlength="50" placeholder="username_staf"
                        pattern="[A-Za-z0-9._\-]{3,50}" title="3-50 karakter: huruf, angka, titik, garis bawah, garis hubung">
 
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;">
+                <div class="baris-dua" style="margin-top:12px;">
                     <div>
                         <label class="form-label" for="admEmail">Email (opsional)</label>
                         <input class="form-control" id="admEmail" type="email" placeholder="staf@warteg.test">
@@ -85,7 +88,7 @@
                     </div>
                 </div>
 
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;">
+                <div class="baris-dua" style="margin-top:12px;">
                     <div>
                         <label class="form-label" for="admPassword">Password <span class="wajib">*</span></label>
                         <input class="form-control" id="admPassword" type="password" required minlength="6" placeholder="Min. 6 karakter">
@@ -98,11 +101,11 @@
 
                 <label class="form-label" for="admRole" style="margin-top:12px;">Peran (Role) <span class="wajib">*</span></label>
                 <select class="form-select" id="admRole" required>
-                    <option value="admin">Admin (Kelola menu & pesanan)</option>
-                    <option value="owner">Owner (Akses penuh + QRIS & Admin)</option>
+                    <option value="admin">Admin (Kelola menu &amp; pesanan)</option>
+                    <option value="owner">Owner (Akses penuh + QRIS &amp; Admin)</option>
                 </select>
 
-                <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:22px;padding-top:14px;border-top:1px solid #e5e7eb;">
+                <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:22px;padding-top:14px;border-top:1px solid var(--garis);">
                     <button type="button" class="btn btn-secondary" id="btnBatalTambahAdmin">Batal</button>
                     <button class="btn btn-primary" type="submit" id="btnSubmitAdmin">Simpan Admin</button>
                 </div>
@@ -113,11 +116,12 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    var DB = window.WARTEG_DB;
     window.WARTEG_ADMIN_LAYOUT.render('admin', 'Manajemen Admin');
 
     function notif(msg, tipe) {
         var w = document.getElementById('notifWrapAdmin');
-        w.innerHTML = '<div class="alert alert-' + (tipe || 'sukses') + '">' + msg + '</div>';
+        w.innerHTML = '<div class="alert alert-' + (tipe || 'sukses') + '">' + DB.escapeHtml(msg) + '</div>';
         setTimeout(function () { w.innerHTML = ''; }, 4500);
     }
 
@@ -127,7 +131,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (v === '') return 'Nama lengkap wajib diisi.';
         if (v.length > 100) return 'Nama lengkap maksimal 100 karakter.';
         if (/[0-9]/.test(v)) return 'Nama lengkap tidak boleh mengandung angka.';
-        if (!/^[A-Za-z\u00C0-\u024F\u1E00-\u1EFF ]+$/.test(v.replace(/[.'’\-]/g, ' '))) return 'Nama lengkap hanya boleh berisi huruf, spasi, titik, apostrof, dan tanda hubung.';
+        if (!/^[A-Za-z\u00C0-\u024F\u1E00-\u1EFF ]+$/.test(v.replace(/[.'\u2019\-]/g, ' '))) return 'Nama lengkap hanya boleh berisi huruf, spasi, titik, apostrof, dan tanda hubung.';
         return '';
     }
 
@@ -142,7 +146,6 @@ document.addEventListener('DOMContentLoaded', function () {
         namaInput.addEventListener('blur', tampilGalatNama);
     }
 
-    // Modal Control
     var modalTambah = document.getElementById('modalTambahAdmin');
     var btnBukaModal = document.getElementById('btnBukaModalAdmin');
     var btnTutupModal = document.getElementById('modalTambahTutup');
@@ -151,14 +154,13 @@ document.addEventListener('DOMContentLoaded', function () {
     function bukaModalAdmin() {
         document.getElementById('formTambahAdmin').reset();
         if (namaGalat) namaGalat.style.display = 'none';
-        modalTambah.style.display = 'flex';
         modalTambah.hidden = false;
         document.getElementById('admNama').focus();
     }
 
     function tutupModalAdmin() {
-        modalTambah.style.display = 'none';
         modalTambah.hidden = true;
+        if (btnBukaModal) btnBukaModal.focus();
     }
 
     if (btnBukaModal) btnBukaModal.onclick = bukaModalAdmin;
@@ -178,22 +180,13 @@ document.addEventListener('DOMContentLoaded', function () {
     async function muatAdminList() {
         var tbody = document.getElementById('tbodyAdmin');
         try {
-            var list = await window.WARTEG_DB.getDaftarAdmin();
-            var sesi = (window.WARTEG_DB.getAdminSesi ? window.WARTEG_DB.getAdminSesi() : (window.WARTEG_DB.getSesiAdmin ? window.WARTEG_DB.getSesiAdmin() : {})) || {};
+            var list = await DB.getDaftarAdmin();
+            var sesi = (DB.getAdminSesi ? DB.getAdminSesi() : (DB.getSesiAdmin ? DB.getSesiAdmin() : {})) || {};
 
             var isCurrentOwner = (sesi.role === 'owner');
             if (btnBukaModal) {
-                if (!isCurrentOwner) {
-                    btnBukaModal.disabled = true;
-                    btnBukaModal.title = 'Hanya peran Owner yang dapat menambahkan admin baru.';
-                    btnBukaModal.style.opacity = '0.6';
-                    btnBukaModal.style.cursor = 'not-allowed';
-                } else {
-                    btnBukaModal.disabled = false;
-                    btnBukaModal.title = '';
-                    btnBukaModal.style.opacity = '1';
-                    btnBukaModal.style.cursor = 'pointer';
-                }
+                btnBukaModal.disabled = !isCurrentOwner;
+                btnBukaModal.title = isCurrentOwner ? '' : 'Hanya peran Owner yang dapat menambahkan admin baru.';
             }
 
             tbody.innerHTML = '';
@@ -205,11 +198,13 @@ document.addEventListener('DOMContentLoaded', function () {
             list.forEach(function (adm) {
                 var saya = (sesi.id && parseInt(sesi.id, 10) === parseInt(adm.id, 10)) || (sesi.username === adm.username);
                 var isOwner = (adm.role === 'owner');
-                var inisial = (adm.nama || adm.username || 'A').charAt(0).toUpperCase();
+                var safeNama = DB.escapeHtml(adm.nama || '');
+                var safeUser = DB.escapeHtml(adm.username || '');
+                var inisial = DB.escapeHtml((adm.nama || adm.username || 'A').charAt(0).toUpperCase());
 
                 var aksiHtml = '';
                 if (!saya && !isOwner) {
-                    aksiHtml = '<button type="button" class="btn btn-kecil btn-hapus-admin" data-id="' + adm.id + '" data-nama="' + (adm.nama || '') + '" data-username="' + adm.username + '">Hapus</button>';
+                    aksiHtml = '<button type="button" class="btn btn-kecil btn-hapus-admin" data-id="' + adm.id + '" data-nama="' + safeNama + '" data-username="' + safeUser + '">Hapus</button>';
                 } else if (saya) {
                     aksiHtml = '<span class="tag-saya">Sesi Anda</span>';
                 } else {
@@ -217,13 +212,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
 
                 var kontak = [];
-                if (adm.telepon) kontak.push('WA: ' + adm.telepon);
-                if (adm.email) kontak.push(adm.email);
+                if (adm.telepon) kontak.push('WA: ' + DB.escapeHtml(adm.telepon));
+                if (adm.email) kontak.push(DB.escapeHtml(adm.email));
                 var kontakTeks = kontak.length ? kontak.join('<br>') : '<span class="teks-redup">-</span>';
 
                 var fotoHtml = '';
                 if (adm.foto) {
-                    fotoHtml = '<img src="../uploads/admin/' + adm.foto + '" alt="' + adm.nama + '" class="avatar" style="width:34px;height:34px;object-fit:cover;border-radius:8px;" onerror="this.outerHTML=\'<span class=\\\'avatar avatar-inisial\\\' style=\\\'width:34px;height:34px;font-size:13px;\\\'>' + inisial + '</span>\'">';
+                    fotoHtml = '<img src="../uploads/admin/' + DB.escapeHtml(adm.foto) + '" alt="' + safeNama + '" class="avatar" style="width:34px;height:34px;object-fit:cover;border-radius:8px;" onerror="this.outerHTML=\'<span class=\\\'avatar avatar-inisial\\\' style=\\\'width:34px;height:34px;font-size:13px;\\\'>' + inisial + '</span>\'">';
                 } else {
                     fotoHtml = '<span class="avatar avatar-inisial" style="width:34px;height:34px;font-size:13px;">' + inisial + '</span>';
                 }
@@ -231,21 +226,19 @@ document.addEventListener('DOMContentLoaded', function () {
                 var tr = document.createElement('tr');
                 tr.innerHTML = '<td><div class="sel-admin" style="display:flex;align-items:center;gap:10px;">'
                     + fotoHtml
-                    + '<div><strong style="font-size:14px;">' + adm.nama + '</strong>' + (saya ? ' <span class="badge-saya">Anda</span>' : '') + '</div>'
+                    + '<div><strong style="font-size:14px;">' + safeNama + '</strong>' + (saya ? ' <span class="badge-saya">Anda</span>' : '') + '</div>'
                     + '</div></td>'
-                    + '<td><code style="font-size:13px;">' + adm.username + '</code></td>'
-                    + '<td><span class="role-badge' + (isOwner ? ' owner' : '') + '">' + (adm.role || 'admin').toUpperCase() + '</span></td>'
+                    + '<td><code style="font-size:13px;">' + safeUser + '</code></td>'
+                    + '<td><span class="role-badge' + (isOwner ? ' owner' : '') + '">' + DB.escapeHtml((adm.role || 'admin').toUpperCase()) + '</span></td>'
                     + '<td style="font-size:12.5px;line-height:1.4;">' + kontakTeks + '</td>'
                     + '<td class="kolom-aksi">' + aksiHtml + '</td>';
                 tbody.appendChild(tr);
             });
         } catch (err) {
-            console.error('Gagal memuat admin list:', err);
-            tbody.innerHTML = '<tr><td colspan="5" class="kosong" style="color:var(--merah);">Gagal memuat akun admin: ' + (err.message || 'Terjadi kesalahan.') + '</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" class="kosong" style="color:var(--merah);">Gagal memuat akun admin: ' + DB.escapeHtml(err.message || 'Terjadi kesalahan.') + '</td></tr>';
         }
     }
 
-    // Event Hapus Admin
     document.addEventListener('click', async function (ev) {
         var b = ev.target.closest('.btn-hapus-admin');
         if (!b) return;
@@ -255,17 +248,22 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!window.confirm('Hapus akun admin "' + label + '"?\n\nTindakan ini tidak dapat dibatalkan.')) return;
         b.disabled = true;
 
-        var sesi = (window.WARTEG_DB.getAdminSesi ? window.WARTEG_DB.getAdminSesi() : (window.WARTEG_DB.getSesiAdmin ? window.WARTEG_DB.getSesiAdmin() : {})) || {};
-        var res = await window.WARTEG_DB.hapusAdmin(id, sesi.id);
+        try {
+            var sesi = (DB.getAdminSesi ? DB.getAdminSesi() : (DB.getSesiAdmin ? DB.getSesiAdmin() : {})) || {};
+            var res = await DB.hapusAdmin(id, sesi.id);
 
-        if (!res || !res.ok) {
+            if (!res || !res.ok) {
+                b.disabled = false;
+                notif((res && res.pesan) || 'Gagal menghapus akun admin.', 'galat');
+                return;
+            }
+
+            notif(res.pesan || 'Akun admin berhasil dihapus.', 'sukses');
+            muatAdminList();
+        } catch (err) {
             b.disabled = false;
-            alert((res && res.pesan) || 'Gagal menghapus akun admin.');
-            return;
+            notif('Gangguan koneksi saat menghapus akun admin.', 'galat');
         }
-
-        notif(res.pesan || 'Akun admin berhasil dihapus.', 'sukses');
-        muatAdminList();
     });
 
     document.getElementById('formTambahAdmin').onsubmit = async function (e) {
@@ -294,26 +292,30 @@ document.addEventListener('DOMContentLoaded', function () {
         btn.disabled = true;
         btn.textContent = 'Menyimpan...';
 
-        var res = await window.WARTEG_DB.tambahAdmin({
-            nama: nama,
-            username: username,
-            password_hash: pass,
-            email: email,
-            telepon: telepon,
-            role: role
-        });
+        try {
+            var res = await DB.tambahAdmin({
+                nama: nama,
+                username: username,
+                password_hash: pass,
+                email: email,
+                telepon: telepon,
+                role: role
+            });
 
-        btn.disabled = false;
-        btn.textContent = 'Simpan Admin';
+            if (!res || !res.ok) {
+                alert((res && res.pesan) || 'Gagal menambahkan admin.');
+                return;
+            }
 
-        if (!res || !res.ok) {
-            alert((res && res.pesan) || 'Gagal menambahkan admin.');
-            return;
+            tutupModalAdmin();
+            notif('Admin "' + username + '" berhasil ditambahkan.', 'sukses');
+            muatAdminList();
+        } catch (err) {
+            alert('Gangguan koneksi saat menambahkan admin.');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Simpan Admin';
         }
-
-        tutupModalAdmin();
-        notif('Admin "' + username + '" berhasil ditambahkan!', 'sukses');
-        muatAdminList();
     };
 
     muatAdminList();

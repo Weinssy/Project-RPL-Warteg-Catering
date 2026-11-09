@@ -9,10 +9,10 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/customer.css">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="assets/js/config.js"></script>
-    <script src="assets/js/db-service.js"></script>
-    <script src="assets/js/customer-app.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script defer src="assets/js/config.js"></script>
+    <script defer src="assets/js/db-service.js"></script>
+    <script defer src="assets/js/customer-app.js"></script>
 </head>
 <body class="cust">
     <div class="cust-toast-area" id="custToast" aria-live="polite"></div>
@@ -20,8 +20,14 @@
     <!-- ================= TOP OPERATIONAL NOTICE ================= -->
     <div class="top-notice-bar">
         <div class="wadah top-notice-inner">
-            <span class="top-notice-info">🍱 Warteg Pak Sanam • Jl. BDN 1 Cilandak Barat, Jakarta Selatan • Jam Buka: 09.00 - 19.00 WIB</span>
-            <span class="top-notice-wa">WA: 0857-8342-3626 • Khusus Ambil Mandiri (Self-Pickup)</span>
+            <span class="top-notice-info">
+                <span class="desk-only">Warteg Pak Sanam • Jl. BDN 1 Cilandak Barat, Jakarta Selatan • Jam Buka: 09.00 - 19.00 WIB</span>
+                <span class="mob-only">Warteg Pak Sanam • 09.00 - 19.00 WIB</span>
+            </span>
+            <span class="top-notice-wa">
+                <span class="desk-only">WA: 0857-8342-3626 • Khusus Ambil Mandiri (Self-Pickup)</span>
+                <span class="mob-only">Ambil Mandiri</span>
+            </span>
         </div>
     </div>
 
@@ -29,24 +35,25 @@
     <header class="cust-header">
         <div class="wadah cust-nav">
             <a href="index.html" class="cust-logo">
-                <span class="cust-logo-emblem" aria-hidden="true">🍱</span>
+                <span class="cust-logo-emblem" aria-hidden="true">PS</span>
                 <span class="cust-logo-text">
                     <strong class="cust-logo-title">WARTEG PAK SANAM</strong>
-                    <small class="cust-logo-sub">Spesialis Katering &amp; Nasi Box Rumahan</small>
+                    <small class="cust-logo-sub">Katering &amp; Nasi Box Rumahan</small>
                 </span>
             </a>
-            <div class="cust-links" id="custLinks">
+            <nav class="cust-links" id="custLinks" aria-label="Navigasi utama">
                 <a href="index.html">Beranda</a>
                 <a href="index.html#katalog">Katalog Menu</a>
-                <a href="index.html#kapasitas">Cek Kuota Dapur</a>
+                <a href="index.html#kapasitas">Cek Kuota</a>
                 <a href="cara-pemesanan.html">Cara Pemesanan</a>
-                <a href="cek_status.html">Cek Status Pesanan</a>
+                <a href="cek_status.html">Cek Status</a>
                 <a href="admin/login.html" class="link-admin">Login Admin</a>
-            </div>
+            </nav>
             <div class="cust-nav-kanan">
-                <a href="index.html#katalog" class="btn btn-primer btn-kecil">Pesan Nasi Box</a>
-                <button type="button" class="cust-toggle" id="custToggle" aria-label="Buka menu" aria-expanded="false" aria-controls="custLinks">
-                    <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                <a href="index.html#katalog" class="btn btn-primer btn-kecil btn-nav-cta">Pesan Nasi Box</a>
+                <button type="button" class="cust-toggle" id="custToggle" aria-label="Buka menu navigasi" aria-expanded="false" aria-controls="custLinks">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                    <span class="cust-toggle-label">Menu</span>
                 </button>
             </div>
         </div>
@@ -57,23 +64,21 @@
         <section class="seksi checkout-page">
             <div class="wadah">
                 <div class="seksi-kepala">
-                    <h2>Checkout &amp; Konfirmasi Pemesanan</h2>
+                    <h1>Checkout &amp; Konfirmasi Pemesanan</h1>
                     <p>Periksa kembali rincian box pesanan Anda, lalu lengkapi data pemesan dan pilih waktu pengambilan di warteg.</p>
                 </div>
                 <div class="checkout-grid">
 
                     <!-- KOLOM KIRI: Ringkasan Pesanan -->
-                    <div class="panel-putih" style="border:1.5px solid var(--c-garis);">
-                        <h3 style="font-size:17px;margin-bottom:14px;display:flex;align-items:center;gap:8px;">
-                            <span>📦</span> Rincian Menu Box
-                        </h3>
+                    <div class="panel-putih" style="border:1px solid var(--c-garis);">
+                        <h2 style="font-size:17px;margin-bottom:14px;">Rincian Menu Box</h2>
                         <div id="ringkasanCheckoutIsi">
                             <p class="bantuan">Belum ada menu dipilih.</p>
                         </div>
                         <div class="ringkasan-total" style="background:none;padding:14px 0 0;border-top:1px solid var(--c-garis);">
                             <div class="total-baris"><span>Total Pesanan</span><span id="totalBox">0 box</span></div>
                             <div class="total-baris"><span>Subtotal Menu</span><span id="subtotal">Rp0</span></div>
-                            <div class="total-baris" id="barisDiskon" style="display:none;color:var(--c-tertier);font-weight:600">
+                            <div class="total-baris" id="barisDiskon" style="display:none;color:var(--c-hijau);font-weight:700">
                                 <span>Potongan Voucher (50+ Box)</span>
                                 <span id="nilaiDiskon">-Rp0</span>
                             </div>
@@ -83,14 +88,14 @@
                             </div>
                         </div>
                         <div style="margin-top:18px">
-                            <a href="index.html#katalog" class="btn btn-garis btn-kecil">← Ubah Pilihan Menu</a>
+                            <a href="index.html#katalog" class="btn btn-garis btn-kecil">Ubah Pilihan Menu</a>
                         </div>
                     </div>
 
                     <!-- KOLOM KANAN: Formulir Pemesan -->
-                    <div class="panel-putih" style="border:1.5px solid var(--c-garis);">
-                        <div class="alert alert-info" id="infoMinBox" style="background:var(--c-emas-muda);border-color:var(--c-emas);color:var(--c-cokelat);">
-                            💡 Minimal order 10 box. Dapatkan diskon Rp 50.000 setiap kelipatan 50 box tanpa batas!
+                    <div class="panel-putih" style="border:1px solid var(--c-garis);">
+                        <div class="alert alert-peringatan" id="infoMinBox">
+                            Minimal order 10 box. Dapatkan diskon Rp 50.000 setiap kelipatan 50 box tanpa batas!
                         </div>
 
                         <form id="formCheckout" novalidate autocomplete="on">
@@ -157,16 +162,16 @@
                             </div>
 
                             <input type="hidden" id="fJumlahBox" name="jumlah_box" value="0">
-                            
-                            <div style="background:var(--c-bg);padding:12px 14px;border-radius:8px;font-size:13px;line-height:1.5;margin:12px 0;">
-                                📍 <strong>Lokasi Ambil:</strong> Warteg Pak Sanam, Jalan BDN 1 Cilandak Barat, Jakarta Selatan.<br>
-                                ⏱️ <strong>Ketentuan:</strong> Pengambilan mandiri (Self-pickup) jam 09.00 - 19.00 WIB tanpa biaya tambahan/ongkir.
+
+                            <div style="background:var(--c-bg);padding:12px 14px;border-radius:8px;font-size:13px;line-height:1.55;margin:12px 0;border:1px solid var(--c-garis);">
+                                <div><strong>Lokasi Ambil:</strong> Warteg Pak Sanam, Jalan BDN 1 Cilandak Barat, Jakarta Selatan.</div>
+                                <div><strong>Ketentuan:</strong> Pengambilan mandiri (Self-pickup) jam 09.00 - 19.00 WIB tanpa biaya tambahan/ongkir.</div>
                             </div>
 
                             <button type="submit" class="btn btn-primer btn-blok" id="btnBuatPesanan" disabled style="margin-top:16px">
-                                <span id="btnBuatTeks">Lanjutkan ke Pembayaran QRIS →</span>
+                                <span id="btnBuatTeks">Lanjutkan ke Pembayaran QRIS</span>
                             </button>
-                            <div class="alert alert-galat" id="galatCheckout" style="margin-top:14px;display:none"></div>
+                            <div class="alert alert-galat" id="galatCheckout" style="margin-top:14px;display:none" role="alert"></div>
                         </form>
                     </div>
 
@@ -179,11 +184,11 @@
     <footer class="cust-footer">
         <div class="wadah cust-footer-grid">
             <div>
-                <h4>🍱 WARTEG PAK SANAM</h4>
+                <h2>WARTEG PAK SANAM</h2>
                 <p>Melayani pemesanan nasi box dan katering harian masakan rumahan Nusantara. Seluruh pesanan disiapkan segar dan diambil langsung (self-pickup) di warteg kami.</p>
             </div>
             <div>
-                <h4>Navigasi</h4>
+                <h2>Navigasi</h2>
                 <ul>
                     <li><a href="index.html">Beranda</a></li>
                     <li><a href="index.html#katalog">Katalog Menu</a></li>
@@ -193,7 +198,7 @@
                 </ul>
             </div>
             <div>
-                <h4>Ketentuan Katering</h4>
+                <h2>Ketentuan Katering</h2>
                 <ul>
                     <li>Minimal order 10 box per transaksi</li>
                     <li>Promo kelipatan 50 box hemat Rp 50.000</li>
@@ -203,13 +208,15 @@
                 </ul>
             </div>
             <div>
-                <h4>Lokasi &amp; Jam Operasional</h4>
+                <h2>Lokasi &amp; Jam Operasional</h2>
                 <p>Warteg Pak Sanam<br>Jalan BDN 1 Cilandak Barat, Jakarta Selatan</p>
                 <p>Jam Operasional: 09.00 - 19.00 WIB</p>
                 <p>WhatsApp Layanan: 0857-8342-3626</p>
             </div>
         </div>
-        <div class="copy">&copy; 2026 Warteg Pak Sanam. Sistem POS &amp; Pre-Order Katering Harian Berbasis Web. Semua harga dalam Rupiah (IDR).</div>
+        <div class="wadah">
+            <div class="copy">&copy; 2026 Warteg Pak Sanam. Sistem POS &amp; Pre-Order Katering Harian Berbasis Web. Semua harga dalam Rupiah (IDR).</div>
+        </div>
     </footer>
 </body>
 </html>

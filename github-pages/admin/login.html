@@ -4,41 +4,46 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Masuk - Warteg Pak Sanam</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../assets/css/admin.css">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="../assets/js/config.js"></script>
-    <script src="../assets/js/db-service.js"></script>
-    <script src="../assets/js/admin-app.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script defer src="../assets/js/config.js"></script>
+    <script defer src="../assets/js/db-service.js"></script>
+    <script defer src="../assets/js/admin-app.js"></script>
 </head>
 <body class="login-body">
     <form class="login-card" id="formLogin" autocomplete="off">
         <h1>Warteg Pak Sanam</h1>
         <p class="teks-redup">Masuk untuk mengelola pesanan nasi box.</p>
-        
-        <div class="alert alert-info" id="infoDemoLogin" style="font-size:12px;margin-bottom:14px;background:#e0f2fe;color:#0369a1;padding:8px 12px;border-radius:6px;display:none;">
+
+        <div class="alert alert-info" id="infoDemoLogin" style="font-size:12.5px;margin-bottom:14px;display:none;">
             Mode Demo Lokal: Username: <strong>admin</strong> | Password: <strong>admin123</strong>
         </div>
 
-        <div class="alert alert-peringatan" id="peringatanExpired" style="display:none;margin-bottom:12px;background:#fffbeb;border:1px solid #fde68a;color:#92400e;padding:10px 12px;border-radius:6px;font-size:13px;">
-            ⚠️ Sesi Anda telah kedaluwarsa demi keamanan (batas 8 jam). Silakan masuk kembali.
+        <div class="alert alert-peringatan" id="peringatanExpired" style="display:none;margin-bottom:12px;font-size:13px;" role="alert">
+            Sesi Anda telah kedaluwarsa demi keamanan (batas 8 jam). Silakan masuk kembali.
         </div>
 
-        <div class="alert alert-galat" id="lockoutBanner" style="display:none;margin-bottom:14px;background:#fef2f2;border:1px solid #f87171;color:#b91c1c;padding:12px;border-radius:8px;font-size:13px;line-height:1.5;">
-            🔒 <strong>Akses Login Dikunci Sementara</strong><br>
-            Terlalu banyak percobaan gagal (5x). Demi keamanan warteg, silakan tunggu <strong id="countdownTeks">--:--</strong> sebelum mencoba kembali.
+        <div class="alert alert-galat" id="lockoutBanner" style="display:none;margin-bottom:14px;font-size:13px;line-height:1.5;" role="alert">
+            <div>
+                <strong>Akses Login Dikunci Sementara</strong><br>
+                Terlalu banyak percobaan gagal (5x). Demi keamanan warteg, silakan tunggu <strong id="countdownTeks">--:--</strong> sebelum mencoba kembali.
+            </div>
         </div>
 
-        <div class="alert alert-galat" id="galatLogin" style="display:none;margin-bottom:12px;"></div>
+        <div class="alert alert-galat" id="galatLogin" style="display:none;margin-bottom:12px;" role="alert"></div>
 
         <label class="form-label" for="username">Username</label>
-        <input class="form-control" id="username" name="username" required autofocus placeholder="admin">
-        
+        <input class="form-control" id="username" name="username" required autofocus placeholder="admin" autocomplete="username">
+
         <label class="form-label" for="password">Password</label>
-        <input class="form-control" id="password" name="password" type="password" required placeholder="••••••••">
-        
+        <input class="form-control" id="password" name="password" type="password" required placeholder="Masukkan kata sandi" autocomplete="current-password">
+
         <button class="btn btn-primary btn-blok" type="submit" id="btnSubmit">Masuk</button>
         <p style="text-align:center;margin-top:16px;font-size:13px;">
-            <a href="../index.html" class="teks-redup">&larr; Kembali ke Halaman Utama</a>
+            <a href="../index.html" class="teks-redup" style="display:inline-flex;align-items:center;min-height:44px;padding:0 8px;">Kembali ke Halaman Utama</a>
         </p>
     </form>
 
@@ -57,11 +62,11 @@
 
         var urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('expired') === '1') {
-            bannerExpired.style.display = 'block';
+            bannerExpired.style.display = 'flex';
         }
 
         if (infoDemo && window.WARTEG_DB && !window.WARTEG_DB.isSupabase()) {
-            infoDemo.style.display = 'block';
+            infoDemo.style.display = 'flex';
         }
 
         function formatMenitDetik(detik) {
@@ -75,7 +80,7 @@
             var st = window.WARTEG_DB.cekStatusLockout();
 
             if (st.terkunci && st.sisaDetik > 0) {
-                bannerLock.style.display = 'block';
+                bannerLock.style.display = 'flex';
                 countdownTeks.textContent = formatMenitDetik(st.sisaDetik);
                 userInput.disabled = true;
                 passInput.disabled = true;
@@ -108,7 +113,7 @@
 
         periksaDanKunciForm();
 
-        form.onsubmit = async function (e) {
+        form.addEventListener('submit', async function (e) {
             e.preventDefault();
             galat.style.display = 'none';
 
@@ -118,25 +123,31 @@
             btn.disabled = true;
             btn.textContent = 'Memeriksa...';
 
-            var res = await window.WARTEG_DB.loginAdmin(u, p);
-            btn.disabled = false;
-            btn.textContent = 'Masuk';
+            try {
+                var res = await window.WARTEG_DB.loginAdmin(u, p);
+                btn.disabled = false;
+                btn.textContent = 'Masuk';
 
-            if (!res || !res.ok) {
-                if (res && res.terkunci) {
-                    galat.style.display = 'none';
-                    periksaDanKunciForm();
+                if (!res || !res.ok) {
+                    if (res && res.terkunci) {
+                        galat.style.display = 'none';
+                        periksaDanKunciForm();
+                        return;
+                    }
+                    galat.textContent = (res && res.pesan) || 'Username atau password salah.';
+                    galat.style.display = 'flex';
                     return;
                 }
-                galat.textContent = (res && res.pesan) || 'Username atau password salah.';
-                galat.style.display = 'block';
-                return;
-            }
 
-            window.location.href = 'index.html';
-        };
+                window.location.href = 'index.html';
+            } catch (err) {
+                btn.disabled = false;
+                btn.textContent = 'Masuk';
+                galat.textContent = 'Gangguan koneksi ke server saat memeriksa login. Silakan coba lagi.';
+                galat.style.display = 'flex';
+            }
+        });
     });
     </script>
 </body>
 </html>
-

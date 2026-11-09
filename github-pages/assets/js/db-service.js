@@ -2091,6 +2091,19 @@
                     btnToggle.setAttribute('aria-expanded', 'false');
                 });
             });
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape' && navLinks.classList.contains('buka')) {
+                    navLinks.classList.remove('buka');
+                    btnToggle.setAttribute('aria-expanded', 'false');
+                    btnToggle.focus();
+                }
+            });
+            document.addEventListener('click', function (e) {
+                if (navLinks.classList.contains('buka') && !navLinks.contains(e.target) && !btnToggle.contains(e.target)) {
+                    navLinks.classList.remove('buka');
+                    btnToggle.setAttribute('aria-expanded', 'false');
+                }
+            });
         }
     });
 })();

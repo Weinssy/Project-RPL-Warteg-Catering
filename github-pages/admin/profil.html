@@ -4,17 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Profil Saya - Warteg Pak Sanam</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../assets/css/admin.css">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="../assets/js/config.js"></script>
-    <script src="../assets/js/db-service.js"></script>
-    <script src="../assets/js/admin-app.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script defer src="../assets/js/config.js"></script>
+    <script defer src="../assets/js/db-service.js"></script>
+    <script defer src="../assets/js/admin-app.js"></script>
     <style>
-        .profil-header-card { display: flex; align-items: center; gap: 20px; padding: 20px; border-radius: 12px; background: #fff; border: 1px solid var(--c-garis); margin-bottom: 20px; }
+        .profil-header-card { display: flex; align-items: center; gap: 20px; padding: 20px; border-radius: 12px; background: #ffffff; border: 1px solid var(--c-garis); margin-bottom: 20px; flex-wrap: wrap; }
         .profil-avatar-lg { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid var(--c-oranye-tua); }
-        .accordion-item { border: 1px solid var(--c-garis); border-radius: 10px; margin-bottom: 12px; background: #fff; overflow: hidden; }
-        .accordion-header { width: 100%; text-align: left; padding: 14px 18px; font-size: 15px; font-weight: 700; background: none; border: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
-        .accordion-body { padding: 18px; border-top: 1px solid var(--c-garis); }
     </style>
 </head>
 <body>
@@ -25,15 +25,15 @@
         <img id="avatarBesar" src="../uploads/admin/006a36b5a411db9a6784.jpg" alt="Foto Profil" class="profil-avatar-lg" onerror="this.onerror=null;this.src='../uploads/1.jpeg';">
         <div>
             <h2 id="profilNamaJudul" style="margin:0 0 4px;">Admin Warteg</h2>
-            <p class="teks-redup" style="margin:0;"><span id="profilUsername">@admin</span> · <span id="profilRole" class="badge">OWNER</span></p>
+            <p class="teks-redup" style="margin:0;"><span id="profilUsername">@admin</span> · <span id="profilRole" class="badge badge-abu">OWNER</span></p>
         </div>
     </div>
 
     <!-- 1. Informasi Pribadi & Foto Profil -->
     <div class="accordion-item">
-        <button type="button" class="accordion-header" onclick="toggleAcc('accPribadi')">
+        <button type="button" class="accordion-header" aria-expanded="true" aria-controls="accPribadi" onclick="toggleAcc('accPribadi', this)">
             <span>Informasi Pribadi &amp; Foto</span>
-            <span>▾</span>
+            <svg class="accordion-ikon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
         </button>
         <div class="accordion-body" id="accPribadi">
             <form id="formPribadi">
@@ -51,9 +51,9 @@
 
     <!-- 2. Kontak & Alamat -->
     <div class="accordion-item">
-        <button type="button" class="accordion-header" onclick="toggleAcc('accKontak')">
+        <button type="button" class="accordion-header" aria-expanded="false" aria-controls="accKontak" onclick="toggleAcc('accKontak', this)">
             <span>Kontak &amp; Alamat</span>
-            <span>▾</span>
+            <svg class="accordion-ikon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
         </button>
         <div class="accordion-body" id="accKontak" style="display:none;">
             <form id="formKontak">
@@ -73,20 +73,20 @@
 
     <!-- 3. Ubah Kata Sandi -->
     <div class="accordion-item">
-        <button type="button" class="accordion-header" onclick="toggleAcc('accPassword')">
+        <button type="button" class="accordion-header" aria-expanded="false" aria-controls="accPassword" onclick="toggleAcc('accPassword', this)">
             <span>Ubah Kata Sandi</span>
-            <span>▾</span>
+            <svg class="accordion-ikon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
         </button>
         <div class="accordion-body" id="accPassword" style="display:none;">
             <form id="formPassword">
                 <label class="form-label" for="passLama">Kata Sandi Saat Ini</label>
-                <input class="form-control" id="passLama" type="password" required>
+                <input class="form-control" id="passLama" type="password" required autocomplete="current-password">
 
                 <label class="form-label" for="passBaru" style="margin-top:10px;">Kata Sandi Baru</label>
-                <input class="form-control" id="passBaru" type="password" required minlength="6">
+                <input class="form-control" id="passBaru" type="password" required minlength="6" autocomplete="new-password">
 
                 <label class="form-label" for="passKonfirm" style="margin-top:10px;">Ulangi Kata Sandi Baru</label>
-                <input class="form-control" id="passKonfirm" type="password" required minlength="6">
+                <input class="form-control" id="passKonfirm" type="password" required minlength="6" autocomplete="new-password">
 
                 <button class="btn btn-primary" type="submit" style="margin-top:14px;">Perbarui Kata Sandi</button>
             </form>
@@ -95,9 +95,11 @@
 </div>
 
 <script>
-function toggleAcc(id) {
+function toggleAcc(id, btn) {
     var el = document.getElementById(id);
-    el.style.display = (el.style.display === 'none' ? 'block' : 'none');
+    var buka = (el.style.display === 'none');
+    el.style.display = buka ? 'block' : 'none';
+    if (btn) btn.setAttribute('aria-expanded', buka ? 'true' : 'false');
 }
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -125,7 +127,6 @@ document.addEventListener('DOMContentLoaded', function () {
         setTimeout(function () { w.innerHTML = ''; }, 4000);
     }
 
-    // Submit Pribadi & Foto (Tersinkron ke Supabase Cloud & LocalStorage)
     document.getElementById('formPribadi').onsubmit = function (e) {
         e.preventDefault();
         var namaBaru = document.getElementById('inpNama').value.trim();
@@ -133,17 +134,21 @@ document.addEventListener('DOMContentLoaded', function () {
         var f = fileInp.files && fileInp.files[0];
 
         async function simpan(fotoUrl) {
-            var res = await DB.updateProfilAdmin({
-                nama: namaBaru,
-                foto: fotoUrl !== undefined ? fotoUrl : sesi.foto
-            });
-            if (!res || !res.ok) {
-                notif((res && res.pesan) || 'Gagal memperbarui profil.', 'galat');
-                return;
+            try {
+                var res = await DB.updateProfilAdmin({
+                    nama: namaBaru,
+                    foto: fotoUrl !== undefined ? fotoUrl : sesi.foto
+                });
+                if (!res || !res.ok) {
+                    notif((res && res.pesan) || 'Gagal memperbarui profil.', 'galat');
+                    return;
+                }
+                sesi = res.admin;
+                document.getElementById('profilNamaJudul').textContent = sesi.nama;
+                notif('Informasi pribadi berhasil disimpan.', 'sukses');
+            } catch (err) {
+                notif('Gangguan koneksi saat memperbarui profil.', 'galat');
             }
-            sesi = res.admin;
-            document.getElementById('profilNamaJudul').textContent = sesi.nama;
-            notif('Informasi pribadi berhasil disimpan!', 'sukses');
         }
 
         if (f) {
@@ -159,23 +164,25 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     };
 
-    // Submit Kontak (Tersinkron ke Supabase Cloud & LocalStorage)
     document.getElementById('formKontak').onsubmit = async function (e) {
         e.preventDefault();
-        var res = await DB.updateProfilAdmin({
-            email: document.getElementById('inpEmail').value.trim(),
-            no_hp: document.getElementById('inpTelepon').value.trim(),
-            jabatan: document.getElementById('inpAlamat').value.trim()
-        });
-        if (!res || !res.ok) {
-            notif((res && res.pesan) || 'Gagal menyimpan kontak.', 'galat');
-            return;
+        try {
+            var res = await DB.updateProfilAdmin({
+                email: document.getElementById('inpEmail').value.trim(),
+                no_hp: document.getElementById('inpTelepon').value.trim(),
+                jabatan: document.getElementById('inpAlamat').value.trim()
+            });
+            if (!res || !res.ok) {
+                notif((res && res.pesan) || 'Gagal menyimpan kontak.', 'galat');
+                return;
+            }
+            sesi = res.admin;
+            notif('Kontak & jabatan berhasil disimpan.', 'sukses');
+        } catch (err) {
+            notif('Gangguan koneksi saat menyimpan kontak.', 'galat');
         }
-        sesi = res.admin;
-        notif('Kontak & jabatan berhasil disimpan!', 'sukses');
     };
 
-    // Submit Password (Tersinkron ke Supabase Cloud & LocalStorage)
     document.getElementById('formPassword').onsubmit = async function (e) {
         e.preventDefault();
         var lama = document.getElementById('passLama').value;
@@ -183,21 +190,23 @@ document.addEventListener('DOMContentLoaded', function () {
         var konf = document.getElementById('passKonfirm').value;
 
         if (baru !== konf) {
-            alert('Konfirmasi kata sandi baru tidak cocok.');
+            notif('Konfirmasi kata sandi baru tidak cocok.', 'galat');
             return;
         }
 
-        var res = await DB.ubahPasswordAdmin(lama, baru);
-        if (!res || !res.ok) {
-            alert((res && res.pesan) || 'Kata sandi saat ini tidak sesuai.');
-            return;
+        try {
+            var res = await DB.ubahPasswordAdmin(lama, baru);
+            if (!res || !res.ok) {
+                notif((res && res.pesan) || 'Kata sandi saat ini tidak sesuai.', 'galat');
+                return;
+            }
+            notif('Kata sandi berhasil diperbarui.', 'sukses');
+            document.getElementById('formPassword').reset();
+        } catch (err) {
+            notif('Gangguan koneksi saat memperbarui kata sandi.', 'galat');
         }
-
-        notif('Kata sandi berhasil diperbarui!', 'sukses');
-        document.getElementById('formPassword').reset();
     };
 });
 </script>
 </body>
 </html>
-
