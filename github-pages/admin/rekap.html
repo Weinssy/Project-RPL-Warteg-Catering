@@ -78,6 +78,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             for (var i = 0; i < startDay; i++) {
                 var kosong = document.createElement('div');
                 kosong.className = 'sel-hari sel-kosong';
+                kosong.setAttribute('aria-hidden', 'true');
                 kal.appendChild(kosong);
             }
 
@@ -110,7 +111,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 
                 btn.onclick = function () {
                     tglTerpilih = this.dataset.tgl;
-                    document.querySelectorAll('.sel-hari').forEach(function (x) {
+                    document.querySelectorAll('button.sel-hari').forEach(function (x) {
                         x.classList.remove('dipilih');
                         x.setAttribute('aria-pressed', 'false');
                     });

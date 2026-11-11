@@ -178,14 +178,17 @@ textarea:disabled,
   transform: translateY(1px);
 }
 
-.btn-primer {
+.btn-primer,
+.cust a.btn-primer {
   background: var(--c-primer);
   color: #ffffff;
   box-shadow: 0 3px 12px rgba(158, 55, 0, .2);
 }
 
-.btn-primer:hover:not(:disabled) {
+.btn-primer:hover:not(:disabled),
+.cust a.btn-primer:hover {
   background: var(--c-primer-tua);
+  color: #ffffff;
   box-shadow: 0 4px 16px rgba(127, 43, 0, .28);
 }
 
@@ -198,13 +201,15 @@ textarea:disabled,
   opacity: 1;
 }
 
-.btn-garis {
+.btn-garis,
+.cust a.btn-garis {
   background: #ffffff;
   color: var(--c-teks);
   border: 1px solid var(--c-garis-kontrol);
 }
 
-.btn-garis:hover:not(:disabled) {
+.btn-garis:hover:not(:disabled),
+.cust a.btn-garis:hover {
   background: var(--c-surface-low);
   border-color: var(--c-primer);
   color: var(--c-primer);
@@ -221,14 +226,17 @@ textarea:disabled,
   width: 100%;
 }
 
-.btn-wa {
+.btn-wa,
+.cust a.btn-wa {
   background: #15803d;
   color: #ffffff;
   box-shadow: 0 4px 14px rgba(21, 128, 61, .2);
 }
 
-.btn-wa:hover:not(:disabled) {
+.btn-wa:hover:not(:disabled),
+.cust a.btn-wa:hover {
   background: #166534;
+  color: #ffffff;
 }
 
 /* ---------- Top Notice Bar ---------- */
@@ -754,7 +762,7 @@ textarea:disabled,
   padding: 20px 24px;
   box-shadow: 0 2px 12px rgba(35, 24, 21, .04);
   display: grid;
-  grid-template-columns: 320px 1fr auto;
+  grid-template-columns: minmax(320px, 360px) 1fr auto;
   gap: 24px;
   align-items: center;
 }
@@ -778,6 +786,11 @@ textarea:disabled,
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.kap-input-grup .btn {
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .kap-date-input {
