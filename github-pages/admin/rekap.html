@@ -184,7 +184,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                     + '<div class="rekap-pemesan">';
 
                 items.forEach(function (p) {
-                    var cleanWa = DB.normalisasiWa(p.no_wa);
+                    var waUrlRekap = DB.urlWaPelangganStatus(p, p.items || [], 'info');
                     var nominalBersih = p.nominal_bayar || p.total_harga;
 
                     html += '<div class="item-pemesan">'
@@ -205,8 +205,8 @@ document.addEventListener('DOMContentLoaded', async function () {
 
                     html += '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'
                         + '<a href="pemesan.html?q=' + encodeURIComponent(p.kode) + '" class="btn-action btn-detail">Buka Detail Pesanan</a>';
-                    if (cleanWa) {
-                        html += '<a href="https://wa.me/' + cleanWa + '" target="_blank" rel="noopener" class="btn-action btn-wa">Chat WA Pelanggan</a>';
+                    if (waUrlRekap) {
+                        html += '<a href="' + DB.escapeHtml(waUrlRekap) + '" target="_blank" rel="noopener" class="btn-action btn-wa">Chat WA Pelanggan</a>';
                     }
                     html += '</div></div>';
                 });

@@ -142,7 +142,10 @@ document.addEventListener('DOMContentLoaded', async function () {
                                     document.getElementById('pesanFlash').innerHTML = '<div class="alert alert-galat">' + DB.escapeHtml((res && res.pesan) || 'Gagal memverifikasi pembayaran.') + '</div>';
                                     return;
                                 }
-                                document.getElementById('pesanFlash').innerHTML = '<div class="alert alert-sukses">' + DB.escapeHtml(res.pesan) + '</div>';
+                                document.getElementById('pesanFlash').innerHTML = '<div class="alert alert-sukses" style="justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">'
+                                    + '<span>' + DB.escapeHtml(res.pesan) + '</span>'
+                                    + (res.wa_url ? '<a href="' + DB.escapeHtml(res.wa_url) + '" target="_blank" rel="noopener" class="btn btn-wa btn-kecil">Kirim Info Lunas via WhatsApp</a>' : '')
+                                    + '</div>';
                                 muatVerifikasi();
                             } catch (err) {
                                 this.disabled = false;
@@ -176,7 +179,10 @@ document.addEventListener('DOMContentLoaded', async function () {
                                 document.getElementById('pesanFlash').innerHTML = '<div class="alert alert-galat">' + DB.escapeHtml((res && res.pesan) || 'Gagal menolak bukti pembayaran.') + '</div>';
                                 return;
                             }
-                            document.getElementById('pesanFlash').innerHTML = '<div class="alert alert-peringatan">' + DB.escapeHtml(res.pesan) + '</div>';
+                            document.getElementById('pesanFlash').innerHTML = '<div class="alert alert-peringatan" style="justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">'
+                                + '<span>' + DB.escapeHtml(res.pesan) + '</span>'
+                                + (res.wa_url ? '<a href="' + DB.escapeHtml(res.wa_url) + '" target="_blank" rel="noopener" class="btn btn-wa btn-kecil">Info Penolakan via WhatsApp</a>' : '')
+                                + '</div>';
                             muatVerifikasi();
                         } catch (err) {
                             this.disabled = false;

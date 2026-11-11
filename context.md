@@ -38,12 +38,10 @@ Setiap implementasi kode di repositori **wajib** lolos validasi aturan berikut:
    * Jika pesanan baru membuat akumulasi > 120, transaksi **wajib digagalkan** dan memunculkan sisa kuota yang tersedia.
 5. **Validasi Waktu Pemesanan (Aturan H-1):**
    * Pemesanan tidak dapat dilakukan untuk hari H. Tanggal pengambilan minimal H-1 dari tanggal pemesanan (`after_or_equal:tomorrow`) hingga maksimal H+30.
-6. **Mekanisme Notifikasi & Tanda Terima Sederhana:**
-   * Tidak ada modul live tracking berbasis timeline rumit.
-   * Halaman nota publik memuat status kesiapan dapur:
-     * Badge Kuning: `Menunggu Konfirmasi` / `Sedang Dimasak`
-     * Badge Hijau: `Siap Diambil di Warteg`
-   * Halaman nota memuat tautan generator ke nomor WhatsApp Warteg Pak Sanam (`https://wa.me/6285783423626`) berisi kode transaksi otomatis, nama, jumlah box, dan total tagihan setelah diskon.
+6. **Mekanisme Notifikasi WhatsApp & Nota Fisik di Warteg:**
+   * Tidak ada modul live tracking berbasis timeline rumit dan tidak menggunakan halaman nota digital terpisah.
+   * Halaman publik `cek_status.html` dan `pembayaran.html` menampilkan status pembayaran (`belum_bayar`, `menunggu_verifikasi`, `berhasil`, `ditolak`) serta status dapur (`Menunggu Konfirmasi`, `Sedang Dimasak`, `Siap Diambil`, `Selesai`).
+   * Konfirmasi pesanan (Pelanggan -> Warteg) dan notifikasi progres pesanan (Admin -> Pelanggan saat verifikasi LUNAS, `Sedang Dimasak`, dan `Siap Diambil`) menggunakan tautan click-to-chat WhatsApp otomatis (`https://wa.me/...`) berisi kode pesanan, rincian item, jadwal ambil, total tagihan setelah diskon, dan arahan bahwa **nota fisik asli diserahkan saat pengambilan pesanan di warteg**.
 7. **Isolasi Total Modul Kasir (Fast POS):**
    * Modul transaksi kasir harian (dine-in dan bungkus langsung) berdiri terpisah dan **sama sekali tidak memotong/mengurangi kuota katering 120 box**.
 8. **Skema Perhitungan Harga & Voucher Diskon Box:**
@@ -54,15 +52,15 @@ Setiap implementasi kode di repositori **wajib** lolos validasi aturan berikut:
        * Jika $\text{Total Box} < 80$: $\text{Diskon} = \text{Rp } 0$
        * Jika $\text{Total Box} \ge 80$: $\text{Diskon} = \text{round}(\text{Subtotal} \times 0.05)$
      * Total Tagihan Bersih: $\text{Total Bayar} = \max(0, \text{Subtotal} - \text{Diskon})$.
-     * Rincian potongan diskon wajib dicantumkan transparan pada ringkasan keranjang belanja, formulir checkout, nota pesanan, dan invoice pembayaran.
+     * Rincian potongan diskon wajib dicantumkan transparan pada ringkasan keranjang belanja, formulir checkout, template konfirmasi WhatsApp, cek status, dan invoice pembayaran.
 9. **Perilaku Menu Tidak Tersedia (is_ready = false):**
    * Pada Builder Katering Publik: Menu yang tidak aktif disembunyikan dari pilihan paket.
    * Pada Kasir POS: Menu tetap muncul pada grid tombol kasir, namun dalam status dinonaktifkan (*disabled*) dengan label abu-abu "Habis".
 10. **Metode Pembayaran QRIS Statis & Verifikasi:**
     * Sistem katering mendukung pembayaran non-tunai via QRIS Statis merchant **Warteg Pak Sanam**.
     * Pelanggan mengunggah bukti transfer, dan status pesanan diverifikasi oleh admin sebelum pesanan dimasak.
-11. **Output Struk POS & Invoice:**
-    * Modul nota dan invoice menyediakan fitur cetak dokumen struk resmi menggunakan layout berbasis CSS media print (`window.print()`).
+11. **Output Struk POS, Nota Fisik, & Invoice:**
+    * Nota transaksi katering diserahkan dalam bentuk **nota fisik asli** saat pengambilan di warteg, didukung ringkasan otomatis melalui WhatsApp (`wa.me`) dan halaman opsional `invoice.html` dengan fitur cetak berbasis CSS media print (`window.print()`).
 
 ---
 
@@ -158,10 +156,9 @@ Repositori mendukung dua lingkungan deployment:
 | `GET` | `index.html` | `customer-app.js` | Halaman beranda, banner promo diskon 5% (>= 80 box), live kuota gauge, meal builder. |
 | `GET` | `checkout.html` | `customer-app.js` | Rincian keranjang, kalkulasi diskon otomatis, form pemesan & jam ambil. |
 | `POST` | `RPC: buat_pesanan_katering` | `db-service.js` | Eksekusi transaksi kuota dapur 120 box & pemotongan voucher diskon. |
-| `GET` | `pembayaran.html` | `pembayaran.html` | Informasi tagihan bersih, QRIS Statis Warteg Pak Sanam, upload bukti transfer. |
-| `GET` | `nota.html` | `nota.html` | Nota publik, status masak dapur, rincian diskon, dan generator WA Warteg. |
-| `GET` | `invoice.html` | `invoice.html` | Lembar invoice resmi status LUNAS siap cetak/simpan PDF. |
-| `GET` | `cek_status.html` | `cek_status.html` | Portal pengecekan status pesanan publik via kode pesanan + nomor WhatsApp. |
+| `GET` | `pembayaran.html` | `pembayaran.html` | Informasi tagihan bersih, QRIS Statis Warteg Pak Sanam, upload bukti transfer, tautan WA konfirmasi otomatis. |
+| `GET` | `invoice.html` | `invoice.html` | Lembar invoice opsional status LUNAS siap cetak/simpan PDF (nota fisik diserahkan di warteg). |
+| `GET` | `cek_status.html` | `cek_status.html` | Portal pengecekan status pesanan publik via kode pesanan + nomor WhatsApp dan tombol konfirmasi WA. |
 | `GET` | `admin/login.html` | `admin-app.js` | Form autentikasi staf pengelola Warteg Pak Sanam. |
 | `GET` | `admin/index.html` | `admin-app.js` | Dashboard kapasitas kuota harian & antrean dapur. |
 | `GET` | `admin/verifikasi.html` | `admin-app.js` | Verifikasi bukti bayar QRIS pelanggan (Setujui Lunas / Tolak). |
@@ -194,10 +191,9 @@ END IF;
 v_nominal_bayar := GREATEST(0, v_total_harga - v_diskon);
 ```
 
-#### B. Generator Format Tautan WhatsApp Warteg Pak Sanam
-```text
-https://wa.me/6285783423626?text=Halo%20Warteg%20Pak%20Sanam,%20saya%20telah%20membuat%20pesanan%20katering%20dengan%20Kode:%20{KODE_PESANAN}%20untuk%20{JUMLAH_BOX}%20box%20pada%20tanggal%20{TANGGAL_AMBIL}%20jam%20{JAM_AMBIL}.%20Total:%20Rp{TOTAL_BAYAR}.%20Mohon%20konfirmasinya.
-```
+#### B. Generator Format Tautan WhatsApp (`db-service.js`)
+* **Pelanggan -> Warteg (`DB.urlWaWartegPesanan`):** `https://wa.me/6285783423626?text=...` memuat kode pesanan, nama pemesan, no WA, jadwal & lokasi ambil, rincian menu, subtotal/diskon/total tagihan, status pembayaran, dan keterangan penerimaan nota fisik saat pengambilan.
+* **Admin -> Pelanggan (`DB.urlWaPelangganStatus`):** `https://wa.me/{NO_WA_PELANGGAN}?text=...` dipakai pada tombol verifikasi LUNAS (`admin/verifikasi.html`), perubahan status `Sedang Dimasak` / `Siap Diambil` (`admin/pemesan.html`), dan detail rekap (`admin/rekap.html`) dengan mencantumkan rincian menu, jadwal, serta arahan menunjukkan kode pesanan untuk menerima nota fisik di warteg.
 
 ---
 
@@ -214,7 +210,7 @@ https://wa.me/6285783423626?text=Halo%20Warteg%20Pak%20Sanam,%20saya%20telah%20m
 | **TC-07** | Diskon 100 Box (5%) | Input `jumlah_box = 100`, Subtotal Rp 2.300.000 | Sistem memotong voucher diskon 5% sebesar Rp 115.000, Total Tagihan Akhir = Rp 2.185.000. | Lolos |
 | **TC-08** | Non-Diskon (< 80 Box) | Input `jumlah_box = 79`, Subtotal Rp 1.817.000 | Voucher Diskon = Rp 0, Total Tagihan Akhir = Rp 1.817.000 (tidak ada potongan). | Lolos |
 | **TC-09** | Validasi Nama | Input `nama_pemesan = "Budi 123"` | Form memunculkan peringatan galat: "Nama tidak boleh mengandung angka". | Lolos |
-| **TC-10** | Verifikasi Pembayaran | Admin menyetujui bukti transfer QRIS di menu Verifikasi. | Status bayar pesanan berubah menjadi `berhasil` (LUNAS), nota & invoice menampilkan cap LUNAS. | Lolos |
+| **TC-10** | Verifikasi Pembayaran | Admin menyetujui bukti transfer QRIS di menu Verifikasi. | Status bayar pesanan berubah menjadi `berhasil` (LUNAS), tombol WhatsApp info LUNAS tersedia, dan invoice menampilkan cap LUNAS. | Lolos |
 
 ---
 
@@ -234,4 +230,4 @@ https://wa.me/6285783423626?text=Halo%20Warteg%20Pak%20Sanam,%20saya%20telah%20m
 - [x] Aturan voucher diskon 5% untuk pemesanan 80 box atau lebih (`box >= 80 ? Math.round(subtotal * 0.05) : 0`) terpasang pada `config.js`, `customer-app.js`, `checkout.html`, `db-service.js`, dan `supabase_setup.sql`.
 - [x] Validasi nama pemesan menolak angka sama sekali (`namaValid`).
 - [x] Kuota harian flat 120 box/hari dan aturan pemesanan minimal H-1 terkunci.
-- [x] Alur checkout, pembayaran QRIS, upload bukti bayar, nota, invoice, dan cek status berjalan baik pada mode Supabase maupun fallback LocalStorage.
+- [x] Alur checkout, pembayaran QRIS, upload bukti bayar, template konfirmasi WhatsApp (`wa.me`), invoice opsional, dan cek status berjalan baik dengan sistem nota fisik saat pengambilan pada mode Supabase maupun fallback LocalStorage.

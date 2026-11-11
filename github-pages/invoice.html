@@ -222,7 +222,6 @@
             <nav class="cust-links" id="custLinks" aria-label="Navigasi utama">
                 <a href="index.html">Beranda</a>
                 <a href="index.html#katalog">Katalog Menu</a>
-                <a href="index.html#kapasitas">Cek Kuota</a>
                 <a href="cara-pemesanan.html">Cara Pemesanan</a>
                 <a href="cek_status.html">Cek Status</a>
                 <a href="admin/login.html" class="link-admin">Login Admin</a>
@@ -296,7 +295,7 @@
             try {
                 var data = await DB.getPesanan(kode, token);
                 if (!data || !data.pesanan) {
-                    wadah.innerHTML = '<div class="kosong"><h1>Invoice tidak ditemukan</h1><p>Gunakan tautan resmi dari halaman nota atau cek status pesanan Anda.</p><p style="margin-top:14px"><a class="btn btn-primer" href="cek_status.html">Cek Status Pesanan</a></p></div>';
+                    wadah.innerHTML = '<div class="kosong"><h1>Invoice tidak ditemukan</h1><p>Gunakan tautan resmi dari halaman pembayaran atau cek status pesanan Anda.</p><p style="margin-top:14px"><a class="btn btn-primer" href="cek_status.html">Cek Status Pesanan</a></p></div>';
                     return;
                 }
 
@@ -305,7 +304,8 @@
                 var sb = p.status_bayar || 'belum_bayar';
                 var lunas = (sb === 'berhasil' || sb === 'lunas');
                 var nomorInv = 'INV/' + (p.dibuat_pada || new Date().toISOString()).slice(0, 10).replace(/-/g, '') + '/' + p.kode;
-                var urlNota = DB.urlNota(p.kode, p.token_nota);
+                var urlStatus = DB.urlStatus(p.kode);
+                var urlWaWarteg = DB.urlWaWartegPesanan(p, detail);
                 var urlBayar = DB.urlPembayaran(p.kode, p.token_nota);
 
                 var html = '<div class="inv-kartu">'
@@ -379,7 +379,7 @@
                 html += '<div class="inv-kaki">'
                     + '<div>'
                     + '<strong>Ketentuan Pengambilan:</strong><br>'
-                    + 'Harap tunjukkan invoice ini (cetak atau layar HP) saat mengambil pesanan di Warteg Pak Sanam.<br>'
+                    + 'Harap tunjukkan kode pesanan, invoice ini, atau konfirmasi WhatsApp saat mengambil pesanan di Warteg Pak Sanam. Nota fisik asli diserahkan saat pengambilan.<br>'
                     + 'Status produksi saat ini: <strong>' + DB.escapeHtml(p.status) + '</strong>.'
                     + '</div>'
                     + '<div style="text-align:right">'
@@ -388,9 +388,10 @@
                     + '</div></div></div>'
 
                     + '<div class="inv-aksi">'
-                    + (!lunas ? '<a href="' + urlBayar + '" class="btn btn-primer">Ke Halaman Pembayaran</a>' : '')
+                    + (!lunas ? '<a href="' + DB.escapeHtml(urlBayar) + '" class="btn btn-primer">Ke Halaman Pembayaran</a>' : '')
                     + '<button type="button" class="btn btn-primer" onclick="window.print()">Cetak / Simpan PDF</button>'
-                    + '<a href="' + urlNota + '" class="btn btn-garis">Kembali ke Nota</a>'
+                    + '<a href="' + DB.escapeHtml(urlWaWarteg) + '" target="_blank" rel="noopener" class="btn btn-wa">Konfirmasi via WhatsApp</a>'
+                    + '<a href="' + DB.escapeHtml(urlStatus) + '" class="btn btn-garis">Cek Status Pesanan</a>'
                     + '</div>';
 
                 wadah.innerHTML = html;

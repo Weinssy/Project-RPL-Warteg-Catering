@@ -88,7 +88,6 @@
             <nav class="cust-links" id="custLinks" aria-label="Navigasi utama">
                 <a href="index.html">Beranda</a>
                 <a href="index.html#katalog">Katalog Menu</a>
-                <a href="index.html#kapasitas">Cek Kuota</a>
                 <a href="cara-pemesanan.html">Cara Pemesanan</a>
                 <a href="cek_status.html">Cek Status</a>
                 <a href="admin/login.html" class="link-admin">Login Admin</a>
@@ -203,7 +202,8 @@
                 statusBayarTerakhir = sb;
                 statusPesananTerakhir = p.status;
 
-                var urlNota = DB.urlNota(p.kode, p.token_nota);
+                var urlWaWarteg = DB.urlWaWartegPesanan(p, data.detail || []);
+                var urlStatus = DB.urlStatus(p.kode);
                 var urlInvoice = DB.urlInvoice(p.kode, p.token_nota);
 
                 var qrisGambar = cfg.qris_gambar || 'qris_warteg.svg';
@@ -249,9 +249,9 @@
                 if (isDibatalkan) {
                     html += '<div class="alert alert-galat">Pesanan ini berstatus <strong>' + DB.escapeHtml(DB.statusBayarLabel(sb)) + '</strong> dan tidak dapat menerima bukti pembayaran baru. Silakan buat pesanan baru di katalog.</div>';
                 } else if (sb === 'berhasil' || sb === 'lunas') {
-                    html += '<div class="alert alert-sukses"><strong>Pembayaran sudah diverifikasi LUNAS oleh admin.</strong><br>Silakan cetak atau simpan invoice resmi Anda di bawah ini.</div>';
+                    html += '<div class="alert alert-sukses"><strong>Pembayaran sudah diverifikasi LUNAS oleh admin.</strong><br>Simpan kode pesanan Anda. Nota fisik asli akan diserahkan saat pengambilan pesanan di warteg.</div>';
                 } else if (sb === 'menunggu_verifikasi') {
-                    html += '<div class="alert alert-info"><strong>Bukti pembayaran sudah diterima.</strong><br>Admin kami sedang memeriksa bukti transfer Anda. Halaman ini otomatis memperbarui status setiap beberapa detik.</div>';
+                    html += '<div class="alert alert-info"><strong>Bukti pembayaran sudah diterima.</strong><br>Admin kami sedang memeriksa bukti transfer Anda. Anda dapat menekan tombol <strong>Kirim Konfirmasi via WhatsApp</strong> di bawah agar pesanan segera dicek admin.</div>';
                 } else if (sb === 'ditolak') {
                     html += '<div class="alert alert-galat"><strong>Bukti pembayaran sebelumnya ditolak oleh admin.</strong>'
                         + (p.alasan_tolak ? '<br>Alasan: <em>' + DB.escapeHtml(p.alasan_tolak) + '</em>' : '')
@@ -279,7 +279,7 @@
                         + '<li>Buka aplikasi bank / dompet digital (BCA mobile, Livin, BRImo, GoPay, OVO, DANA, ShopeePay, dll).</li>'
                         + '<li>Pilih menu <strong>Scan QR / QRIS</strong>, lalu arahkan kamera ke kode QR di atas.</li>'
                         + '<li>Masukkan nominal tepat sebesar <strong>' + DB.rupiah(nominalBersih) + '</strong> dan selesaikan pembayaran.</li>'
-                        + '<li>Simpan tangkapan layar (screenshot) bukti berhasil, lalu unggah pada formulir di bawah ini.</li>'
+                        + '<li>Simpan tangkapan layar bukti berhasil, unggah pada formulir di bawah, lalu kirim konfirmasi lewat WhatsApp otomatis. Nota fisik diserahkan saat pengambilan di warteg.</li>'
                         + '</ol>'
                         + (qrisInstruksi ? '<p style="margin:8px 0 0;color:var(--c-redup);font-size:13px">' + DB.escapeHtml(qrisInstruksi) + '</p>' : '')
                         + '</div>';
@@ -309,8 +309,9 @@
 
                 html += '</div>'
                     + '<div class="nota-aksi">'
-                    + ((sb === 'berhasil' || sb === 'lunas') ? '<a href="' + urlInvoice + '" class="btn btn-primer">Lihat &amp; Cetak Invoice</a>' : '')
-                    + '<a href="' + urlNota + '" class="btn btn-garis">Lihat Nota Pesanan</a>'
+                    + ((sb === 'berhasil' || sb === 'lunas') ? '<a href="' + DB.escapeHtml(urlInvoice) + '" class="btn btn-primer">Lihat &amp; Cetak Invoice</a>' : '')
+                    + '<a href="' + DB.escapeHtml(urlWaWarteg) + '" target="_blank" rel="noopener" class="btn btn-wa">Kirim Konfirmasi via WhatsApp</a>'
+                    + '<a href="' + DB.escapeHtml(urlStatus) + '" class="btn btn-garis">Cek Status Pesanan</a>'
                     + '<a href="index.html" class="btn btn-garis">Kembali ke Beranda</a>'
                     + '</div></div>';
 

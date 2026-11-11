@@ -6,7 +6,7 @@ Semua kebutuhan aset, style, dan script terisolasi di dalam folder `github-pages
 
 ---
 
-## 🚀 Fitur Utama
+## Fitur Utama
 
 1. **Kompatibel 100% dengan GitHub Pages**:
    * Dibangun murni menggunakan **HTML5, CSS3, dan Vanilla JavaScript (ES6)** tanpa membutuhkan server backend PHP atau Apache/Nginx.
@@ -27,7 +27,7 @@ Semua kebutuhan aset, style, dan script terisolasi di dalam folder `github-pages
 
 ---
 
-## 🛠️ Panduan Menghubungkan Supabase
+## Panduan Menghubungkan Supabase
 
 Ikuti 3 langkah mudah berikut saat Anda siap menghubungkan Supabase:
 
@@ -57,14 +57,15 @@ Ikuti 3 langkah mudah berikut saat Anda siap menghubungkan Supabase:
 
 ---
 
-## 📂 Struktur Halaman & Alur Penggunaan
+## Struktur Halaman & Alur Penggunaan
 
 ### 1. Sisi Pelanggan (Customer)
-* **`index.html`** : Halaman utama (Hero, Cara Pesan, Cek Kuota 120 Box, Katalog/Meal Builder, Form Checkout).
-* **`cek_status.html`** : Cek status pesanan secara mandiri menggunakan **Kode Pesanan + No. WhatsApp**.
-* **`pembayaran.html`** : Halaman pembayaran QRIS Statis, menampilkan nominal, petunjuk transfer, dan form unggah bukti pembayaran.
-* **`nota.html`** : Nota pesanan digital interaktif untuk memantau status masak dan status bayar.
-* **`invoice.html`** : Halaman invoice resmi (format cetak PDF / print view).
+* **`index.html`** : Halaman utama (Hero, Cek Kuota 120 Box saat scroll down, Katalog/Meal Builder, Alur Pengambilan).
+* **`checkout.html`** : Formulir data pemesan, pemilihan jadwal pengambilan, dan perhitungan voucher diskon 5% untuk pesanan 80 box atau lebih.
+* **`cara-pemesanan.html`** : Panduan 7 langkah pemesanan mandiri dan ketentuan dapur.
+* **`cek_status.html`** : Cek status pesanan secara mandiri menggunakan **Kode Pesanan + No. WhatsApp** beserta tautan konfirmasi WhatsApp.
+* **`pembayaran.html`** : Halaman pembayaran QRIS Statis, unggah bukti pembayaran, serta tombol kirim konfirmasi otomatis via WhatsApp (`wa.me`).
+* **`invoice.html`** : Halaman invoice opsional (format cetak PDF / print view) saat status pembayaran LUNAS; nota fisik resmi diserahkan saat pengambilan di warteg.
 
 ### 2. Sisi Pengelola (Admin Dashboard)
 * **Kredensial Default:** Username: `admin` | Password: `admin123`
@@ -81,7 +82,7 @@ Ikuti 3 langkah mudah berikut saat Anda siap menghubungkan Supabase:
 
 ---
 
-## 🎨 Aset Gambar & Media
+## Aset Gambar & Media
 Semua gambar bawaan demo (foto menu, foto admin, gambar QRIS statis, dan contoh bukti bayar) tersimpan mandiri di subfolder:
 * `uploads/1.jpeg`
 * `uploads/admin/`

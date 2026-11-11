@@ -68,9 +68,9 @@
         return isKategoriBoxUtama(kategori) ? 'box' : 'porsi';
     }
 
-    function urlNota(kode, token, prefix) {
+    function urlStatus(kode, prefix) {
         var pre = prefix || '';
-        return pre + 'nota.html?kode=' + encodeURIComponent(kode || '') + '&t=' + encodeURIComponent(token || '');
+        return pre + 'cek_status.html' + (kode ? ('?kode=' + encodeURIComponent(kode)) : '');
     }
 
     function urlPembayaran(kode, token, prefix) {
@@ -81,6 +81,136 @@
     function urlInvoice(kode, token, prefix) {
         var pre = prefix || '';
         return pre + 'invoice.html?kode=' + encodeURIComponent(kode || '') + '&t=' + encodeURIComponent(token || '');
+    }
+
+    function buatTeksRincianItemWa(detailList) {
+        if (!Array.isArray(detailList) || !detailList.length) return '';
+        return detailList.map(function (d) {
+            var nama = d.nama || d.nama_menu || ('Menu #' + (d.menu_id || ''));
+            var jml = Number(d.jumlah || 0);
+            var u = d.unit || 'box';
+            var subAngka = (d.subtotal_angka !== undefined && d.subtotal_angka !== null)
+                ? Number(d.subtotal_angka)
+                : (typeof d.subtotal === 'number'
+                    ? d.subtotal
+                    : (Number(d.jumlah || 0) * Number(d.harga_satuan || 0)));
+            return '- ' + nama + ' x ' + jml + ' ' + u + ' (' + rupiah(subAngka) + ')';
+        }).join('\n');
+    }
+
+    function buatBlokRingkasanBiayaWa(p) {
+        var diskonVal = resolveDiskonPesanan(p);
+        var nominalBersih = (p && p.nominal_bayar !== undefined && p.nominal_bayar !== null)
+            ? Number(p.nominal_bayar)
+            : Math.max(0, Number((p && p.total_harga) || 0) - diskonVal);
+        var baris = [];
+        if (diskonVal > 0) {
+            baris.push('Subtotal: ' + rupiah(p.total_harga || 0));
+            baris.push('Voucher Diskon: -' + rupiah(diskonVal));
+        }
+        baris.push('Total Tagihan: ' + rupiah(nominalBersih));
+        return baris.join('\n');
+    }
+
+    function urlWaWartegPesanan(p, detailList) {
+        var waWarteg = normalisasiWa(CFG.TELEPON_WARTEG || '0857-8342-3626') || '6285783423626';
+        if (!p) return 'https://wa.me/' + waWarteg;
+
+        var namaToko = CFG.NAMA_WARTEG || 'Warteg Pak Sanam';
+        var alamatToko = CFG.ALAMAT_WARTEG || 'Jalan BDN 1 Cilandak Barat Jakarta Selatan';
+        var rincian = buatTeksRincianItemWa(detailList);
+        var biaya = buatBlokRingkasanBiayaWa(p);
+        var sb = p.status_bayar || 'belum_bayar';
+
+        var lines = [
+            'Halo ' + namaToko + ', saya ingin konfirmasi pesanan katering:',
+            '',
+            'Kode Pesanan: ' + (p.kode || '-'),
+            'Nama Pemesan: ' + (p.nama_pelanggan || '-'),
+            'No. WhatsApp: ' + (p.no_wa || '-'),
+            'Jadwal Ambil: ' + tanggalId(p.tanggal_ambil) + ', ' + jamPendek(p.jam_ambil) + ' WIB',
+            'Lokasi Ambil: ' + namaToko + ' (' + alamatToko + ')'
+        ];
+
+        if (rincian) {
+            lines.push('');
+            lines.push('Rincian Pesanan (' + Number(p.total_box || 0) + ' box):');
+            lines.push(rincian);
+        } else {
+            lines.push('Jumlah Pesanan: ' + Number(p.total_box || 0) + ' box');
+        }
+
+        lines.push('');
+        lines.push(biaya);
+        lines.push('Status Pembayaran: ' + statusBayarLabel(sb));
+
+        if (p.catatan) {
+            lines.push('Catatan: ' + p.catatan);
+        }
+
+        lines.push('');
+        lines.push('Mohon konfirmasi pesanannya. Nota fisik akan saya terima saat pengambilan di warteg. Terima kasih.');
+
+        return 'https://wa.me/' + waWarteg + '?text=' + encodeURIComponent(lines.join('\n'));
+    }
+
+    function urlWaPelangganStatus(p, detailList, jenis, alasanTolak) {
+        var cleanWa = normalisasiWa(p && p.no_wa);
+        if (!cleanWa) return null;
+
+        var namaToko = CFG.NAMA_WARTEG || 'Warteg Pak Sanam';
+        var alamatToko = CFG.ALAMAT_WARTEG || 'Jalan BDN 1 Cilandak Barat Jakarta Selatan';
+        var rincian = buatTeksRincianItemWa(detailList);
+        var biaya = buatBlokRingkasanBiayaWa(p);
+        var mode = jenis || p.status || 'info';
+
+        var pembuka = '';
+        var penutup = 'Harap tunjukkan kode pesanan atau pesan WhatsApp ini saat pengambilan di warteg untuk menerima nota fisik. Terima kasih.';
+
+        if (mode === 'lunas') {
+            pembuka = 'Pembayaran pesanan katering Anda di *' + namaToko + '* dengan kode *' + p.kode + '* (' + Number(p.total_box || 0) + ' box) telah kami verifikasi *LUNAS*. Pesanan masuk daftar antrean dapur.';
+        } else if (mode === 'Sedang Dimasak') {
+            pembuka = 'Pesanan katering Anda di *' + namaToko + '* dengan kode *' + p.kode + '* (' + Number(p.total_box || 0) + ' box) saat ini *SEDANG DIMASAK* di dapur kami.';
+            penutup = 'Kami akan mengabari kembali setelah pesanan siap diambil. Nota fisik akan diserahkan saat pengambilan di warteg. Terima kasih.';
+        } else if (mode === 'Siap Diambil') {
+            pembuka = 'Pesanan katering Anda di *' + namaToko + '* dengan kode *' + p.kode + '* (' + Number(p.total_box || 0) + ' box) sudah *SIAP DIAMBIL*.';
+            penutup = 'Harap tunjukkan kode pesanan atau pesan WhatsApp ini saat pengambilan di warteg untuk menerima nota fisik. Terima kasih.';
+        } else if (mode === 'ditolak') {
+            var ketTolak = String(alasanTolak || p.alasan_tolak || '').trim();
+            pembuka = 'Bukti pembayaran pesanan katering *' + p.kode + '* di *' + namaToko + '* perlu diperbarui' + (ketTolak ? ' (' + ketTolak + ')' : '') + '.';
+            penutup = 'Silakan unggah ulang bukti pembayaran QRIS yang jelas melalui halaman pembayaran atau hubungi kami di nomor ini. Terima kasih.';
+        } else {
+            pembuka = 'Berikut informasi pesanan katering Anda di *' + namaToko + '* dengan kode *' + p.kode + '* (' + Number(p.total_box || 0) + ' box):';
+        }
+
+        var lines = [
+            'Halo *' + (p.nama_pelanggan || 'Pelanggan') + '*,',
+            '',
+            pembuka,
+            '',
+            'Jadwal Pengambilan:',
+            '- Tanggal: ' + tanggalId(p.tanggal_ambil),
+            '- Jam: ' + jamPendek(p.jam_ambil) + ' WIB',
+            '- Lokasi: ' + alamatToko
+        ];
+
+        if (rincian) {
+            lines.push('');
+            lines.push('Rincian Pesanan:');
+            lines.push(rincian);
+        }
+
+        lines.push('');
+        lines.push(biaya);
+
+        if (p.catatan) {
+            lines.push('Catatan: ' + p.catatan);
+        }
+
+        lines.push('');
+        lines.push(penutup);
+
+        return 'https://wa.me/' + cleanWa + '?text=' + encodeURIComponent(lines.join('\n'));
     }
 
     function formatIsoDate(dateObj) {
@@ -394,9 +524,12 @@
         normalisasiWa: normalisasiWa,
         isKategoriBoxUtama: isKategoriBoxUtama,
         unitMenu: unitMenu,
-        urlNota: urlNota,
+        urlStatus: urlStatus,
         urlPembayaran: urlPembayaran,
         urlInvoice: urlInvoice,
+        buatTeksRincianItemWa: buatTeksRincianItemWa,
+        urlWaWartegPesanan: urlWaWartegPesanan,
+        urlWaPelangganStatus: urlWaPelangganStatus,
         rupiah: rupiah,
         tanggalId: tanggalId,
         waktuId: waktuId,
@@ -1633,15 +1766,33 @@
             }
 
             var p = null;
+            var detailList = [];
             var now = new Date().toISOString();
 
             if (isSupabaseReady) {
                 try {
-                    var sel = await sb.from('pesanan').select('*').eq('id', pesananId).maybeSingle();
+                    var sel = await sb
+                        .from('pesanan')
+                        .select('*, detail_pesanan(*, menu(nama, kategori))')
+                        .eq('id', pesananId)
+                        .maybeSingle();
+                    if (sel.error) {
+                        sel = await sb.from('pesanan').select('*').eq('id', pesananId).maybeSingle();
+                    }
                     if (sel.error || !sel.data) {
                         return { ok: false, pesan: 'Pesanan tidak ditemukan di database.' };
                     }
                     p = sel.data;
+                    detailList = (p.detail_pesanan || []).map(function (d) {
+                        var kat = (d.menu && d.menu.kategori) || '';
+                        return {
+                            nama: d.nama_menu || (d.menu && d.menu.nama) || ('Menu #' + d.menu_id),
+                            unit: d.unit || unitMenu(kat),
+                            jumlah: d.jumlah,
+                            harga_satuan: d.harga_satuan,
+                            subtotal: d.subtotal
+                        };
+                    });
 
                     // Wajib lunas sebelum mulai dimasak (Temuan 16)
                     if (statusBaru === 'Sedang Dimasak' && p.status_bayar !== 'berhasil' && p.status_bayar !== 'lunas') {
@@ -1684,47 +1835,37 @@
                     };
                 }
 
+                var menuMapLocal = {};
+                (state.menu || []).forEach(function (m) { menuMapLocal[m.id] = m; });
+                detailList = (state.detail_pesanan || [])
+                    .filter(function (d) { return d.pesanan_id === p.id; })
+                    .map(function (d) {
+                        var m = menuMapLocal[d.menu_id] || {};
+                        return {
+                            nama: d.nama_menu || m.nama || ('Menu #' + d.menu_id),
+                            unit: d.unit || unitMenu(m.kategori || ''),
+                            jumlah: d.jumlah,
+                            harga_satuan: d.harga_satuan,
+                            subtotal: d.subtotal
+                        };
+                    });
+
                 p.status = statusBaru;
                 p.diubah_pada = now;
                 if (statusBaru === 'Selesai') p.diserahkan_pada = now;
                 saveLocalState(state);
             }
 
+            p.diskon = resolveDiskonPesanan(p);
+            if (p.nominal_bayar === undefined || p.nominal_bayar === null) {
+                p.nominal_bayar = Math.max(0, Number(p.total_harga || 0) - Number(p.diskon || 0));
+            }
+
             await this.catatAktivitas('ubah_status', 'Mengubah status ' + p.kode + ' menjadi ' + statusBaru);
 
             var waUrl = null;
             if ((statusBaru === 'Sedang Dimasak' || statusBaru === 'Siap Diambil') && p.no_wa) {
-                var cleanWa = normalisasiWa(p.no_wa);
-                if (cleanWa) {
-                    var origin = (typeof window !== 'undefined' && window.location && window.location.origin) ? window.location.origin : '';
-                    var pathname = (typeof window !== 'undefined' && window.location && window.location.pathname) ? window.location.pathname : '';
-                    var baseDir = pathname.replace(/\/admin\/[^/]*$/, '/');
-                    var notaFullUrl = (origin && pathname)
-                        ? (origin + baseDir + 'nota.html?kode=' + encodeURIComponent(p.kode || '') + (p.token_nota ? ('&t=' + encodeURIComponent(p.token_nota)) : ''))
-                        : ('nota.html?kode=' + encodeURIComponent(p.kode || ''));
-
-                    var pesanWa = '';
-                    if (statusBaru === 'Sedang Dimasak') {
-                        pesanWa = 'Halo *' + p.nama_pelanggan + '*,\n\n'
-                            + 'Pesanan nasi box Anda di *' + (CFG.NAMA_WARTEG || 'Warteg Pak Sanam') + '* dengan kode *' + p.kode + '* (' + p.total_box + ' box) saat ini *SEDANG DIMASAK* di dapur kami.\n\n'
-                            + 'Jadwal Pengambilan:\n'
-                            + '- Tanggal: ' + tanggalId(p.tanggal_ambil) + '\n'
-                            + '- Jam: ' + jamPendek(p.jam_ambil) + ' WIB\n'
-                            + '- Lokasi: ' + (CFG.ALAMAT_WARTEG || 'Jalan BDN 1 Cilandak Barat Jakarta Selatan') + '\n\n'
-                            + 'Tautan Nota Digital:\n' + notaFullUrl + '\n\n'
-                            + 'Kami akan mengabari kembali saat pesanan sudah siap diambil. Terima kasih.';
-                    } else if (statusBaru === 'Siap Diambil') {
-                        pesanWa = 'Halo *' + p.nama_pelanggan + '*,\n\n'
-                            + 'Pesanan nasi box Anda di *' + (CFG.NAMA_WARTEG || 'Warteg Pak Sanam') + '* dengan kode *' + p.kode + '* (' + p.total_box + ' box) sudah *SIAP DIAMBIL*.\n\n'
-                            + 'Silakan diambil sesuai jadwal:\n'
-                            + '- Tanggal: ' + tanggalId(p.tanggal_ambil) + '\n'
-                            + '- Jam: ' + jamPendek(p.jam_ambil) + ' WIB\n'
-                            + '- Lokasi: ' + (CFG.ALAMAT_WARTEG || 'Jalan BDN 1 Cilandak Barat Jakarta Selatan') + '\n\n'
-                            + 'Tautan Nota Digital:\n' + notaFullUrl + '\n\n'
-                            + 'Harap tunjukkan nota ini saat pengambilan di warteg. Terima kasih.';
-                    }
-                    waUrl = 'https://wa.me/' + cleanWa + '?text=' + encodeURIComponent(pesanWa);
-                }
+                waUrl = urlWaPelangganStatus(p, detailList, statusBaru);
             }
 
             return { ok: true, status: statusBaru, wa_url: waUrl };
@@ -1741,11 +1882,28 @@
 
             if (isSupabaseReady) {
                 try {
-                    var sel = await sb.from('pesanan').select('*').eq('id', pesananId).maybeSingle();
+                    var sel = await sb
+                        .from('pesanan')
+                        .select('*, detail_pesanan(*, menu(nama, kategori))')
+                        .eq('id', pesananId)
+                        .maybeSingle();
+                    if (sel.error) {
+                        sel = await sb.from('pesanan').select('*').eq('id', pesananId).maybeSingle();
+                    }
                     if (sel.error || !sel.data) {
                         return { ok: false, pesan: 'Pesanan tidak ditemukan di database.' };
                     }
                     var pCloud = sel.data;
+                    var detailCloud = (pCloud.detail_pesanan || []).map(function (d) {
+                        var kat = (d.menu && d.menu.kategori) || '';
+                        return {
+                            nama: d.nama_menu || (d.menu && d.menu.nama) || ('Menu #' + d.menu_id),
+                            unit: d.unit || unitMenu(kat),
+                            jumlah: d.jumlah,
+                            harga_satuan: d.harga_satuan,
+                            subtotal: d.subtotal
+                        };
+                    });
 
                     // Cegah setujui jika bukti bayar kosong (Temuan 7)
                     if (aksi === 'terima' && !pCloud.bukti_bayar) {
@@ -1795,8 +1953,18 @@
                         (aksi === 'terima' ? 'Menyetujui pembayaran ' : 'Menolak pembayaran ') + pCloud.kode
                     );
 
+                    pCloud.diskon = resolveDiskonPesanan(pCloud);
+                    if (pCloud.nominal_bayar === undefined || pCloud.nominal_bayar === null) {
+                        pCloud.nominal_bayar = Math.max(0, Number(pCloud.total_harga || 0) - Number(pCloud.diskon || 0));
+                    }
+                    var waCloud = pCloud.no_wa
+                        ? urlWaPelangganStatus(pCloud, detailCloud, aksi === 'terima' ? 'lunas' : 'ditolak', alasan)
+                        : null;
+
                     return {
                         ok: true,
+                        kode: pCloud.kode,
+                        wa_url: waCloud,
                         pesan: aksi === 'terima'
                             ? 'Pembayaran pesanan ' + pCloud.kode + ' berhasil diverifikasi (LUNAS).'
                             : 'Bukti pembayaran pesanan ' + pCloud.kode + ' telah ditolak.'
@@ -1843,8 +2011,32 @@
                 (aksi === 'terima' ? 'Menyetujui pembayaran ' : 'Menolak pembayaran ') + p.kode
             );
 
+            var menuMapVerif = {};
+            (state.menu || []).forEach(function (m) { menuMapVerif[m.id] = m; });
+            var detailVerif = (state.detail_pesanan || [])
+                .filter(function (d) { return d.pesanan_id === p.id; })
+                .map(function (d) {
+                    var m = menuMapVerif[d.menu_id] || {};
+                    return {
+                        nama: d.nama_menu || m.nama || ('Menu #' + d.menu_id),
+                        unit: d.unit || unitMenu(m.kategori || ''),
+                        jumlah: d.jumlah,
+                        harga_satuan: d.harga_satuan,
+                        subtotal: d.subtotal
+                    };
+                });
+            p.diskon = resolveDiskonPesanan(p);
+            if (p.nominal_bayar === undefined || p.nominal_bayar === null) {
+                p.nominal_bayar = Math.max(0, Number(p.total_harga || 0) - Number(p.diskon || 0));
+            }
+            var waLocal = p.no_wa
+                ? urlWaPelangganStatus(p, detailVerif, aksi === 'terima' ? 'lunas' : 'ditolak', alasan)
+                : null;
+
             return {
                 ok: true,
+                kode: p.kode,
+                wa_url: waLocal,
                 pesan: aksi === 'terima'
                     ? 'Pembayaran pesanan ' + p.kode + ' berhasil diverifikasi (LUNAS).'
                     : 'Bukti pembayaran pesanan ' + p.kode + ' telah ditolak.'

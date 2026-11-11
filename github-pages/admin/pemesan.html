@@ -81,10 +81,18 @@ document.addEventListener('DOMContentLoaded', async function () {
     var curHal = 1;
     var notifWrap = document.getElementById('notifPemesan');
 
-    function tampilNotif(msg, tipe) {
+    var notifTimer = null;
+    function tampilNotif(msg, tipe, waUrl) {
         if (!notifWrap) return;
-        notifWrap.innerHTML = '<div class="alert alert-' + (tipe || 'sukses') + '">' + DB.escapeHtml(msg) + '</div>';
-        setTimeout(function () { notifWrap.innerHTML = ''; }, 4500);
+        var extra = waUrl
+            ? ' <a href="' + DB.escapeHtml(waUrl) + '" target="_blank" rel="noopener" class="btn btn-wa btn-kecil">Kirim WhatsApp ke Pelanggan</a>'
+            : '';
+        notifWrap.innerHTML = '<div class="alert alert-' + (tipe || 'sukses') + '" style="justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">'
+            + '<span>' + DB.escapeHtml(msg) + '</span>'
+            + extra
+            + '</div>';
+        if (notifTimer) clearTimeout(notifTimer);
+        notifTimer = setTimeout(function () { notifWrap.innerHTML = ''; }, waUrl ? 15000 : 4500);
     }
 
     var urlParams = new URLSearchParams(window.location.search);
@@ -101,8 +109,8 @@ document.addEventListener('DOMContentLoaded', async function () {
                 tampilNotif((h && h.pesan) || 'Gagal memperbarui status pesanan.', 'galat');
                 return false;
             }
-            if (h.wa_url) window.open(h.wa_url, '_blank');
-            tampilNotif('Status pesanan ' + kode + ' diperbarui.', 'sukses');
+            if (h.wa_url) window.open(h.wa_url, '_blank', 'noopener');
+            tampilNotif('Status pesanan ' + kode + ' diperbarui.', 'sukses', h.wa_url || '');
             return true;
         } catch (err) {
             tampilNotif('Gangguan koneksi saat memperbarui status pesanan.', 'galat');
@@ -171,9 +179,11 @@ document.addEventListener('DOMContentLoaded', async function () {
                     if (!item) return;
 
                     var isi = document.getElementById('modalIsi');
-                    var cleanWa = DB.normalisasiWa(item.no_wa);
-                    var waLink = cleanWa ? 'https://wa.me/' + cleanWa : '';
                     var lunas = (item.status_bayar === 'berhasil' || item.status_bayar === 'lunas');
+                    var jenisWaModal = item.status === 'Siap Diambil'
+                        ? 'Siap Diambil'
+                        : (item.status === 'Sedang Dimasak' ? 'Sedang Dimasak' : (lunas ? 'lunas' : 'info'));
+                    var waLink = DB.urlWaPelangganStatus(item, item.items || [], jenisWaModal);
                     var nominalBersih = item.nominal_bayar || item.total_harga;
 
                     var h = '<div style="background:#f5f3ef;border:1px solid var(--garis);border-radius:8px;padding:14px;margin-bottom:16px;">'
@@ -237,11 +247,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                         + '<div style="display:flex;gap:8px;flex-wrap:wrap;">';
 
                     if (waLink) {
-                        h += '<a href="' + waLink + '" target="_blank" rel="noopener" class="btn btn-secondary btn-kecil">Chat WhatsApp</a>';
-                    }
-                    if (item.token_nota) {
-                        var notaHref = DB.urlNota(item.kode, item.token_nota, '../');
-                        h += '<a href="' + notaHref + '" target="_blank" rel="noopener" class="btn btn-secondary btn-kecil">Buka Nota Digital</a>';
+                        h += '<a href="' + DB.escapeHtml(waLink) + '" target="_blank" rel="noopener" class="btn btn-wa btn-kecil">Chat WhatsApp</a>';
                     }
 
                     h += '</div><div style="display:flex;gap:8px;flex-wrap:wrap;">';
