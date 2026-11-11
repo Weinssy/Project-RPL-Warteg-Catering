@@ -68,9 +68,9 @@
         return isKategoriBoxUtama(kategori) ? 'box' : 'porsi';
     }
 
-    function urlStatus(kode, prefix) {
-        var pre = prefix || '';
-        return pre + 'cek_status.html' + (kode ? ('?kode=' + encodeURIComponent(kode)) : '');
+    function urlStatus(waOrPrefix, maybePrefix) {
+        var pre = maybePrefix || ((waOrPrefix === '../' || waOrPrefix === './') ? waOrPrefix : '');
+        return pre + 'cek_status.html';
     }
 
     function urlPembayaran(kode, token, prefix) {
@@ -1265,36 +1265,133 @@
             return { pesanan: pLocal, detail: detailLocal };
         },
 
-        cariPesanan: async function (kode, no_wa) {
-            var kodeClean = String(kode || '').trim().toUpperCase();
+        cariPesananByWa: async function (no_wa) {
+            var rawDigits = String(no_wa || '').replace(/\D/g, '');
             var waInput = normalisasiWa(no_wa);
-            if (!kodeClean || !waInput || waInput.length < 9) return null;
+            if (!rawDigits || rawDigits.length < 9 || !waInput || waInput.length < 9) return [];
+
+            var mapDetailCloud = function (p) {
+                return (p.detail_pesanan || []).map(function (d) {
+                    var kat = (d.menu && d.menu.kategori) || '';
+                    return {
+                        id: d.id,
+                        menu_id: d.menu_id,
+                        nama: d.nama_menu || (d.menu && d.menu.nama) || ('Menu #' + d.menu_id),
+                        foto: (d.menu && d.menu.foto) || null,
+                        kategori: kat,
+                        unit: d.unit || unitMenu(kat),
+                        jumlah: d.jumlah,
+                        harga_satuan: d.harga_satuan,
+                        subtotal: d.subtotal
+                    };
+                });
+            };
 
             if (isSupabaseReady) {
                 try {
+                    var tail = waInput.slice(-6);
+                    var pattern = '%' + tail.split('').join('%') + '%';
                     var res = await sb
                         .from('pesanan')
                         .select('*, detail_pesanan(*, menu(nama, foto, kategori))')
-                        .eq('kode', kodeClean)
-                        .maybeSingle();
+                        .ilike('no_wa', pattern)
+                        .order('dibuat_pada', { ascending: false })
+                        .order('id', { ascending: false });
 
-                    if (!res.error && res.data) {
-                        var pCloud = res.data;
-                        var waDb = normalisasiWa(pCloud.no_wa);
-                        if (waDb !== waInput) return null;
-                        return await this.getPesanan(pCloud.kode, pCloud.token_nota);
+                    if (!res.error && Array.isArray(res.data)) {
+                        var matched = res.data.filter(function (row) {
+                            return normalisasiWa(row.no_wa) === waInput;
+                        });
+                        var outCloud = [];
+                        for (var i = 0; i < matched.length; i++) {
+                            var pCloud = matched[i];
+                            pCloud.diskon = resolveDiskonPesanan(pCloud);
+                            if (pCloud.nominal_bayar === undefined || pCloud.nominal_bayar === null) {
+                                pCloud.nominal_bayar = Math.max(0, Number(pCloud.total_harga || 0) - Number(pCloud.diskon || 0));
+                            }
+                            if (
+                                (pCloud.status_bayar === 'belum_bayar' || pCloud.status_bayar === 'menunggu') &&
+                                pCloud.bayar_kedaluwarsa_pada &&
+                                new Date(pCloud.bayar_kedaluwarsa_pada).getTime() < Date.now() &&
+                                pCloud.status !== 'Dibatalkan'
+                            ) {
+                                pCloud.status_bayar = 'kedaluwarsa';
+                                pCloud.status = 'Dibatalkan';
+                                await sb.from('pesanan').update({
+                                    status_bayar: 'kedaluwarsa',
+                                    status: 'Dibatalkan'
+                                }).eq('id', pCloud.id);
+                            }
+                            outCloud.push({ pesanan: pCloud, detail: mapDetailCloud(pCloud) });
+                        }
+                        return outCloud;
                     }
                 } catch (e) {
-                    console.warn('Fallback cariPesanan:', e);
+                    console.warn('Fallback cariPesananByWa:', e);
                 }
             }
 
             var state = getLocalState();
-            var p = (state.pesanan || []).find(function (x) {
-                return x.kode.toUpperCase() === kodeClean && normalisasiWa(x.no_wa) === waInput;
+            var menuMap = {};
+            (state.menu || []).forEach(function (m) { menuMap[m.id] = m; });
+
+            var matchedLocal = (state.pesanan || []).filter(function (x) {
+                return normalisasiWa(x.no_wa) === waInput;
+            }).sort(function (a, b) {
+                var cmpTime = String(b.dibuat_pada || '').localeCompare(String(a.dibuat_pada || ''));
+                return cmpTime !== 0 ? cmpTime : (Number(b.id || 0) - Number(a.id || 0));
             });
-            if (!p) return null;
-            return await this.getPesanan(p.kode, p.token_nota);
+
+            var dirty = false;
+            var outLocal = matchedLocal.map(function (pLocal) {
+                pLocal.diskon = resolveDiskonPesanan(pLocal);
+                if (pLocal.nominal_bayar === undefined || pLocal.nominal_bayar === null) {
+                    pLocal.nominal_bayar = Math.max(0, Number(pLocal.total_harga || 0) - Number(pLocal.diskon || 0));
+                }
+                if (
+                    (pLocal.status_bayar === 'belum_bayar' || pLocal.status_bayar === 'menunggu') &&
+                    pLocal.bayar_kedaluwarsa_pada &&
+                    new Date(pLocal.bayar_kedaluwarsa_pada).getTime() < Date.now() &&
+                    pLocal.status !== 'Dibatalkan'
+                ) {
+                    pLocal.status_bayar = 'kedaluwarsa';
+                    pLocal.status = 'Dibatalkan';
+                    dirty = true;
+                }
+                var detailLocal = (state.detail_pesanan || [])
+                    .filter(function (d) { return d.pesanan_id === pLocal.id; })
+                    .map(function (d) {
+                        var m = menuMap[d.menu_id] || {};
+                        return {
+                            id: d.id,
+                            menu_id: d.menu_id,
+                            nama: d.nama_menu || m.nama || ('Menu #' + d.menu_id),
+                            foto: m.foto || null,
+                            kategori: m.kategori || '',
+                            unit: d.unit || unitMenu(m.kategori || ''),
+                            jumlah: d.jumlah,
+                            harga_satuan: d.harga_satuan,
+                            subtotal: d.subtotal
+                        };
+                    });
+                return { pesanan: pLocal, detail: detailLocal };
+            });
+
+            if (dirty) saveLocalState(state);
+            return outLocal;
+        },
+
+        cariPesanan: async function (arg1, arg2) {
+            if (arg2 === undefined || arg2 === null || String(arg2).trim() === '') {
+                var list = await this.cariPesananByWa(arg1);
+                return list.length ? list[0] : null;
+            }
+            var kodeClean = String(arg1 || '').trim().toUpperCase();
+            if (!kodeClean) return null;
+            var listByWa = await this.cariPesananByWa(arg2);
+            return listByWa.find(function (item) {
+                return item && item.pesanan && String(item.pesanan.kode || '').toUpperCase() === kodeClean;
+            }) || null;
         },
 
         // -------------------------------------------------------------

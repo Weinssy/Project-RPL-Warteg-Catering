@@ -304,7 +304,7 @@
                 var sb = p.status_bayar || 'belum_bayar';
                 var lunas = (sb === 'berhasil' || sb === 'lunas');
                 var nomorInv = 'INV/' + (p.dibuat_pada || new Date().toISOString()).slice(0, 10).replace(/-/g, '') + '/' + p.kode;
-                var urlStatus = DB.urlStatus(p.kode);
+                var urlStatus = DB.urlStatus();
                 var urlWaWarteg = DB.urlWaWartegPesanan(p, detail);
                 var urlBayar = DB.urlPembayaran(p.kode, p.token_nota);
 

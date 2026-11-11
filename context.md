@@ -158,7 +158,7 @@ Repositori mendukung dua lingkungan deployment:
 | `POST` | `RPC: buat_pesanan_katering` | `db-service.js` | Eksekusi transaksi kuota dapur 120 box & pemotongan voucher diskon. |
 | `GET` | `pembayaran.html` | `pembayaran.html` | Informasi tagihan bersih, QRIS Statis Warteg Pak Sanam, upload bukti transfer, tautan WA konfirmasi otomatis. |
 | `GET` | `invoice.html` | `invoice.html` | Lembar invoice opsional status LUNAS siap cetak/simpan PDF (nota fisik diserahkan di warteg). |
-| `GET` | `cek_status.html` | `cek_status.html` | Portal pengecekan status pesanan publik via kode pesanan + nomor WhatsApp dan tombol konfirmasi WA. |
+| `GET` | `cek_status.html` | `cek_status.html` | Portal pengecekan status pesanan publik cukup via nomor WhatsApp (menampilkan daftar pesanan terkait urut terbaru) dan tombol konfirmasi WA. |
 | `GET` | `admin/login.html` | `admin-app.js` | Form autentikasi staf pengelola Warteg Pak Sanam. |
 | `GET` | `admin/index.html` | `admin-app.js` | Dashboard kapasitas kuota harian & antrean dapur. |
 | `GET` | `admin/verifikasi.html` | `admin-app.js` | Verifikasi bukti bayar QRIS pelanggan (Setujui Lunas / Tolak). |

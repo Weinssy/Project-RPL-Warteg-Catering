@@ -63,7 +63,7 @@ Ikuti 3 langkah mudah berikut saat Anda siap menghubungkan Supabase:
 * **`index.html`** : Halaman utama (Hero, Cek Kuota 120 Box saat scroll down, Katalog/Meal Builder, Alur Pengambilan).
 * **`checkout.html`** : Formulir data pemesan, pemilihan jadwal pengambilan, dan perhitungan voucher diskon 5% untuk pesanan 80 box atau lebih.
 * **`cara-pemesanan.html`** : Panduan 7 langkah pemesanan mandiri dan ketentuan dapur.
-* **`cek_status.html`** : Cek status pesanan secara mandiri menggunakan **Kode Pesanan + No. WhatsApp** beserta tautan konfirmasi WhatsApp.
+* **`cek_status.html`** : Cek status pesanan secara mandiri cukup dengan **No. WhatsApp** (menampilkan daftar pesanan terkait urut terbaru) beserta tautan konfirmasi WhatsApp.
 * **`pembayaran.html`** : Halaman pembayaran QRIS Statis, unggah bukti pembayaran, serta tombol kirim konfirmasi otomatis via WhatsApp (`wa.me`).
 * **`invoice.html`** : Halaman invoice opsional (format cetak PDF / print view) saat status pembayaran LUNAS; nota fisik resmi diserahkan saat pengambilan di warteg.
 

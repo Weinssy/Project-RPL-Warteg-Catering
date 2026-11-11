@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Lacak status pesanan nasi box dan katering Warteg Pak Sanam dengan memasukkan kode pesanan dan nomor WhatsApp.">
+    <meta name="description" content="Lacak status pesanan nasi box dan katering Warteg Pak Sanam cukup dengan memasukkan nomor WhatsApp Anda.">
     <title>Cek Status Pesanan - Warteg Pak Sanam</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -40,7 +40,6 @@
             </a>
             <nav class="cust-links" id="custLinks" aria-label="Navigasi utama">
                 <a href="index.html">Beranda</a>
-                <a href="index.html#katalog">Katalog Menu</a>
                 <a href="cara-pemesanan.html">Cara Pemesanan</a>
                 <a href="cek_status.html" class="aktif">Cek Status</a>
                 <a href="admin/login.html" class="link-admin">Login Admin</a>
@@ -60,27 +59,22 @@
             <div class="wadah" style="max-width:640px">
                 <div class="seksi-kepala">
                     <h1>Cek Status Pesanan Katering</h1>
-                    <p>Masukkan kode pesanan dan nomor WhatsApp yang Anda gunakan saat memesan untuk melihat progres persiapan pesanan Anda.</p>
+                    <p>Masukkan nomor WhatsApp yang Anda gunakan saat memesan untuk melihat status pembayaran dan progres persiapan pesanan Anda.</p>
                 </div>
 
                 <div class="panel-putih" style="margin-bottom:24px;border:1px solid var(--c-garis);">
                     <form id="formCekStatus" autocomplete="off" novalidate>
                         <div class="form-baris">
-                            <label for="kode">Kode Pesanan</label>
-                            <input type="text" class="input" id="kode" name="kode" required placeholder="Contoh: WRT-20261109-001" style="text-transform:uppercase;">
-                            <div class="bantuan">Tercantum setelah checkout, pada pesan WhatsApp konfirmasi, atau di halaman invoice.</div>
-                        </div>
-                        <div class="form-baris">
                             <label for="no_wa">Nomor WhatsApp Pemesan</label>
-                            <input type="tel" class="input" id="no_wa" name="no_wa" required placeholder="Contoh: 081234567890" inputmode="tel">
-                            <div class="bantuan">Nomor yang dicantumkan saat formulir checkout diisi.</div>
+                            <input type="tel" class="input" id="no_wa" name="no_wa" required autocomplete="tel" placeholder="Contoh: 081234567890" inputmode="tel">
+                            <div class="bantuan">Nomor WhatsApp yang Anda cantumkan saat mengisi formulir checkout (format 08... atau 62...).</div>
                         </div>
                         <div class="alert alert-galat" id="galatCek" style="display:none;margin-bottom:14px;" role="alert"></div>
                         <button type="submit" class="btn btn-primer btn-blok" id="btnCek">Cek Status Sekarang</button>
                     </form>
                 </div>
 
-                <div id="hasilWrap" style="display:none;"></div>
+                <div id="hasilWrap" style="display:none;" aria-live="polite"></div>
             </div>
         </section>
     </main>
@@ -125,16 +119,136 @@
     </footer>
 
     <script>
-    document.addEventListener('DOMContentLoaded', function () {
+    (function () {
+        var btnToggle = document.getElementById('custToggle');
+        var navLinks = document.getElementById('custLinks');
+        if (btnToggle && navLinks && !btnToggle.dataset.boundToggle) {
+            btnToggle.dataset.boundToggle = '1';
+            btnToggle.addEventListener('click', function () {
+                var buka = navLinks.classList.toggle('buka');
+                btnToggle.setAttribute('aria-expanded', buka ? 'true' : 'false');
+            });
+            navLinks.querySelectorAll('a').forEach(function (a) {
+                a.addEventListener('click', function () {
+                    navLinks.classList.remove('buka');
+                    btnToggle.setAttribute('aria-expanded', 'false');
+                });
+            });
+            document.addEventListener('keydown', function (ev) {
+                if (ev.key === 'Escape' && navLinks.classList.contains('buka')) {
+                    navLinks.classList.remove('buka');
+                    btnToggle.setAttribute('aria-expanded', 'false');
+                    btnToggle.focus();
+                }
+            });
+        }
+
+        function tungguDbSiap() {
+            if (window.WARTEG_DB) return Promise.resolve(window.WARTEG_DB);
+            return new Promise(function (resolve, reject) {
+                if (document.readyState !== 'loading') {
+                    return window.WARTEG_DB ? resolve(window.WARTEG_DB) : reject(new Error('Layanan data belum siap'));
+                }
+                document.addEventListener('DOMContentLoaded', function () {
+                    if (window.WARTEG_DB) resolve(window.WARTEG_DB);
+                    else reject(new Error('Layanan data belum siap'));
+                }, { once: true });
+            });
+        }
+
         var form = document.getElementById('formCekStatus');
         var galat = document.getElementById('galatCek');
         var hasilWrap = document.getElementById('hasilWrap');
         var btn = document.getElementById('btnCek');
+        var inputWa = document.getElementById('no_wa');
 
         var params = new URLSearchParams(window.location.search);
-        var kodeAwal = (params.get('kode') || '').trim().toUpperCase();
-        if (kodeAwal) {
-            document.getElementById('kode').value = kodeAwal;
+        var waAwal = (params.get('no_wa') || params.get('wa') || '').trim();
+        if (waAwal && inputWa) {
+            inputWa.value = waAwal;
+        }
+
+        function renderKartuPesanan(data, indeks, totalJumlah) {
+            var DB = window.WARTEG_DB;
+            var p = data.pesanan;
+            var detail = data.detail || [];
+            var sb = p.status_bayar || 'belum_bayar';
+            var lunas = (sb === 'berhasil' || sb === 'lunas');
+            var urlBayar = DB.urlPembayaran(p.kode, p.token_nota);
+            var urlInvoice = DB.urlInvoice(p.kode, p.token_nota);
+            var urlWaWarteg = DB.urlWaWartegPesanan(p, detail);
+            var nominalBersih = p.nominal_bayar || p.total_harga;
+
+            var itemRowsHtml = '';
+            if (detail.length) {
+                itemRowsHtml = '<div style="margin-bottom:16px;overflow-x:auto;">'
+                    + '<h3 style="font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--c-redup);margin:0 0 8px;">Rincian Menu (' + Number(p.total_box || 0) + ' box)</h3>'
+                    + '<table class="nota-rincian-tabel">'
+                    + '<thead><tr><th>Menu</th><th>Jml</th><th>Subtotal</th></tr></thead><tbody>';
+                detail.forEach(function (d) {
+                    var u = d.unit || 'box';
+                    itemRowsHtml += '<tr>'
+                        + '<td>' + DB.escapeHtml(d.nama) + '</td>'
+                        + '<td>' + Number(d.jumlah || 0) + ' ' + DB.escapeHtml(u) + '</td>'
+                        + '<td><strong>' + DB.rupiah(d.subtotal) + '</strong></td>'
+                        + '</tr>';
+                });
+                itemRowsHtml += '</tbody></table></div>';
+            }
+
+            var diskonHtml = '';
+            if (p.diskon > 0) {
+                diskonHtml = '<div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;"><span style="color:var(--c-redup);">Subtotal Menu</span><span>' + DB.rupiah(p.total_harga) + '</span></div>'
+                    + '<div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;color:#1b6e44;"><span>Voucher Diskon</span><strong>- ' + DB.rupiah(p.diskon) + '</strong></div>';
+            }
+
+            var alertTolakHtml = '';
+            if (sb === 'ditolak' && p.status !== 'Dibatalkan') {
+                alertTolakHtml = '<div class="alert alert-galat" style="margin-bottom:14px;font-size:13px;">'
+                    + '<strong>Bukti pembayaran sebelumnya ditolak.</strong>'
+                    + (p.alasan_tolak ? ' Alasan: ' + DB.escapeHtml(p.alasan_tolak) : ' Silakan unggah ulang bukti transfer QRIS melalui halaman pembayaran.')
+                    + '</div>';
+            }
+
+            var labelNomor = totalJumlah > 1 ? ' (' + (indeks + 1) + ' dari ' + totalJumlah + ')' : '';
+
+            var html = '<article class="nota-kartu" style="border:1px solid var(--c-garis);border-radius:12px;background:#ffffff;padding:24px;box-shadow:var(--c-bayang);margin:0 auto 18px;">'
+                + '<div style="border-bottom:1px solid var(--c-garis);padding-bottom:14px;margin-bottom:16px;">'
+                + '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:6px;">'
+                + '<h2 style="margin:0;font-size:18px;color:var(--c-teks);">Informasi Status Pesanan' + labelNomor + '</h2>'
+                + (p.dibuat_pada ? '<span style="font-size:12px;color:var(--c-redup);">Dipesan: ' + DB.waktuId(p.dibuat_pada) + '</span>' : '')
+                + '</div>'
+                + '<div style="font-family:var(--font-mono);font-size:16px;font-weight:700;color:var(--c-primer);">' + DB.escapeHtml(p.kode) + '</div>'
+                + '</div>'
+                + '<div>'
+                + '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">'
+                + '<span class="badge ' + DB.kelasStatusBayar(sb) + '">Pembayaran: ' + DB.escapeHtml(DB.statusBayarLabel(sb)) + '</span>'
+                + DB.badgeStatus(p.status)
+                + '</div>'
+                + alertTolakHtml
+                + '<div style="margin-bottom:16px;display:grid;gap:8px;background:var(--c-bg);padding:14px;border-radius:8px;font-size:14px;">'
+                + '<div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;"><span style="color:var(--c-redup);">Nama Pemesan</span><strong>' + DB.escapeHtml(p.nama_pelanggan) + '</strong></div>'
+                + '<div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;"><span style="color:var(--c-redup);">No. WhatsApp</span><strong>' + DB.escapeHtml(p.no_wa) + '</strong></div>'
+                + '<div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;"><span style="color:var(--c-redup);">Jadwal Pengambilan</span><strong>' + DB.tanggalId(p.tanggal_ambil) + ', ' + DB.jamPendek(p.jam_ambil) + ' WIB</strong></div>'
+                + '<div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;"><span style="color:var(--c-redup);">Lokasi Ambil</span><strong>Warteg Pak Sanam, Jl. BDN 1 Cilandak Barat</strong></div>'
+                + '<div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;"><span style="color:var(--c-redup);">Jumlah Pesanan</span><strong>' + Number(p.total_box || 0) + ' box</strong></div>'
+                + diskonHtml
+                + '<div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;"><span style="color:var(--c-redup);">Total Tagihan</span><strong style="color:var(--c-primer);font-size:16px;">' + DB.rupiah(nominalBersih) + '</strong></div>'
+                + (p.catatan ? '<div style="border-top:1px dashed var(--c-garis);padding-top:8px;font-size:13px;color:var(--c-redup);">Catatan: <em>' + DB.escapeHtml(p.catatan) + '</em></div>' : '')
+                + '</div>'
+                + itemRowsHtml
+                + '<p style="margin:0 0 16px;padding:10px 12px;background:#faf7f2;border:1px solid var(--c-garis);border-radius:8px;font-size:13px;color:var(--c-redup);">Tunjukkan kode pesanan ini saat pengambilan di warteg untuk menerima <strong>nota fisik</strong>.</p>'
+                + '<div style="display:flex;gap:10px;flex-wrap:wrap">'
+                + '<a href="' + DB.escapeHtml(urlWaWarteg) + '" target="_blank" rel="noopener" class="btn btn-wa btn-kecil">Konfirmasi via WhatsApp</a>';
+
+            if (['belum_bayar', 'menunggu', 'ditolak'].indexOf(sb) >= 0 && p.status !== 'Dibatalkan') {
+                html += '<a href="' + DB.escapeHtml(urlBayar) + '" class="btn btn-primer btn-kecil">' + (sb === 'ditolak' ? 'Unggah Ulang Bukti Bayar' : 'Lanjutkan Pembayaran') + '</a>';
+            } else if (lunas) {
+                html += '<a href="' + DB.escapeHtml(urlInvoice) + '" class="btn btn-primer btn-kecil">Lihat &amp; Cetak Invoice</a>';
+            }
+
+            html += '</div></div></article>';
+            return html;
         }
 
         form.addEventListener('submit', async function (e) {
@@ -143,11 +257,18 @@
             hasilWrap.style.display = 'none';
             hasilWrap.innerHTML = '';
 
-            var kode = (document.getElementById('kode').value || '').trim().toUpperCase();
-            var wa = (document.getElementById('no_wa').value || '').trim();
-            if (!kode || !wa) {
-                galat.textContent = 'Isi kode pesanan dan nomor WhatsApp terlebih dahulu.';
+            var wa = (inputWa ? inputWa.value : '').trim();
+            var waDigits = wa.replace(/\D/g, '');
+            if (!wa) {
+                galat.textContent = 'Isi nomor WhatsApp pemesan terlebih dahulu.';
                 galat.style.display = 'block';
+                if (inputWa) inputWa.focus();
+                return;
+            }
+            if (waDigits.length < 9) {
+                galat.textContent = 'Masukkan nomor WhatsApp yang valid (minimal 9 digit angka).';
+                galat.style.display = 'block';
+                if (inputWa) inputWa.focus();
                 return;
             }
 
@@ -155,80 +276,25 @@
             btn.textContent = 'Mencari pesanan...';
 
             try {
-                var data = await window.WARTEG_DB.cariPesanan(kode, wa);
+                var DB = await tungguDbSiap();
+                var daftar = await DB.cariPesananByWa(wa);
                 btn.disabled = false;
                 btn.textContent = 'Cek Status Sekarang';
 
-                if (!data || !data.pesanan) {
-                    galat.textContent = 'Pesanan tidak ditemukan. Periksa kembali kode pesanan dan nomor WhatsApp Anda.';
+                if (!Array.isArray(daftar) || !daftar.length) {
+                    galat.textContent = 'Pesanan dengan nomor WhatsApp tersebut tidak ditemukan. Periksa kembali nomor yang Anda masukkan.';
                     galat.style.display = 'block';
                     return;
                 }
 
-                var p = data.pesanan;
-                var detail = data.detail || [];
-                var sb = p.status_bayar || 'belum_bayar';
-                var lunas = (sb === 'berhasil' || sb === 'lunas');
-                var DB = window.WARTEG_DB;
-                var urlBayar = DB.urlPembayaran(p.kode, p.token_nota);
-                var urlInvoice = DB.urlInvoice(p.kode, p.token_nota);
-                var urlWaWarteg = DB.urlWaWartegPesanan(p, detail);
-                var nominalBersih = p.nominal_bayar || p.total_harga;
-
-                var itemRowsHtml = '';
-                if (detail.length) {
-                    itemRowsHtml = '<div style="margin-bottom:16px;">'
-                        + '<h3 style="font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--c-redup);margin:0 0 8px;">Rincian Menu (' + Number(p.total_box || 0) + ' box)</h3>'
-                        + '<table class="nota-rincian-tabel">'
-                        + '<thead><tr><th>Menu</th><th>Jml</th><th>Subtotal</th></tr></thead><tbody>';
-                    detail.forEach(function (d) {
-                        var u = d.unit || 'box';
-                        itemRowsHtml += '<tr>'
-                            + '<td>' + DB.escapeHtml(d.nama) + '</td>'
-                            + '<td>' + Number(d.jumlah || 0) + ' ' + DB.escapeHtml(u) + '</td>'
-                            + '<td><strong>' + DB.rupiah(d.subtotal) + '</strong></td>'
-                            + '</tr>';
-                    });
-                    itemRowsHtml += '</tbody></table></div>';
+                var html = '';
+                if (daftar.length > 1) {
+                    html += '<p style="margin:0 0 12px;font-size:13.5px;color:var(--c-redup);">Ditemukan <strong>' + daftar.length + ' pesanan</strong> untuk nomor WhatsApp <strong>' + DB.escapeHtml(wa) + '</strong> (diurutkan dari yang terbaru):</p>';
                 }
+                daftar.forEach(function (item, idx) {
+                    html += renderKartuPesanan(item, idx, daftar.length);
+                });
 
-                var diskonHtml = '';
-                if (p.diskon > 0) {
-                    diskonHtml = '<div style="display:flex;justify-content:space-between;gap:12px;"><span style="color:var(--c-redup);">Subtotal Menu</span><span>' + DB.rupiah(p.total_harga) + '</span></div>'
-                        + '<div style="display:flex;justify-content:space-between;gap:12px;color:#1b6e44;"><span>Voucher Diskon</span><strong>- ' + DB.rupiah(p.diskon) + '</strong></div>';
-                }
-
-                var html = '<div class="nota-kartu" style="border:1px solid var(--c-garis);border-radius:12px;background:#ffffff;padding:24px;box-shadow:var(--c-bayang);">'
-                    + '<div style="border-bottom:1px solid var(--c-garis);padding-bottom:14px;margin-bottom:16px;">'
-                    + '<h2 style="margin:0 0 6px;font-size:18px;color:var(--c-teks);">Informasi Status Pesanan</h2>'
-                    + '<div style="font-family:var(--font-mono);font-size:16px;font-weight:700;color:var(--c-primer);">' + DB.escapeHtml(p.kode) + '</div>'
-                    + '</div>'
-                    + '<div>'
-                    + '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">'
-                    + '<span class="badge ' + DB.kelasStatusBayar(sb) + '">Pembayaran: ' + DB.escapeHtml(DB.statusBayarLabel(sb)) + '</span>'
-                    + DB.badgeStatus(p.status)
-                    + '</div>'
-                    + '<div style="margin-bottom:16px;display:grid;gap:8px;background:var(--c-bg);padding:14px;border-radius:8px;font-size:14px;">'
-                    + '<div style="display:flex;justify-content:space-between;gap:12px;"><span style="color:var(--c-redup);">Nama Pemesan</span><strong>' + DB.escapeHtml(p.nama_pelanggan) + '</strong></div>'
-                    + '<div style="display:flex;justify-content:space-between;gap:12px;"><span style="color:var(--c-redup);">Jadwal Pengambilan</span><strong>' + DB.tanggalId(p.tanggal_ambil) + ', ' + DB.jamPendek(p.jam_ambil) + ' WIB</strong></div>'
-                    + '<div style="display:flex;justify-content:space-between;gap:12px;"><span style="color:var(--c-redup);">Lokasi Ambil</span><strong>Warteg Pak Sanam, Jl. BDN 1 Cilandak Barat</strong></div>'
-                    + '<div style="display:flex;justify-content:space-between;gap:12px;"><span style="color:var(--c-redup);">Jumlah Pesanan</span><strong>' + Number(p.total_box || 0) + ' box</strong></div>'
-                    + diskonHtml
-                    + '<div style="display:flex;justify-content:space-between;gap:12px;"><span style="color:var(--c-redup);">Total Tagihan</span><strong style="color:var(--c-primer);font-size:16px;">' + DB.rupiah(nominalBersih) + '</strong></div>'
-                    + (p.catatan ? '<div style="border-top:1px dashed var(--c-garis);padding-top:8px;font-size:13px;color:var(--c-redup);">Catatan: <em>' + DB.escapeHtml(p.catatan) + '</em></div>' : '')
-                    + '</div>'
-                    + itemRowsHtml
-                    + '<p style="margin:0 0 16px;padding:10px 12px;background:#faf7f2;border:1px solid var(--c-garis);border-radius:8px;font-size:13px;color:var(--c-redup);">Tunjukkan kode pesanan ini saat pengambilan di warteg untuk menerima <strong>nota fisik</strong>.</p>'
-                    + '<div style="display:flex;gap:10px;flex-wrap:wrap">'
-                    + '<a href="' + DB.escapeHtml(urlWaWarteg) + '" target="_blank" rel="noopener" class="btn btn-wa btn-kecil">Konfirmasi via WhatsApp</a>';
-
-                if (['belum_bayar', 'menunggu', 'ditolak'].indexOf(sb) >= 0 && p.status !== 'Dibatalkan') {
-                    html += '<a href="' + DB.escapeHtml(urlBayar) + '" class="btn btn-primer btn-kecil">Lanjutkan Pembayaran</a>';
-                } else if (lunas) {
-                    html += '<a href="' + DB.escapeHtml(urlInvoice) + '" class="btn btn-primer btn-kecil">Lihat &amp; Cetak Invoice</a>';
-                }
-
-                html += '</div></div></div>';
                 hasilWrap.innerHTML = html;
                 hasilWrap.style.display = 'block';
             } catch (err) {
@@ -238,7 +304,7 @@
                 galat.style.display = 'block';
             }
         });
-    });
+    })();
     </script>
 </body>
 </html>

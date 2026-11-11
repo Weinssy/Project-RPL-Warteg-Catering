@@ -203,7 +203,7 @@
                 statusPesananTerakhir = p.status;
 
                 var urlWaWarteg = DB.urlWaWartegPesanan(p, data.detail || []);
-                var urlStatus = DB.urlStatus(p.kode);
+                var urlStatus = DB.urlStatus();
                 var urlInvoice = DB.urlInvoice(p.kode, p.token_nota);
 
                 var qrisGambar = cfg.qris_gambar || 'qris_warteg.svg';
