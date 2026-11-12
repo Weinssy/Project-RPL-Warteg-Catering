@@ -511,6 +511,34 @@
         };
     }
 
+    function getAdminToken() {
+        try {
+            var raw = localStorage.getItem(SESSION_KEY);
+            if (!raw) return '';
+            var parsed = JSON.parse(raw);
+            return (parsed && parsed.session_token) ? String(parsed.session_token) : '';
+        } catch (e) {
+            return '';
+        }
+    }
+
+    function isRpcMissingError(err) {
+        if (!err) return false;
+        var code = String(err.code || '');
+        var msg = String(err.message || '');
+        return code === 'PGRST202' || code === '42883' || /Could not find the function/i.test(msg);
+    }
+
+    function tanganiAuthExpired(resData) {
+        if (resData && resData.auth_expired) {
+            try {
+                localStorage.removeItem(SESSION_KEY);
+            } catch (e) {}
+            return true;
+        }
+        return false;
+    }
+
     // =================================================================
     // API PUBLIC SERVICE (DIPANGGIL OLEH CUSTOMER & ADMIN)
     // =================================================================
@@ -603,6 +631,25 @@
         simpanKonfigurasi: async function (objBaru) {
             if (isSupabaseReady) {
                 try {
+                    var rpcCfg = await sb.rpc('admin_simpan_konfigurasi', {
+                        p_token: getAdminToken(),
+                        p_items: objBaru || {}
+                    });
+                    if (!rpcCfg.error && rpcCfg.data) {
+                        if (!rpcCfg.data.ok) {
+                            tanganiAuthExpired(rpcCfg.data);
+                            return { ok: false, pesan: rpcCfg.data.pesan || 'Gagal menyimpan konfigurasi toko.' };
+                        }
+                        var stRpc = getLocalState();
+                        stRpc.konfigurasi = Object.assign({}, stRpc.konfigurasi || {}, objBaru);
+                        saveLocalState(stRpc);
+                        return { ok: true };
+                    }
+                    if (rpcCfg.error && !isRpcMissingError(rpcCfg.error)) {
+                        return { ok: false, pesan: rpcCfg.error.message || 'Gagal menyimpan konfigurasi ke Supabase.' };
+                    }
+
+                    // Fallback sementara bila skrip SQL keamanan terbaru belum dijalankan di Supabase
                     var now = new Date().toISOString();
                     var rows = Object.keys(objBaru).map(function (k) {
                         return { kunci: k, nilai: String(objBaru[k] ?? ''), diperbarui_pada: now };
@@ -1194,10 +1241,16 @@
                         ) {
                             p.status_bayar = 'kedaluwarsa';
                             p.status = 'Dibatalkan';
-                            await sb.from('pesanan').update({
-                                status_bayar: 'kedaluwarsa',
-                                status: 'Dibatalkan'
-                            }).eq('id', p.id);
+                            var expRpc = await sb.rpc('tandai_pesanan_kedaluwarsa', {
+                                p_id: p.id,
+                                p_token: p.token_nota || tokenClean
+                            });
+                            if (expRpc.error && isRpcMissingError(expRpc.error)) {
+                                await sb.from('pesanan').update({
+                                    status_bayar: 'kedaluwarsa',
+                                    status: 'Dibatalkan'
+                                }).eq('id', p.id);
+                            }
                         }
 
                         var detail = (p.detail_pesanan || []).map(function (d) {
@@ -1317,10 +1370,16 @@
                             ) {
                                 pCloud.status_bayar = 'kedaluwarsa';
                                 pCloud.status = 'Dibatalkan';
-                                await sb.from('pesanan').update({
-                                    status_bayar: 'kedaluwarsa',
-                                    status: 'Dibatalkan'
-                                }).eq('id', pCloud.id);
+                                var expRpcCloud = await sb.rpc('tandai_pesanan_kedaluwarsa', {
+                                    p_id: pCloud.id,
+                                    p_token: pCloud.token_nota || ''
+                                });
+                                if (expRpcCloud.error && isRpcMissingError(expRpcCloud.error)) {
+                                    await sb.from('pesanan').update({
+                                        status_bayar: 'kedaluwarsa',
+                                        status: 'Dibatalkan'
+                                    }).eq('id', pCloud.id);
+                                }
                             }
                             outCloud.push({ pesanan: pCloud, detail: mapDetailCloud(pCloud) });
                         }
@@ -1405,6 +1464,21 @@
 
             if (isSupabaseReady) {
                 try {
+                    var rpcBukti = await sb.rpc('unggah_bukti_pembayaran', {
+                        p_kode: kode,
+                        p_token: token,
+                        p_bukti_bayar: dataUrlGambar
+                    });
+                    if (!rpcBukti.error && rpcBukti.data) {
+                        if (!rpcBukti.data.ok) {
+                            return { ok: false, pesan: rpcBukti.data.pesan || 'Gagal mengunggah bukti pembayaran.' };
+                        }
+                        return { ok: true };
+                    }
+                    if (rpcBukti.error && !isRpcMissingError(rpcBukti.error)) {
+                        return { ok: false, pesan: rpcBukti.error.message || 'Gagal mengunggah bukti pembayaran.' };
+                    }
+
                     var cari = await sb
                         .from('pesanan')
                         .select('id, status, status_bayar, bayar_kedaluwarsa_pada')
@@ -1543,6 +1617,29 @@
 
             if (isSupabaseReady) {
                 try {
+                    var rpcLogin = await sb.rpc('login_admin', {
+                        p_username: u,
+                        p_password: p
+                    });
+                    if (!rpcLogin.error && rpcLogin.data) {
+                        if (rpcLogin.data.ok && rpcLogin.data.admin) {
+                            var sesiRpc = sanitasiObjekAdmin(rpcLogin.data.admin);
+                            sesiRpc.kadaluwarsa_pada = Date.now() + SESSION_DURATION_MS;
+                            if (rpcLogin.data.token) {
+                                sesiRpc.session_token = rpcLogin.data.token;
+                            }
+                            localStorage.setItem(SESSION_KEY, JSON.stringify(sesiRpc));
+                            localStorage.removeItem(LOCKOUT_KEY);
+                            localStorage.removeItem(FAILED_ATTEMPTS_KEY);
+                            return { ok: true, admin: sanitasiObjekAdmin(sesiRpc) };
+                        }
+                        return await prosesGagal();
+                    }
+                    if (rpcLogin.error && !isRpcMissingError(rpcLogin.error)) {
+                        return { ok: false, pesan: rpcLogin.error.message || 'Gagal menghubungi server autentikasi.' };
+                    }
+
+                    // Fallback sementara bila skrip SQL keamanan terbaru belum dijalankan di Supabase
                     var res = await sb.from('admin').select('*').eq('username', u).maybeSingle();
                     if (!res.error && res.data) {
                         var adm = res.data;
@@ -1608,6 +1705,12 @@
         },
 
         logoutAdmin: function () {
+            var token = getAdminToken();
+            if (isSupabaseReady && token) {
+                try {
+                    sb.rpc('logout_admin_session', { p_token: token }).then(function () {}, function () {});
+                } catch (e) {}
+            }
             localStorage.removeItem(SESSION_KEY);
         },
 
@@ -1618,12 +1721,29 @@
 
             if (isSupabaseReady) {
                 try {
-                    await sb.from('aktivitas_admin').insert({
-                        admin_id: adminId,
-                        aksi: String(aksi || 'aksi_admin'),
-                        keterangan: String(keterangan || ''),
-                        dibuat_pada: now
-                    });
+                    var token = getAdminToken();
+                    if (token) {
+                        var rpcAct = await sb.rpc('admin_catat_aktivitas', {
+                            p_token: token,
+                            p_aksi: String(aksi || 'aksi_admin'),
+                            p_keterangan: String(keterangan || '')
+                        });
+                        if (rpcAct.error && isRpcMissingError(rpcAct.error)) {
+                            await sb.from('aktivitas_admin').insert({
+                                admin_id: adminId,
+                                aksi: String(aksi || 'aksi_admin'),
+                                keterangan: String(keterangan || ''),
+                                dibuat_pada: now
+                            });
+                        }
+                    } else {
+                        await sb.from('aktivitas_admin').insert({
+                            admin_id: adminId,
+                            aksi: String(aksi || 'aksi_admin'),
+                            keterangan: String(keterangan || ''),
+                            dibuat_pada: now
+                        });
+                    }
                 } catch (e) {
                     console.warn('Gagal mencatat aktivitas ke Supabase:', e);
                 }
@@ -1899,6 +2019,27 @@
                         };
                     }
 
+                    var rpcSt = await sb.rpc('admin_ubah_status_pesanan', {
+                        p_token: getAdminToken(),
+                        p_pesanan_id: Number(pesananId),
+                        p_status: statusBaru
+                    });
+                    if (!rpcSt.error && rpcSt.data) {
+                        if (!rpcSt.data.ok) {
+                            tanganiAuthExpired(rpcSt.data);
+                            return { ok: false, pesan: rpcSt.data.pesan || 'Gagal memperbarui status pesanan.' };
+                        }
+                        p.status = statusBaru;
+                        var waUrlRpc = null;
+                        if ((statusBaru === 'Sedang Dimasak' || statusBaru === 'Siap Diambil') && p.no_wa) {
+                            waUrlRpc = urlWaPelangganStatus(p, detailList, statusBaru);
+                        }
+                        return { ok: true, status: statusBaru, wa_url: waUrlRpc };
+                    }
+                    if (rpcSt.error && !isRpcMissingError(rpcSt.error)) {
+                        return { ok: false, pesan: 'Gagal memperbarui status: ' + (rpcSt.error.message || '') };
+                    }
+
                     var payloadUpd = { status: statusBaru, diubah_pada: now };
                     if (statusBaru === 'Selesai') payloadUpd.diserahkan_pada = now;
 
@@ -2005,6 +2146,37 @@
                     // Cegah setujui jika bukti bayar kosong (Temuan 7)
                     if (aksi === 'terima' && !pCloud.bukti_bayar) {
                         return { ok: false, pesan: 'Tidak dapat menyetujui pembayaran karena bukti bayar belum tersedia.' };
+                    }
+
+                    var rpcVerif = await sb.rpc('admin_verifikasi_pembayaran', {
+                        p_token: getAdminToken(),
+                        p_pesanan_id: Number(pesananId),
+                        p_aksi: aksi,
+                        p_alasan: aksi === 'tolak' ? String(alasan || '').trim() : null
+                    });
+                    if (!rpcVerif.error && rpcVerif.data) {
+                        if (!rpcVerif.data.ok) {
+                            tanganiAuthExpired(rpcVerif.data);
+                            return { ok: false, pesan: rpcVerif.data.pesan || 'Gagal memverifikasi pembayaran.' };
+                        }
+                        pCloud.diskon = resolveDiskonPesanan(pCloud);
+                        if (pCloud.nominal_bayar === undefined || pCloud.nominal_bayar === null) {
+                            pCloud.nominal_bayar = Math.max(0, Number(pCloud.total_harga || 0) - Number(pCloud.diskon || 0));
+                        }
+                        var waRpcVerif = pCloud.no_wa
+                            ? urlWaPelangganStatus(pCloud, detailCloud, aksi === 'terima' ? 'lunas' : 'ditolak', alasan)
+                            : null;
+                        return {
+                            ok: true,
+                            kode: pCloud.kode,
+                            wa_url: waRpcVerif,
+                            pesan: aksi === 'terima'
+                                ? 'Pembayaran pesanan ' + pCloud.kode + ' berhasil diverifikasi (LUNAS).'
+                                : 'Bukti pembayaran pesanan ' + pCloud.kode + ' telah ditolak.'
+                        };
+                    }
+                    if (rpcVerif.error && !isRpcMissingError(rpcVerif.error)) {
+                        return { ok: false, pesan: 'Gagal memperbarui verifikasi: ' + (rpcVerif.error.message || '') };
                     }
 
                     var updateData = aksi === 'terima'
@@ -2157,6 +2329,23 @@
 
             if (isSupabaseReady) {
                 try {
+                    var rpcToggle = await sb.rpc('admin_toggle_menu_harian', {
+                        p_token: getAdminToken(),
+                        p_tanggal: tgl,
+                        p_menu_id: idNum,
+                        p_tersedia: tersediaBaru !== undefined ? Boolean(tersediaBaru) : null
+                    });
+                    if (!rpcToggle.error && rpcToggle.data) {
+                        if (!rpcToggle.data.ok) {
+                            tanganiAuthExpired(rpcToggle.data);
+                            return { ok: false, pesan: rpcToggle.data.pesan || 'Gagal mengubah ketersediaan menu.' };
+                        }
+                        return { ok: true, tersedia: rpcToggle.data.tersedia };
+                    }
+                    if (rpcToggle.error && !isRpcMissingError(rpcToggle.error)) {
+                        return { ok: false, pesan: rpcToggle.error.message || 'Gagal mengubah ketersediaan menu.' };
+                    }
+
                     var cur = await sb
                         .from('menu_harian')
                         .select('*')
@@ -2214,6 +2403,28 @@
 
             if (isSupabaseReady) {
                 try {
+                    var rpcSimpanM = await sb.rpc('admin_simpan_menu', {
+                        p_token: getAdminToken(),
+                        p_id: payload.id ? Number(payload.id) : null,
+                        p_nama: nama,
+                        p_deskripsi: payload.deskripsi !== undefined ? deskripsi : null,
+                        p_harga: harga,
+                        p_kategori: payload.kategori ? kategori : null,
+                        p_stok: stokVal,
+                        p_foto: payload.foto ? payload.foto : null,
+                        p_tanggal: payload.tanggal ? payload.tanggal : null
+                    });
+                    if (!rpcSimpanM.error && rpcSimpanM.data) {
+                        if (!rpcSimpanM.data.ok) {
+                            tanganiAuthExpired(rpcSimpanM.data);
+                            return { ok: false, pesan: rpcSimpanM.data.pesan || 'Gagal menyimpan menu.' };
+                        }
+                        return { ok: true, id: rpcSimpanM.data.id };
+                    }
+                    if (rpcSimpanM.error && !isRpcMissingError(rpcSimpanM.error)) {
+                        return { ok: false, pesan: rpcSimpanM.error.message || 'Gagal menyimpan menu.' };
+                    }
+
                     if (payload.id) {
                         var mId = Number(payload.id);
                         var updFields = {
@@ -2311,6 +2522,21 @@
             var idNum = Number(menuId);
             if (isSupabaseReady) {
                 try {
+                    var rpcHapusM = await sb.rpc('admin_hapus_menu', {
+                        p_token: getAdminToken(),
+                        p_menu_id: idNum
+                    });
+                    if (!rpcHapusM.error && rpcHapusM.data) {
+                        if (!rpcHapusM.data.ok) {
+                            tanganiAuthExpired(rpcHapusM.data);
+                            return { ok: false, pesan: rpcHapusM.data.pesan || 'Gagal menghapus menu.' };
+                        }
+                        return { ok: true };
+                    }
+                    if (rpcHapusM.error && !isRpcMissingError(rpcHapusM.error)) {
+                        return { ok: false, pesan: rpcHapusM.error.message || 'Gagal menghapus menu.' };
+                    }
+
                     var del = await sb.from('menu').update({ aktif: false }).eq('id', idNum);
                     if (!del.error) {
                         await this.catatAktivitas('hapus_menu', 'Menonaktifkan/menghapus menu #' + idNum);
@@ -2332,6 +2558,21 @@
         getDaftarAdmin: async function () {
             if (isSupabaseReady) {
                 try {
+                    var rpcDaftar = await sb.rpc('admin_daftar_akun', {
+                        p_token: getAdminToken()
+                    });
+                    if (!rpcDaftar.error && rpcDaftar.data) {
+                        if (!rpcDaftar.data.ok) {
+                            tanganiAuthExpired(rpcDaftar.data);
+                            return [];
+                        }
+                        return (rpcDaftar.data.items || []).map(sanitasiObjekAdmin);
+                    }
+                    if (rpcDaftar.error && !isRpcMissingError(rpcDaftar.error)) {
+                        console.warn('getDaftarAdmin RPC error:', rpcDaftar.error);
+                        return [];
+                    }
+
                     var res = await sb
                         .from('admin')
                         .select('id, username, nama, role, email, no_hp, jabatan, foto, terakhir_login, dibuat_pada')
@@ -2360,6 +2601,24 @@
 
             if (isSupabaseReady) {
                 try {
+                    var rpcTmb = await sb.rpc('admin_tambah_akun', {
+                        p_token: getAdminToken(),
+                        p_username: u,
+                        p_nama: n,
+                        p_password: p,
+                        p_role: r
+                    });
+                    if (!rpcTmb.error && rpcTmb.data) {
+                        if (!rpcTmb.data.ok) {
+                            tanganiAuthExpired(rpcTmb.data);
+                            return { ok: false, pesan: rpcTmb.data.pesan || 'Gagal menambahkan akun admin.' };
+                        }
+                        return { ok: true };
+                    }
+                    if (rpcTmb.error && !isRpcMissingError(rpcTmb.error)) {
+                        return { ok: false, pesan: rpcTmb.error.message || 'Gagal menambahkan akun admin.' };
+                    }
+
                     var cek = await sb.from('admin').select('id').eq('username', u).maybeSingle();
                     if (cek.data) {
                         return { ok: false, pesan: 'Username sudah digunakan oleh akun lain.' };
@@ -2413,6 +2672,21 @@
 
             if (isSupabaseReady) {
                 try {
+                    var rpcHps = await sb.rpc('admin_hapus_akun', {
+                        p_token: getAdminToken(),
+                        p_target_id: targetId
+                    });
+                    if (!rpcHps.error && rpcHps.data) {
+                        if (!rpcHps.data.ok) {
+                            tanganiAuthExpired(rpcHps.data);
+                            return { ok: false, pesan: rpcHps.data.pesan || 'Gagal menghapus akun admin.' };
+                        }
+                        return { ok: true };
+                    }
+                    if (rpcHps.error && !isRpcMissingError(rpcHps.error)) {
+                        return { ok: false, pesan: rpcHps.error.message || 'Gagal menghapus akun admin.' };
+                    }
+
                     var targetRes = await sb.from('admin').select('id, username, role').eq('id', targetId).maybeSingle();
                     if (targetRes.data && targetRes.data.role === 'owner') {
                         var ownersRes = await sb.from('admin').select('id').eq('role', 'owner');
@@ -2460,6 +2734,37 @@
 
             if (isSupabaseReady) {
                 try {
+                    var rpcProf = await sb.rpc('admin_update_profil', {
+                        p_token: getAdminToken(),
+                        p_nama: nama,
+                        p_username: username,
+                        p_jabatan: jabatan,
+                        p_email: email,
+                        p_no_hp: no_hp,
+                        p_foto: foto ? String(foto) : null
+                    });
+                    if (!rpcProf.error && rpcProf.data) {
+                        if (!rpcProf.data.ok) {
+                            tanganiAuthExpired(rpcProf.data);
+                            return { ok: false, pesan: rpcProf.data.pesan || 'Gagal memperbarui profil di database.' };
+                        }
+                        var sesiUpd = sanitasiObjekAdmin(rpcProf.data.admin || Object.assign({}, sesi, {
+                            nama: nama, username: username, jabatan: jabatan, email: email, no_hp: no_hp, foto: foto
+                        }));
+                        try {
+                            var rawCur = JSON.parse(localStorage.getItem(SESSION_KEY) || '{}');
+                            sesiUpd.kadaluwarsa_pada = rawCur.kadaluwarsa_pada || (Date.now() + SESSION_DURATION_MS);
+                            if (rawCur.session_token) sesiUpd.session_token = rawCur.session_token;
+                        } catch (eRaw) {
+                            sesiUpd.kadaluwarsa_pada = Date.now() + SESSION_DURATION_MS;
+                        }
+                        localStorage.setItem(SESSION_KEY, JSON.stringify(sesiUpd));
+                        return { ok: true, admin: sanitasiObjekAdmin(sesiUpd) };
+                    }
+                    if (rpcProf.error && !isRpcMissingError(rpcProf.error)) {
+                        return { ok: false, pesan: 'Gagal memperbarui profil di database: ' + (rpcProf.error.message || '') };
+                    }
+
                     var updData = {
                         nama: nama,
                         username: username,
@@ -2497,9 +2802,14 @@
                 no_hp: no_hp,
                 foto: foto
             });
+            try {
+                var rawPrev = JSON.parse(localStorage.getItem(SESSION_KEY) || '{}');
+                sesiBaru.kadaluwarsa_pada = rawPrev.kadaluwarsa_pada || (Date.now() + SESSION_DURATION_MS);
+                if (rawPrev.session_token) sesiBaru.session_token = rawPrev.session_token;
+            } catch (ePrev) {}
             localStorage.setItem(SESSION_KEY, JSON.stringify(sesiBaru));
             await this.catatAktivitas('update_profil', 'Memperbarui profil & kontak akun admin');
-            return { ok: true, admin: sesiBaru };
+            return { ok: true, admin: sanitasiObjekAdmin(sesiBaru) };
         },
 
         ubahPasswordAdmin: async function (passwordLama, passwordBaru) {
@@ -2513,6 +2823,22 @@
 
             if (isSupabaseReady) {
                 try {
+                    var rpcPass = await sb.rpc('admin_ubah_password', {
+                        p_token: getAdminToken(),
+                        p_password_lama: passwordLama,
+                        p_password_baru: passwordBaru
+                    });
+                    if (!rpcPass.error && rpcPass.data) {
+                        if (!rpcPass.data.ok) {
+                            tanganiAuthExpired(rpcPass.data);
+                            return { ok: false, pesan: rpcPass.data.pesan || 'Gagal memperbarui password.' };
+                        }
+                        return { ok: true, pesan: rpcPass.data.pesan || 'Password akun berhasil diperbarui.' };
+                    }
+                    if (rpcPass.error && !isRpcMissingError(rpcPass.error)) {
+                        return { ok: false, pesan: 'Gagal memperbarui password: ' + (rpcPass.error.message || '') };
+                    }
+
                     var res = await sb.from('admin').select('id, password_hash').eq('id', sesi.id).maybeSingle();
                     if (!res.error && res.data) {
                         var hash = String(res.data.password_hash || '');

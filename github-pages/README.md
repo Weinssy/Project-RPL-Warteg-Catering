@@ -40,7 +40,8 @@ Ikuti 3 langkah mudah berikut saat Anda siap menghubungkan Supabase:
 2. Klik tombol **New query**.
 3. Buka file `github-pages/supabase/supabase_setup.sql`, salin (**copy**) seluruh isinya, lalu tempel (**paste**) ke SQL Editor Supabase.
 4. Klik tombol **Run** (atau tekan `Ctrl + Enter`).  
-   *(Skrip ini akan otomatis membuat semua tabel, indeks, RLS policy, fungsi transaksi kuota 120 box, dan data demo awal).*
+   *(Skrip ini akan otomatis membuat semua tabel, indeks, RLS policy ketat, enkripsi password `pgcrypto`, fungsi RPC transaksi kuota 120 box & autentikasi, serta data awal).*
+5. **Penting (Keamanan Produksi):** Segera login ke dashboard pengelola (tautan internal tim) dan ganti kata sandi bawaan melalui menu **Profil Saya** atau langsung lewat tabel `admin` di Supabase agar tidak memakai kredensial standar.
 
 ### Langkah 3: Isi Kunci API di `config.js`
 1. Di dashboard Supabase, buka menu **Project Settings** (ikon gerigi) $\rightarrow$ **API**.
@@ -67,18 +68,17 @@ Ikuti 3 langkah mudah berikut saat Anda siap menghubungkan Supabase:
 * **`pembayaran.html`** : Halaman pembayaran QRIS Statis, unggah bukti pembayaran, serta tombol kirim konfirmasi otomatis via WhatsApp (`wa.me`).
 * **`invoice.html`** : Halaman invoice opsional (format cetak PDF / print view) saat status pembayaran LUNAS; nota fisik resmi diserahkan saat pengambilan di warteg.
 
-### 2. Sisi Pengelola (Admin Dashboard)
-* **Kredensial Default:** Username: `admin` | Password: `admin123`
-* **`admin/login.html`** : Halaman autentikasi admin/owner.
-* **`admin/index.html`** : Dashboard utama ringkasan statistik (Box dipesan, Sisa kuota, Total stok, Pesanan terbaru).
-* **`admin/rekap.html`** : Kalender bulanan dan rekap pesanan harian.
-* **`admin/pemesan.html`** : Manajemen daftar pemesan, filter tanggal/status, modal detail, ubah status *Mulai Masak*, *Siap Diambil*, serta tombol pintas kirim notifikasi WhatsApp.
-* **`admin/verifikasi.html`** : Verifikasi bukti pembayaran QRIS pelanggan (*Setujui Lunas* atau *Tolak dengan Alasan*).
-* **`admin/menu_harian.html`** : Kelola ketersediaan menu per tanggal (toggle aktif/nonaktif, edit harga, edit stok).
-* **`admin/tambah_menu.html`** : Tambah menu makanan baru beserta foto dan jatah stok harian.
-* **`admin/qris.html`** : Pengaturan gambar QRIS toko dan data merchant (khusus Owner).
-* **`admin/admin.html`** : Tambah dan kelola akun staf admin (khusus Owner).
-* **`admin/profil.html`** : Edit profil pribadi, ganti foto avatar, ubah kata sandi, dan preferensi akun.
+### 2. Sisi Pengelola (Admin Dashboard Internal)
+* **Akses & Keamanan:** Tautan ke panel admin tidak ditampilkan pada navbar halaman pelanggan dan kredensial login tidak dipublikasikan di repositori publik. Staf/pemilik menyimpan alamat halaman login internal secara pribadi, dan kata sandi tersimpan dalam bentuk hash (`pgcrypto` bcrypt) di Supabase serta terlindungi kebijakan RLS.
+* **Modul Pengelola (`admin/`):**
+  * Autentikasi admin/owner dan manajemen sesi kedaluwarsa otomatis (8 jam).
+  * Dashboard utama ringkasan statistik (Box dipesan, Sisa kuota, Total stok, Pesanan terbaru).
+  * Kalender bulanan dan rekap pesanan harian.
+  * Manajemen daftar pemesan, filter tanggal/status, modal detail, ubah status *Mulai Masak*, *Siap Diambil*, serta tombol pintas kirim notifikasi WhatsApp.
+  * Verifikasi bukti pembayaran QRIS pelanggan (*Setujui Lunas* atau *Tolak dengan Alasan*).
+  * Kelola ketersediaan menu per tanggal (toggle aktif/nonaktif, edit harga, edit stok) dan tambah menu makanan baru.
+  * Pengaturan gambar QRIS toko, data merchant, dan manajemen akun staf admin (khusus Owner).
+  * Edit profil pribadi, ganti foto avatar, ubah kata sandi, dan preferensi akun.
 
 ---
 

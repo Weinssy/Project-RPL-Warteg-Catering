@@ -30,12 +30,11 @@ Project-RPL-Warteg-Catering/
 │   ├── index.html              # Halaman Utama Pelanggan (Hero, Kuota, Katalog & Filter Chips)
 │   ├── cara-pemesanan.html     # Panduan 7 Langkah Pemesanan Katering
 │   ├── checkout.html           # Halaman Checkout & Formulir Data Pemesan
-│   ├── cek_status.html         # Cek Status Pesanan Mandiri
+│   ├── cek_status.html         # Cek Status Pesanan Mandiri (via No. WhatsApp)
 │   ├── pembayaran.html         # Pembayaran QRIS & Upload Bukti Bayar
-│   ├── nota.html               # Nota Digital Pelanggan
-│   ├── invoice.html            # Cetak Invoice Resmi (PDF)
-│   ├── admin/                  # Dashboard Lengkap Admin & Owner
-│   ├── supabase/               # Skrip SQL Setup PostgreSQL + RPC Transaction
+│   ├── invoice.html            # Cetak Invoice Opsional (PDF)
+│   ├── admin/                  # Dashboard Internal Admin & Owner (tidak ditautkan ke UI pelanggan)
+│   ├── supabase/               # Skrip SQL Setup PostgreSQL + RLS & RPC Transaction
 │   └── assets/js/config.js     # Tempat Konfigurasi SUPABASE_URL & ANON_KEY
 ├── warteg/                     # Versi Backend PHP Native + MySQL (Untuk Laragon / Server Lokal)
 │   └── warteg/                 # Kode sumber PHP, migrasi database MySQL, & script tes PHP
@@ -50,10 +49,8 @@ Project-RPL-Warteg-Catering/
 ### Opsi A: Menjalankan Versi Online (GitHub Pages + Supabase)
 1. Buka tautan GitHub Pages: [https://weinssy.github.io/Project-RPL-Warteg-Catering/](https://weinssy.github.io/Project-RPL-Warteg-Catering/).
 2. Aplikasi langsung dapat digunakan dalam mode **Live Demo** (menggunakan browser engine & *auto-seed* data).
-3. Untuk menghubungkan ke database cloud pribadi Anda di Supabase, ikuti panduan pada [github-pages/README.md](github-pages/README.md).
-4. **Login Admin:**
-   * URL: `github-pages/admin/login.html`
-   * Username: `admin` | Password: `admin123`
+3. Untuk menghubungkan atau mengamankan database cloud pribadi Anda di Supabase, ikuti panduan pada [github-pages/README.md](github-pages/README.md).
+4. **Akses Pengelola (Internal):** Dashboard admin tidak ditautkan di navbar pelanggan maupun dipublikasikan kredensialnya di README ini. Staf/pemilik mengaksesnya secara internal dengan akun yang dikonfigurasi langsung di database.
 
 ### Opsi B: Menjalankan Versi Lokal (PHP Native + Laragon)
 1. Salin folder `warteg/warteg/` ke direktori web server lokal (misalnya `C:\laragon\www\warteg`).
