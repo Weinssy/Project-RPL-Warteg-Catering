@@ -183,6 +183,8 @@ Laporan dan video demo/user manual dikumpulkan sebelum UAS melalui kanal yang di
 | Rifa Zam Zami | Belum dicantumkan | Belum dicantumkan |
 | Muhammad Arman Kurniawan | Belum dicantumkan | Belum dicantumkan |
 | Alif Arya | Belum dicantumkan | Belum dicantumkan |
+| Rizka Nanda Suncaesaria | Belum dicantumkan | Belum dicantumkan |
+| Navitasari | Belum dicantumkan | Belum dicantumkan |
 
 Nama tim dan pembagian peran perlu diisi sesuai kesepakatan kelompok. Setiap anggota harus memiliki peran berbeda, dicantumkan pada laporan serta presentasi, dan memahami keseluruhan sistem. Contoh peran pada ketentuan tugas adalah System Analyst, UI/UX Designer, Programmer, serta Tester & Documentator; jumlah anggota mengikuti pembagian dosen.
 
